@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use std::time::{Duration, Instant};
 
 use iced::advanced::{
-    Layout, Renderer as _, Shell, Widget, clipboard, layout, mouse, renderer, widget,
+    Layout, Renderer as _, Shell, Widget, clipboard, input_method, layout, mouse, renderer, widget,
 };
 use iced::keyboard::{self, Key, key};
 use iced::widget::text_editor::Binding;
@@ -13,6 +13,7 @@ use iced::{Event, Point, Rectangle, Renderer, Size};
 
 use super::{App, Message};
 use crate::document::selection::Selection;
+use crate::editor::native_buffer;
 use crate::editor::rich_editor::RichEditor;
 use crate::theme::Preset;
 
@@ -396,6 +397,39 @@ fn large_document_interactions() {
             })
             .collect::<Vec<_>>();
         report("typing/syntax-fallback", &timings);
+
+        // Composition stays transient until commit, even deep in a large
+        // document. Undo must restore the source and both selection endpoints.
+        harness.message(Message::SelectSource(Selection::caret(middle + 12)));
+        let before = harness.app.document.source().to_owned();
+        let selection = harness.app.selection;
+        harness.event(
+            Event::InputMethod(input_method::Event::Opened),
+            Point::ORIGIN,
+        );
+        let preedit = harness.event(
+            Event::InputMethod(input_method::Event::Preedit("にほん".into(), Some(0..9))),
+            Point::ORIGIN,
+        );
+        assert_eq!(harness.app.document.source(), before);
+        assert_eq!(harness.app.selection, selection);
+        report("ime/preedit", &[preedit]);
+        let committed = "日本語 e\u{301} 🧑‍💻";
+        let commit = harness.event(
+            Event::InputMethod(input_method::Event::Commit(committed.into())),
+            Point::ORIGIN,
+        );
+        let mut after = before.clone();
+        after.insert_str(selection.head, committed);
+        assert_eq!(harness.app.document.source(), after);
+        report("ime/commit", &[commit]);
+        let undo = harness.message(Message::Undo);
+        assert_eq!(harness.app.document.source(), before);
+        assert_eq!(harness.app.selection, selection);
+        report("undo/ime", &[undo]);
+        let redo = harness.message(Message::Redo);
+        assert_eq!(harness.app.document.source(), after);
+        report("redo/ime", &[redo]);
         println!(
             "final_layout_counts={:?}",
             RichEditor::profile_stats(&harness.tree)
@@ -415,7 +449,7 @@ fn large_document_load_components() {
     let projection = crate::document::projection::Projection::new(&source);
     println!("load/projection {:?}", start.elapsed());
     let start = Instant::now();
-    let mut content = iced::widget::text_editor::Content::with_text(&projection.text);
+    let mut content = native_buffer::with_text(&projection.text);
     println!("load/native-init {:?}", start.elapsed());
     let start = Instant::now();
     Selection::caret(0).restore(&mut content, &projection.text);

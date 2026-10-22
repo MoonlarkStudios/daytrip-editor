@@ -924,6 +924,7 @@ impl<'a> From<RichEditor<'a>> for Element<'a, Message> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::editor::native_buffer;
     use crate::theme::Preset;
 
     #[test]
@@ -939,7 +940,7 @@ mod tests {
         }
         let source = "# Heading\n\n| **A** | B |\n|---|---|\n| x | y |\n\n![alt](room.png)";
         let projection = Projection::new(source);
-        let mut content = Content::with_text(&projection.text);
+        let mut content = native_buffer::with_text(&projection.text);
         content.perform(Action::SelectAll);
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
@@ -970,7 +971,7 @@ mod tests {
     fn widget_drag_selection_crosses_heading_table_image_and_paragraph_in_both_directions() {
         let source = include_str!("../../tests/fixtures/rich-blocks.md").trim_end_matches('\n');
         let projection = Projection::new(source);
-        let content = Content::with_text(&projection.text);
+        let content = native_buffer::with_text(&projection.text);
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
         let mut editor = RichEditor::new(
@@ -1083,7 +1084,7 @@ mod tests {
         let paragraph = source.find("After").unwrap() + 3;
         for (anchor, head) in [(heading, paragraph), (paragraph, heading)] {
             let mut projection = Projection::new(source);
-            let mut content = Content::with_text(&projection.text);
+            let mut content = native_buffer::with_text(&projection.text);
             let mut selection = Selection::caret(2);
             let mut tree = widget::Tree::new(&RichEditor::new(
                 &content,
@@ -1151,7 +1152,7 @@ mod tests {
                     selection = next;
                 }
                 projection = projection.disclosing(projection.disclosure_at(Some(selection.head)));
-                content = Content::with_text(&projection.text);
+                content = native_buffer::with_text(&projection.text);
                 content.move_to(
                     projection
                         .display_selection(selection)
@@ -1170,7 +1171,7 @@ mod tests {
         let first = source.find("Line25").unwrap();
         let second = source.find("Line26").unwrap();
         let mut projection = Projection::new(&source);
-        let content = Content::with_text(&projection.text);
+        let content = native_buffer::with_text(&projection.text);
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
         let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
@@ -1189,7 +1190,7 @@ mod tests {
         let limits = layout::Limits::new(Size::ZERO, Size::new(180.0, 500.0));
         let relayout =
             |tree: &mut widget::Tree, projection: &Projection, selection: Selection, focused| {
-                let mut content = Content::with_text(&projection.text);
+                let mut content = native_buffer::with_text(&projection.text);
                 projection
                     .display_selection(selection)
                     .restore(&mut content, &projection.text);
@@ -1307,7 +1308,7 @@ mod tests {
         ));
         let head = source.find("Paragraph 300").unwrap() + "Paragraph 300 with [la".len();
         let mut projection = Projection::with_context(&source, Some(head));
-        let mut content = Content::with_text(&projection.text);
+        let mut content = native_buffer::with_text(&projection.text);
         let mut selection = Selection { anchor: 0, head };
         let initial = RichEditor::new(
             &content,
@@ -1345,7 +1346,7 @@ mod tests {
             let state = tree.state.downcast_ref::<State>();
             let screen_y = state.caret(head).y - state.scroll;
             projection = projection.disclosing(projection.disclosure_at(focus.then_some(head)));
-            content = Content::with_text(&projection.text);
+            content = native_buffer::with_text(&projection.text);
             relayout(&mut tree, &content, &projection, selection, 240.0);
             let state = tree.state.downcast_ref::<State>();
             assert!((state.caret(head).y - state.scroll - screen_y).abs() < 0.1);
@@ -1368,7 +1369,7 @@ mod tests {
         let (anchor, y) = state.rich.resident().viewport_anchor(state.scroll).unwrap();
         let screen_y = y - state.scroll;
         projection = projection.disclosing(projection.disclosure_at(None));
-        content = Content::with_text(&projection.text);
+        content = native_buffer::with_text(&projection.text);
         relayout(&mut tree, &content, &projection, selection, 180.0);
         let state = tree.state.downcast_ref::<State>();
         assert!((state.rich.source_caret(anchor, None).y - state.scroll - screen_y).abs() < 0.15);
@@ -1454,7 +1455,7 @@ mod tests {
         state.focused = false;
         let replacement = "A new document with its own text.\n\n".repeat(600);
         let projection = Projection::new(&replacement);
-        let content = Content::with_text(&projection.text);
+        let content = native_buffer::with_text(&projection.text);
         RichEditor::new(
             &content,
             &projection,
@@ -1478,7 +1479,7 @@ mod tests {
     fn wrap_affinity_survives_eviction_before_keyboard_navigation() {
         let source = format!("{}\n\n", "Continuouswordswithoutspaces".repeat(6)).repeat(300);
         let projection = Projection::new(&source);
-        let content = Content::with_text(&projection.text);
+        let content = native_buffer::with_text(&projection.text);
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
         let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
@@ -1536,7 +1537,7 @@ mod tests {
     #[test]
     fn ime_preedit_is_transient_and_commit_produces_one_edit() {
         let projection = Projection::new("# Title");
-        let content = Content::with_text(&projection.text);
+        let content = native_buffer::with_text(&projection.text);
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
         let mut editor = RichEditor::new(

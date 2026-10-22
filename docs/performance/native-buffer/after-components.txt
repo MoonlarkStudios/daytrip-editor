@@ -1,0 +1,28 @@
+
+running 1 test
+test app::application::performance::large_document_load_components ... load/document 571.178375ms
+load/projection 66.482083ms
+load/native-init 87.608459ms
+load/native-caret 708ns
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 87 filtered out; finished in 0.76s
+
+        0.79 real         0.67 user         0.09 sys
+           422346752  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               28019  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                1010  involuntary context switches
+         10836854408  instructions retired
+          2504247474  cycles elapsed
+           410715000  peak memory footprint

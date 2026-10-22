@@ -18,6 +18,7 @@ use crate::document::projection::{self, Projection};
 use crate::document::selection::Selection;
 use crate::document::table_edit;
 use crate::editor::markdown_view::MarkdownView;
+use crate::editor::native_buffer;
 use crate::editor::rich_editor::RichEditor;
 use crate::editor::viewport;
 use crate::io::image_store::{ImageStore, LoadedImage};
@@ -196,7 +197,7 @@ impl App {
         let source = include_str!("../../assets/welcome.md").to_owned();
         let mut app = Self {
             document: Document::new(source.clone()),
-            editor: text_editor::Content::with_text(&Projection::new(&source).text),
+            editor: native_buffer::with_text(&Projection::new(&source).text),
             native_after: None,
             editor_source: false,
             active: None,
@@ -1344,7 +1345,7 @@ impl App {
         self.projection = Projection::new(self.document.source());
         self.projection_revision = Some(self.document.revision);
         self.editor_source = self.mode == EditorMode::Source;
-        self.editor = text_editor::Content::with_text(if self.editor_source {
+        self.editor = native_buffer::with_text(if self.editor_source {
             self.document.source()
         } else {
             &self.projection.text
@@ -2503,6 +2504,44 @@ mod tests {
         assert_eq!(app.document.source(), "Before 日本語 e\u{301} 🧑‍💻");
         send(&mut app, Message::Undo);
         assert_eq!(app.document.source(), "Before ");
+    }
+
+    #[test]
+    fn deferred_document_keeps_cross_block_selection_composition_and_history() {
+        let source = format!(
+            "Before café\n\n{}After 🦀 end.",
+            "# Heading **title**\n\n| Name | Value |\n|---|---|\n| a | b |\n\n![alt](missing.png)\n\n".repeat(40)
+        );
+        let mut app = app(&source);
+        let selection = Selection {
+            anchor: source.rfind("After ").unwrap() + "After ".len(),
+            head: "Before ".len(),
+        };
+        send(&mut app, Message::SelectSource(selection));
+        for _ in 0..2 {
+            send(&mut app, Message::ToggleSource);
+            assert_eq!(app.selection, selection);
+            send(&mut app, Message::ToggleSource);
+            assert_eq!(app.selection, selection);
+            assert_eq!(app.editor.text(), app.projection.text);
+        }
+        let committed = "日本語 e\u{301} 🧑‍💻\n";
+        send(
+            &mut app,
+            Message::Edit(Action::Edit(Edit::Paste(Arc::new(committed.into())))),
+        );
+        assert_eq!(app.document.source(), format!("Before {committed}🦀 end."));
+        let after = app.selection;
+        send(&mut app, Message::Undo);
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, selection);
+        assert_eq!(
+            Selection::from_cursor(&app.projection.text, app.editor.cursor()),
+            app.projection.display_selection(selection)
+        );
+        send(&mut app, Message::Redo);
+        assert_eq!(app.document.source(), format!("Before {committed}🦀 end."));
+        assert_eq!(app.selection, after);
     }
 
     #[test]

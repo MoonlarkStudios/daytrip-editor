@@ -2,6 +2,8 @@
 
 Measured on 2026-10-22 with mise's Rust 1.95.0, Iced 0.14, release optimization, macOS/Apple silicon, and the bundled Newsreader fonts. The baseline is commit `63e4ae7`; its source organization has the same behavior as the [previous performance baseline](performance.md).
 
+The subsequent [native-buffer report](native-buffer.md) measures deferred native shaping on top of this implementation.
+
 ## Behavior and boundaries
 
 Large documents keep a lightweight index of physical paragraphs and table rows, with a Fenwick tree of estimated/measured heights. Only the viewport, one viewport of overscan on each side, and adjacent navigation units retain shaped paragraphs, glyph stops, fragments, and decorations. Documents with at most 256 units use exact full layout. Height hints survive eviction; shaped text requires an exact cache-key match. Local projection changes rebase index offsets without hashing the entire document again.

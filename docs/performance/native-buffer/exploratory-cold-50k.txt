@@ -1,0 +1,29 @@
+
+running 1 test
+test app::application::performance::large_document_interactions ... memory/source-load rss_kib=401728
+
+blocks=50000 bytes=4574450 load=2.710143541s layout_counts=(44, 52)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=24.518/24.518/24.518ms draw=0.033/0.033/0.033ms raster=4.305/4.305/4.305ms total=28.856/28.856/28.856ms (p50/p95/max)
+memory/cold rss_kib=415168
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 86 filtered out; finished in 2.92s
+
+        2.97 real         0.88 user         0.16 sys
+           425132032  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               30209  page reclaims
+                 450  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  34  voluntary context switches
+                3795  involuntary context switches
+         11270181939  instructions retired
+          3191184134  cycles elapsed
+           405799896  peak memory footprint
