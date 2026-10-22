@@ -65,7 +65,7 @@ Typography supports `body_size` (12–32), `line_height` (1.2–2.2), and `conte
 
 ## Engineering
 
-See [architecture](docs/architecture.md), [evaluation notes](docs/evaluation.md), and the [large-document profile](docs/performance.md). The code follows the applicable [Google Rust style guidance](https://google.github.io/styleguide/rustguide.html): clear ownership, named types, explicit errors, no unsafe code, stable Rust, rustfmt, and small purpose-specific modules. Iced's widget helper imports follow its idiomatic declarative layout style. Chromium-specific restrictions are not applied to this Cargo application.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for source boundaries, validation commands, Rust conventions and project exceptions, and commit policy. [AGENTS.md](AGENTS.md) provides concise instructions for agent work. The code follows the applicable [Google Rust style guidance](https://google.github.io/styleguide/rustguide.html). Technical details are in [architecture](docs/architecture.md), [evaluation notes](docs/evaluation.md), and the [large-document profile](docs/performance.md).
 
 Current support includes headings, inline styles, links, nested lists, tasks, blockquotes, rules, GFM tables, code fences, and PNG/JPEG/GIF/WebP images. Reference-style links resolve across blocks in the live projection. Image objects use block layout even when written inline; GIFs show their first frame. Strikethrough lines and clickable task controls remain in Read view. LaTeX math, Mermaid, footnote popovers, image property/resize controls, column/row manipulation controls, typewriter scrolling, PDF/office exports, tabs, and folder watching remain unfinished.
 

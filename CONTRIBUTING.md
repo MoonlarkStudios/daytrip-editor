@@ -1,0 +1,110 @@
+# Contributing to Still
+
+Still is a native Rust/Iced application in one Cargo package. Prefer direct code, clear ownership, and changes whose behavior and cost can be reviewed independently.
+
+## Development environment
+
+Install [mise](https://mise.jdx.dev/getting-started.html) and your platform's native build tools, as described in [README.md](README.md). From the repository root:
+
+```sh
+mise trust
+mise install
+mise run dev
+```
+
+`mise.toml` pins Rust, rustfmt, and Clippy. Run Cargo through mise; keep `Cargo.lock` committed and use `--locked` for builds and tests. Change dependencies and the lockfile together when an update is intentional.
+
+| Command | Purpose |
+| --- | --- |
+| `mise exec -- cargo fmt --all` | Apply formatting |
+| `mise run check` | Check formatting, run Clippy with warnings denied, run regression tests |
+| `mise run release` | Build the optimized application |
+| `mise run bench` | Run the ignored model and layout benchmarks |
+| `mise run profile` | Profile 10k/50k-block interactions through software rasterization |
+| `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Still.app` on macOS |
+
+Set `STILL_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
+
+## Source layout and API
+
+```text
+src/
+  main.rs       Thin executable calling still::run()
+  lib.rs        Module declarations and deliberate public exports
+  app/          State, messages, commands, views, native startup
+  document/     Source, selection, projection, rich metadata, table edits
+  editor/       Iced widgets, rich layout, viewport behavior
+  theme/        Semantic tokens, theme resolution, component styles
+  io/           File storage and background image loading
+tests/
+  fixtures/     Shared Markdown regression inputs
+docs/           Architecture, evaluation, and measured performance evidence
+```
+
+See [architecture](docs/architecture.md) for the module map and current boundaries. These groups describe responsibilities; application messages may cross them. Split files when a coherent responsibility warrants it. Introduce traits, generic interfaces, or additional crates only for a concrete need. A workspace can follow a demonstrated dependency or build-time benefit.
+
+Keep implementation modules private or crate-visible. The public library entry point is currently `run()`. Add public APIs for real consumers; test private behavior with unit tests beside its implementation. Use `tests/` for integration tests only when they exercise an intentional public API.
+
+## Rust conventions
+
+Follow the applicable [Google Rust Style Guide](https://google.github.io/styleguide/rustguide.html), with the project exceptions below. Stable Rust, rustfmt, and the lints in `Cargo.toml` define the automated baseline; unsafe code is forbidden.
+
+- Use descriptive names, small cohesive functions, and ordinary Rust types. Document invariants, coordinate systems, and reasons for non-obvious decisions.
+- Prefer borrowing and explicit ownership. Accept `&str` and slices when ownership is unnecessary. Clone only when the ownership or snapshot boundary requires it.
+- Use enums and named types to make meaningful states explicit. Keep visibility as narrow as practical.
+- Return errors for expected external failures. Use typed errors when callers need to distinguish cases, and add useful context at the UI or logging boundary. Reserve panics for violated invariants; explain production `expect` calls. Tests may use `unwrap` for setup and assertions.
+- Avoid blanket lint allowances, unnecessary abstractions, and speculative optimization. Explain any local lint exception at its narrowest scope.
+
+### Project exceptions and interpretation
+
+- **Cargo layout:** use the responsibility-based directories above. Chromium's flat source layout, small-crate preference, and build/integration rules do not govern this application.
+- **Application runtime:** Iced tasks and Tokio background work are supported. Keep blocking file work, network requests, and image decoding outside the UI event path, with explicit resource limits.
+- **Shared snapshots:** `Arc` is appropriate for immutable source snapshots, highlight arrays, shaped paragraphs, and asynchronous payloads where shared ownership or identity is required. Avoid copying whole buffers to satisfy borrowing when a borrowed snapshot suffices.
+- **Imports:** grouped imports of Iced widget helpers are accepted for readable declarative views. Private unit-test modules may use `use super::*`; production imports should name their dependencies.
+- **Module roots:** prefer declarations and deliberate re-exports in `lib.rs` and group `mod.rs` files. Native startup lives in `app/startup.rs`, with a small executable bootstrap in `main.rs`.
+
+Record additional guide exceptions here when they become necessary, with their reason.
+
+## Editing and theme invariants
+
+`Document` owns the authoritative Markdown. Selections use UTF-8 byte offsets with distinct anchor and head positions. Source/display mappings must preserve selection direction, hidden delimiters, atomic images, table structure, and undo history.
+
+Contextual disclosure reveals the active heading prefix and the inline span being edited. Concealed syntax occupies no reserved space. Local reflow is allowed; source caret position, selection, wrap affinity, and the viewport anchor must survive it. Drawing uses measured layout and must not parse Markdown.
+
+Themes follow definition → resolved semantic tokens and `iced::Theme` → centralized styles and drawing. Resolve a preset or user file on load or theme switch and store the result in `App`. `App::theme` returns the stored Iced theme handle. Widgets and canvases consume the same resolved tokens; avoid resolving themes inside views or theme callbacks.
+
+## Validation and performance evidence
+
+Run `mise run check` before each commit. Run `mise run release` for application source changes. Add meaningful regression coverage for changes to editing, source mappings, layout, file handling, or theme validation. Prefer invariant and differential tests over tests that reproduce implementation steps. Mechanical moves and documentation changes can use existing coverage.
+
+For performance changes, run the relevant release benchmarks and the large-document profile. For example:
+
+```sh
+STILL_PROFILE_BLOCKS=10000 STILL_PROFILE_SAMPLES=60 mise run profile
+STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_SAMPLES=30 mise run profile
+```
+
+Use the same fixture, toolchain, build settings, and sample count when comparing changes. Record hardware/platform, cold load separately from warm interactions, median/tail values, and the measured phases. Distinguish CPU/software rendering from OS/GPU presentation. Keep timing observations out of ordinary regression assertions. Retain raw evidence and explain interruptions or exclusions; see [the current baseline](docs/performance.md).
+
+Check cursor movement, forward/reverse selection across rich blocks, disclosure, undo, and scrolling when an optimization affects those paths. Preserve exact geometry and source mappings or cover the new behavior explicitly. Native IME, accessibility, and platform behavior still need manual testing beyond the automated harness.
+
+## Commits
+
+Each commit represents one logical change and passes the existing mise checks. Keep mechanical organization separate from behavior changes, dependency updates, and convention changes. Commit application `Cargo.lock`; keep generated `target/` output out of Git.
+
+Use a single-line message:
+
+```text
+<type>(<optional scope>): <imperative summary>
+```
+
+Examples:
+
+```text
+feat(editor): reveal syntax around the active inline span
+fix(document): preserve reverse selection through disclosure
+refactor: organize source modules by responsibility
+docs: define Rust and contribution conventions
+```
+
+Use an appropriate type such as `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, or `ci`. Keep summaries concrete. Review the staged diff and `git diff --cached --check` before committing. Push only when requested.
