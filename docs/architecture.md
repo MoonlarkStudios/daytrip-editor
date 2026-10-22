@@ -1,27 +1,32 @@
 # Architecture
 
+Still is one Cargo package with a thin `main.rs` calling `still::run()`. The library root declares responsibility-based modules and exports only that application entry point. Implementation modules stay crate-private; a separate crate or public model API needs a concrete consumer or build-time reason.
+
 `App` owns application state and follows Iced's `update → state → view` model. File operations run in background tasks and return typed messages. The active resolved theme is stored in `App` and shared by styles, text highlights, and canvas icons.
 
 | Module | Responsibility |
 | --- | --- |
-| `app.rs` | Commands, continuous native editing buffer, file guards, UI composition |
-| `projection.rs` | Markdown-to-display projection, source mapping, caret affinity, edit translation |
-| `projection_update.rs` | Conservative incremental projection of word edits |
-| `projection_disclosure.rs` | Line-scoped disclosure highlighting with shared unchanged styles |
-| `performance.rs` | Ignored large-document event/layout/software-render profiles |
-| `selection.rs` | UTF-8 byte selections and line/column conversion |
-| `rich_document.rs` | Heading, table, and image metadata collected during projection parsing |
-| `rich_layout.rs` | Cached shaped paragraphs and shared geometry for drawing, caret, hit testing, and navigation |
-| `rich_editor.rs` | One live widget: focus, clipboard, mouse/keyboard selection, scrolling, IME |
-| `table_edit.rs` | Cell-aware source edits and rectangular TSV paste |
-| `image_store.rs` | Asynchronous bounded image IO, decoding, and document-scoped cache |
-| `document.rs` | Authoritative Markdown, cached blocks, reversible patches and selection history |
-| `theme.rs` | Strict theme schema, validation, semantic tokens, resolved Iced theme |
-| `styles.rs` | Central widget styles and typography |
-| `markdown_view.rs` | Full Markdown layout in optional Read view |
-| `viewport.rs` | Measured block navigation in Read view |
-| `icon.rs` | Canvas icons consuming the resolved tokens |
-| `storage.rs` | Bounded UTF-8 reads, atomic writes, conflict checks, preferences, HTML export |
+| `app/startup.rs` | Native startup, fonts, Iced event-loop configuration |
+| `app/application.rs` | Application state, messages, commands, native buffer, file guards, views |
+| `app/icon.rs` | Canvas icons consuming the resolved tokens |
+| `app/performance.rs` | Private ignored large-document event/layout/software-render profiles |
+| `document/source.rs` | Authoritative Markdown, cached blocks, reversible patches and selection history |
+| `document/selection.rs` | UTF-8 byte selections and line/column conversion |
+| `document/projection.rs` | Markdown-to-display projection, source mapping, caret affinity, edit translation |
+| `document/projection_update.rs` | Conservative incremental projection of word edits |
+| `document/projection_disclosure.rs` | Line-scoped disclosure highlighting with shared unchanged styles |
+| `document/rich_document.rs` | Heading, table, and image metadata collected during projection parsing |
+| `document/table_edit.rs` | Cell-aware source edits and rectangular TSV paste |
+| `editor/rich_layout.rs` | Cached shaped paragraphs and shared geometry for drawing, caret, hit testing, navigation |
+| `editor/rich_editor.rs` | One live widget: focus, clipboard, mouse/keyboard selection, scrolling, IME |
+| `editor/markdown_view.rs` | Full Markdown layout in optional Read view |
+| `editor/viewport.rs` | Measured block navigation in Read view |
+| `theme/definition.rs` | Strict theme schema, validation, semantic tokens, resolved Iced theme |
+| `theme/styles.rs` | Central widget styles and typography |
+| `io/image_store.rs` | Asynchronous bounded image IO, decoding, and document-scoped cache |
+| `io/storage.rs` | Bounded UTF-8 reads, atomic writes, conflict checks, preferences, HTML export |
+
+Tests live beside private implementations. Shared Markdown inputs belong in `tests/fixtures/`; integration tests belong in `tests/` when they exercise a deliberate public API. Profiling remains a private application test so it can exercise the real event path without exporting editor internals.
 
 ## Continuous editing
 

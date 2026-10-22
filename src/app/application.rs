@@ -12,18 +12,18 @@ use iced::widget::{
 use iced::window;
 use iced::{Alignment, Color, Element, Event, Fill, Font, Subscription, Task, Theme};
 
+use crate::app::icon::{self, Icon};
 use crate::document::Document;
-use crate::icon::{self, Icon};
-use crate::image_store::{ImageStore, LoadedImage};
-use crate::markdown_view::MarkdownView;
-use crate::projection::{self, Projection};
-use crate::rich_editor::RichEditor;
-use crate::selection::Selection;
-use crate::storage::{self, FileError, LoadedFile, Preferences};
-use crate::styles::{self, Button};
-use crate::table_edit;
+use crate::document::projection::{self, Projection};
+use crate::document::selection::Selection;
+use crate::document::table_edit;
+use crate::editor::markdown_view::MarkdownView;
+use crate::editor::rich_editor::RichEditor;
+use crate::editor::viewport;
+use crate::io::image_store::{ImageStore, LoadedImage};
+use crate::io::storage::{self, FileError, LoadedFile, Preferences};
+use crate::theme::styles::{self, Button};
 use crate::theme::{Preset, ResolvedTheme};
-use crate::viewport;
 
 const EDITOR: &str = "document-editor";
 const SCROLL: &str = "document-scroll";
@@ -193,7 +193,7 @@ impl App {
             .find(|theme| theme.name == preset.name())
             .cloned()
             .unwrap_or_else(|| preset_themes[0].clone());
-        let source = include_str!("../assets/welcome.md").to_owned();
+        let source = include_str!("../../assets/welcome.md").to_owned();
         let mut app = Self {
             document: Document::new(source.clone()),
             editor: text_editor::Content::with_text(&Projection::new(&source).text),
@@ -1272,12 +1272,12 @@ impl App {
                 return self.activate(0, false);
             }
             Pending::Guide => self.set_document(
-                include_str!("../assets/guide.md").into(),
+                include_str!("../../assets/guide.md").into(),
                 None,
                 "Markdown guide.md".into(),
             ),
             Pending::Welcome => self.set_document(
-                include_str!("../assets/welcome.md").into(),
+                include_str!("../../assets/welcome.md").into(),
                 None,
                 "Welcome.md".into(),
             ),
@@ -2299,10 +2299,9 @@ fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, EditorMode, Message, Overlay};
-    use crate::app::Format;
-    use crate::selection::Selection;
-    use crate::table_edit;
+    use super::{App, EditorMode, Format, Message, Overlay};
+    use crate::document::selection::Selection;
+    use crate::document::table_edit;
     use iced::widget::text_editor::{Action, Edit, Motion};
     use std::sync::Arc;
 

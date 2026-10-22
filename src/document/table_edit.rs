@@ -1,8 +1,8 @@
 //! Table operations preserve source delimiters and untouched cell formatting.
 
-use crate::projection::{ProjectedEdit, Projection};
-use crate::rich_document::Table;
-use crate::selection::Selection;
+use crate::document::projection::{ProjectedEdit, Projection};
+use crate::document::rich_document::Table;
+use crate::document::selection::Selection;
 
 pub fn cell_at(projection: &Projection, selection: Selection) -> Option<(&Table, usize, usize)> {
     let selected = projection.display_selection(selection).range();
@@ -149,7 +149,7 @@ fn escape_pipes(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::projection::Affinity;
+    use crate::document::projection::Affinity;
 
     #[test]
     fn rectangular_paste_preserves_unedited_markdown_and_adds_rows() {

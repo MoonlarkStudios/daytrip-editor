@@ -12,8 +12,8 @@ use iced::widget::text_editor::Binding;
 use iced::{Event, Point, Rectangle, Renderer, Size};
 
 use super::{App, Message};
-use crate::rich_editor::RichEditor;
-use crate::selection::Selection;
+use crate::document::selection::Selection;
+use crate::editor::rich_editor::RichEditor;
 use crate::theme::Preset;
 
 fn fixture(blocks: usize) -> String {
@@ -213,10 +213,10 @@ fn large_document_interactions() {
         .write()
         .unwrap();
     for font in [
-        include_bytes!("../assets/fonts/Newsreader-Regular.ttf").as_slice(),
-        include_bytes!("../assets/fonts/Newsreader-Bold.ttf").as_slice(),
-        include_bytes!("../assets/fonts/Newsreader-Italic.ttf").as_slice(),
-        include_bytes!("../assets/fonts/Newsreader-BoldItalic.ttf").as_slice(),
+        include_bytes!("../../assets/fonts/Newsreader-Regular.ttf").as_slice(),
+        include_bytes!("../../assets/fonts/Newsreader-Bold.ttf").as_slice(),
+        include_bytes!("../../assets/fonts/Newsreader-Italic.ttf").as_slice(),
+        include_bytes!("../../assets/fonts/Newsreader-BoldItalic.ttf").as_slice(),
     ] {
         fonts.load_font(Cow::Borrowed(font));
     }
@@ -378,7 +378,7 @@ fn large_document_load_components() {
     let document = crate::document::Document::new(source.clone());
     println!("load/document {:?}", start.elapsed());
     let start = Instant::now();
-    let projection = crate::projection::Projection::new(&source);
+    let projection = crate::document::projection::Projection::new(&source);
     println!("load/projection {:?}", start.elapsed());
     let start = Instant::now();
     let mut content = iced::widget::text_editor::Content::with_text(&projection.text);

@@ -189,7 +189,7 @@ fn rebase_rich(rich: &mut RichDocument, edit: &Range<usize>, inserted: usize, di
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::projection::Affinity;
+    use crate::document::projection::Affinity;
 
     #[test]
     fn accepted_word_edits_match_full_parse_and_every_source_mapping() {

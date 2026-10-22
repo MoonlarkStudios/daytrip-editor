@@ -145,10 +145,10 @@ pub fn markdown_settings(theme: &ResolvedTheme) -> markdown::Settings {
 }
 
 pub fn inline_format(
-    style: crate::projection::Style,
+    style: crate::document::projection::Style,
     tokens: Tokens,
 ) -> iced::advanced::text::highlighter::Format<Font> {
-    use crate::projection::Style;
+    use crate::document::projection::Style;
     use iced::advanced::text::highlighter::Format;
     let base = if style.contains(Style::CODE) || style.contains(Style::SYNTAX) {
         Font::MONOSPACE

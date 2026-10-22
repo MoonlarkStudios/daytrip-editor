@@ -1,0 +1,9 @@
+//! Authoritative source, selections, Markdown projection, and source edits.
+
+pub(crate) mod projection;
+pub(crate) mod rich_document;
+pub(crate) mod selection;
+mod source;
+pub(crate) mod table_edit;
+
+pub(crate) use source::Document;

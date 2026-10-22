@@ -70,9 +70,9 @@ impl Preset {
     pub fn resolve(self) -> ResolvedTheme {
         // These embedded files are validated by tests. Fall back safely if edited incorrectly.
         let definition = match self {
-            Self::Paper => include_str!("../themes/paper.toml"),
-            Self::Midnight => include_str!("../themes/midnight.toml"),
-            Self::Sage => include_str!("../themes/sage.toml"),
+            Self::Paper => include_str!("../../themes/paper.toml"),
+            Self::Midnight => include_str!("../../themes/midnight.toml"),
+            Self::Sage => include_str!("../../themes/sage.toml"),
         };
         ResolvedTheme::from_toml(definition).expect("built-in themes must pass validation")
     }
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn rejects_invalid_colors_unknown_fields_and_unsafe_metrics() {
-        let paper = include_str!("../themes/paper.toml");
+        let paper = include_str!("../../themes/paper.toml");
         for malformed in [
             paper.replace("#FAF9F6", "red"),
             paper.replace("body_size = 18", "body_size = 900"),

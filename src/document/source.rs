@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use iced::widget::markdown;
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
-use crate::selection::Selection;
+use crate::document::selection::Selection;
 
 const HISTORY_BUDGET: usize = 16 * 1024 * 1024;
 const COALESCE_INTERVAL: Duration = Duration::from_millis(650);

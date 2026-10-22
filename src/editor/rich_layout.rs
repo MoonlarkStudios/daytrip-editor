@@ -11,10 +11,12 @@ use iced::advanced::text::{self, Paragraph as _};
 use iced::{Font, Point, Rectangle, Size};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::image_store::{Asset, ImageStore};
-use crate::projection::{Affinity, HighlightLines, OffsetMap, Projection, Style, TextChange};
-use crate::selection::Selection;
-use crate::styles;
+use crate::document::projection::{
+    Affinity, HighlightLines, OffsetMap, Projection, Style, TextChange,
+};
+use crate::document::selection::Selection;
+use crate::io::image_store::{Asset, ImageStore};
+use crate::theme::styles;
 use crate::theme::{ResolvedTheme, Tokens, Typography};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1029,7 +1031,7 @@ impl Builder<'_> {
         height
     }
 
-    fn table(&mut self, table: &crate::rich_document::Table) {
+    fn table(&mut self, table: &crate::document::rich_document::Table) {
         let columns = table.alignment.len().max(1);
         let cell_width = self.width / columns as f32;
         let padding = (self.size * 0.65).min(cell_width / 4.0);
@@ -1073,7 +1075,7 @@ impl Builder<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image_store::ImageStore;
+    use crate::io::image_store::ImageStore;
     use crate::theme::Preset;
 
     fn layout(source: &str, width: f32) -> (Projection, RichLayout) {

@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 
-use crate::rich_document::RichDocument;
-use crate::selection::Selection;
+use crate::document::rich_document::RichDocument;
+use crate::document::selection::Selection;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Style(pub u8);
@@ -1213,7 +1213,7 @@ fn closing_bracket(text: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::{Affinity, Projection, Style};
-    use crate::selection::Selection;
+    use crate::document::selection::Selection;
 
     fn edit(source: &str, after: &str, before: Selection, caret: usize) -> (String, Selection) {
         let projection = Projection::new(source);

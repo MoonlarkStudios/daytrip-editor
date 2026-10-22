@@ -7,8 +7,8 @@ use iced::widget::{checkbox, column, container, image, markdown, rich_text, row,
 use iced::{Alignment, Border, Element, Fill, Font};
 
 use crate::app::Message;
-use crate::styles;
 use crate::theme::Tokens;
+use crate::theme::styles;
 
 pub struct MarkdownView {
     pub tokens: Tokens,

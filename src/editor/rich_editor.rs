@@ -17,10 +17,10 @@ use iced::{Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vect
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::app::Message;
-use crate::image_store::ImageStore;
-use crate::projection::{HighlightLines, Projection};
-use crate::rich_layout::{Decoration, FragmentKind, RichLayout};
-use crate::selection::Selection;
+use crate::document::projection::{HighlightLines, Projection};
+use crate::document::selection::Selection;
+use crate::editor::rich_layout::{Decoration, FragmentKind, RichLayout};
+use crate::io::image_store::ImageStore;
 use crate::theme::{ResolvedTheme, Tokens, Typography};
 
 pub struct RichEditor<'a> {
@@ -586,7 +586,8 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     },
                 };
                 let in_table =
-                    crate::table_edit::cell_at(self.projection, self.source_selection).is_some();
+                    crate::document::table_edit::cell_at(self.projection, self.source_selection)
+                        .is_some();
                 if matches!(key, keyboard::Key::Named(keyboard::key::Named::Tab)) && in_table {
                     state.preferred_x = None;
                     state.visual_cursor = None;
@@ -803,7 +804,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         content: "Begin anywhere…".into(),
                         bounds: bounds.size(),
                         size: (self.theme.typography.body_size * self.zoom).into(),
-                        font: crate::styles::BODY_FONT,
+                        font: crate::theme::styles::BODY_FONT,
                         line_height: text::LineHeight::Relative(self.theme.typography.line_height),
                         align_x: text::Alignment::Default,
                         align_y: iced::alignment::Vertical::Top,
@@ -921,8 +922,7 @@ mod tests {
 
     #[test]
     fn widget_drag_selection_crosses_heading_table_image_and_paragraph_in_both_directions() {
-        let source =
-            "# Heading\n\n| A | B |\n|---|---|\n| one | two |\n\n![alt](missing.png)\n\nAfter";
+        let source = include_str!("../../tests/fixtures/rich-blocks.md").trim_end_matches('\n');
         let projection = Projection::new(source);
         let content = Content::with_text(&projection.text);
         let theme = Preset::Paper.resolve();
@@ -1024,8 +1024,7 @@ mod tests {
 
     #[test]
     fn drag_anchor_survives_contextual_disclosure_between_widget_updates() {
-        let source =
-            "# Heading\n\n| A | B |\n|---|---|\n| one | two |\n\n![alt](missing.png)\n\nAfter";
+        let source = include_str!("../../tests/fixtures/rich-blocks.md").trim_end_matches('\n');
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
         let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(

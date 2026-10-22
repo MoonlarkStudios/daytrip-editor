@@ -10,7 +10,7 @@ use iced::advanced::image::Handle;
 use iced::{Size, Task};
 
 use crate::app::Message;
-use crate::rich_document::Image;
+use crate::document::rich_document::Image;
 
 const MAX_ENCODED_BYTES: usize = 16 * 1024 * 1024;
 const MAX_DECODED_BYTES: u64 = 64 * 1024 * 1024;
