@@ -1,0 +1,24 @@
+[bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 20.92s
+     Running unittests src/lib.rs (target/release/deps/still-1e7d549fdb02224e)
+
+running 4 tests
+6000 blocks: parse=13.218708ms, 1000 source edits=5.162416ms, per edit=5.162µs
+test document::source::tests::performance_large_document_source_edits ... ok
+blocks=10000 local_source_edits=100 elapsed=4.489375ms boundary_scan_bytes=37300 full_scan_equivalent_bytes=91065200
+Rich 2000 blocks: 100 syntax disclosure + cached layouts=37.055583ms, mean=370.555µs
+Continuous 2000 blocks: load=134.162334ms, 100 native-buffer/source/projection edits=54.074333ms, mean=540.743µs
+test app::application::tests::performance_continuous_edit_projection ... ok
+Rich 2000 blocks: initial layout=142.893292ms, 100 projection + cached layouts=228.699875ms, mean=2.287ms
+test editor::rich_layout::tests::performance_rich_layout_cache ... ok
+blocks=50000 local_source_edits=100 elapsed=9.713ms boundary_scan_bytes=37400 full_scan_equivalent_bytes=457465200
+test app::application::performance::performance_incremental_block_parsing ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 91 filtered out; finished in 1.49s
+
+     Running unittests src/main.rs (target/release/deps/still-8d7c581f591337ea)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

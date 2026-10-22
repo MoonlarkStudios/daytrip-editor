@@ -2,6 +2,8 @@
 
 Measured on 2026-10-22 with mise's Rust 1.95.0, Cargo.lock's Iced 0.14 / cosmic-text 0.15, release optimization, macOS 26.7.1 / arm64, and the bundled Newsreader fonts. The baseline is commit `ebdcded`, which already includes [viewport virtualization](virtualization.md).
 
+The subsequent [incremental block parsing report](incremental-parsing.md) addresses parsing during edits on top of this implementation.
+
 ## Implementation
 
 `Content::with_text` creates an unbounded cosmic-text buffer and shapes all its lines. That work duplicates the live widget's separate rich layout. Initial native glyph storage dominated memory even after rich layout became virtual.

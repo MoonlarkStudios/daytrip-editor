@@ -11,9 +11,11 @@ Still is one Cargo package with a thin `main.rs` calling `still::run()`. The lib
 | `app/icon.rs` | Canvas icons consuming the resolved tokens |
 | `app/performance.rs` | Private ignored large-document event/layout/software-render profiles |
 | `document/source.rs` | Authoritative Markdown, cached blocks, reversible patches and selection history |
+| `document/block_parser.rs` | Top-level ranges, independent block candidates, conservative reparse windows |
 | `document/selection.rs` | UTF-8 byte selections and line/column conversion |
 | `document/projection.rs` | Markdown-to-display projection, source mapping, caret affinity, edit translation |
 | `document/projection_update.rs` | Conservative incremental projection of word edits |
+| `document/projection_blocks.rs` | Local block projection, retained metadata, styles and mapping splices |
 | `document/projection_disclosure.rs` | Line-scoped disclosure highlighting with shared unchanged styles |
 | `document/rich_document.rs` | Heading, table, and image metadata collected during projection parsing |
 | `document/table_edit.rs` | Cell-aware source edits and rectangular TSV paste |
@@ -56,9 +58,9 @@ Undo patches store source splices plus before/after source selections. Consecuti
 
 ## Parsing and performance
 
-Pulldown-cmark re-establishes top-level document ranges after source edits. Unchanged blocks reuse their rendered Markdown caches; only changed ranges are discarded. Document storage is still contiguous and top-level structure is still reparsed per edit.
+Pulldown-cmark establishes top-level document ranges on load. After an edit inside an eligible block, the source model reparses that block's isolated window (at most 64 KiB), splices replacement blocks and adjusts suffix offsets and statistics. Candidates are unindented paragraphs, headings, tables and rules with unchanged blank-line barriers and safe neighbors. Containers, HTML, fences, definitions, footnotes, uncertain boundaries and large windows use the full parser. Documents containing reference definitions or footnotes retain the full source-parsing path. Overlapping parser offsets are kept as one non-incremental range. Undo/redo applies the same change path once; it does not reparse a second time on commit.
 
-The projection has a conservative incremental path for ASCII word characters and interior spaces strictly within an existing parsed text run. It rejects delimiter edges, links, image syntax, raw HTML, definitions, code fences, newlines, and other structural changes. Accepted edits rebase source/display pieces and semantic ranges, share unchanged line highlight arrays, and update only the affected line's styles. A full parse handles all rejected cases. Differential tests compare accepted edits with full parsing, including every source/display mapping.
+The projection retains its fast path for ASCII word characters and interior spaces strictly within an existing parsed text run. Other eligible edits use the source model's predecessor revision and certified window, validate the unchanged prefix/suffix, and parse only that fragment. Parsed decorations, inline pairs, rich structures and safe text runs outside it are retained with rebased offsets. Identity mapping pieces can be split at window boundaries; replacements may not cross them. Unaffected line highlight arrays stay shared. Disclosure changes outside the edited window and global dependencies use the general path. Plain paragraph changes omit an unchanged terminating newline from layout invalidation; structural windows remain broad so heading kinds, tables and image flow are rediscovered. Differential tests compare both paths with full parsing, every source/display mapping and fresh rich geometry.
 
 Disclosure rebuilds the compact text/map but repaints only affected physical lines. Unchanged line styles are shared through `Arc` slices. Setext underlines and multiline marker ranges use the general path. Sorted change regions describe the predecessor projection by highlight identity, so skipped or unrelated revisions cannot accidentally patch stale geometry.
 
@@ -72,7 +74,7 @@ The document-wide unit index stores offsets and estimated or measured heights. A
 
 Pointer hits, visual motion, caret placement, and selection rectangles use measured resident geometry. Distant source navigation materializes the destination directly. A selection's remote anchor does not require shaping intervening text. Wheel scrolling, scrollbar movement, and drag autoscroll prepare the new window before drawing or hit testing. As estimates are refined, the first visible source row keeps its screen position. Disclosure, resizing, and theme/image metric changes preserve a visible source caret or viewport row; caret wrap affinity and selection direction remain source based. The scrollbar's estimated extent can refine while exploring previously unvisited text.
 
-Whole-document parsing, contiguous native text storage and buffer snapshots, outline construction, and a single exceptionally long paragraph or table row remain scaling limits. Native shapes can accumulate on visited lines, and the stock Source widget can still shape extensively when changing metrics. The original measurements are in [the baseline report](performance.md), followed by [viewport virtualization](virtualization.md) and [deferred native initialization](native-buffer.md).
+Context-sensitive fallback parsing, contiguous native text storage and buffer snapshots, metadata/offset rebasing, outline construction, and a single exceptionally long paragraph or table row remain scaling limits. Native shapes can accumulate on visited lines, and the stock Source widget can still shape extensively when changing metrics. The original measurements are in [the baseline report](performance.md), followed by [viewport virtualization](virtualization.md), [deferred native initialization](native-buffer.md), and [incremental block parsing](incremental-parsing.md).
 
 ## Rich blocks
 

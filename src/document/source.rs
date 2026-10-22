@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use iced::widget::markdown;
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
+use crate::document::block_parser::{self, BlockChange};
 use crate::document::selection::Selection;
 
 const HISTORY_BUDGET: usize = 16 * 1024 * 1024;
@@ -19,6 +20,7 @@ pub struct Block {
     pub heading: Option<(usize, String)>,
     words: usize,
     characters: usize,
+    independent: bool,
 }
 
 #[derive(Debug)]
@@ -32,6 +34,8 @@ pub struct Document {
     redo: Vec<Patch>,
     history_bytes: usize,
     last_edit: Option<Instant>,
+    global_dependencies: bool,
+    pub(crate) block_change: Option<BlockChange>,
 }
 
 #[derive(Debug)]
@@ -55,6 +59,8 @@ impl Document {
             redo: Vec::new(),
             history_bytes: 0,
             last_edit: None,
+            global_dependencies: false,
+            block_change: None,
         };
         document.reparse();
         document
@@ -94,12 +100,6 @@ impl Document {
         }
     }
 
-    /// Re-establishes CommonMark block boundaries when an edit is committed.
-    pub fn commit(&mut self) {
-        self.last_edit = None;
-        self.reparse();
-    }
-
     pub fn break_history_group(&mut self) {
         self.last_edit = None;
     }
@@ -123,7 +123,7 @@ impl Document {
             .unwrap_or_else(|| Selection::caret(patch.start));
         self.redo.push(patch);
         self.revision += 1;
-        self.commit();
+        self.break_history_group();
         Some(selection)
     }
 
@@ -139,7 +139,7 @@ impl Document {
         self.history_bytes += patch.removed.len() + patch.inserted.len();
         self.undo.push(patch);
         self.revision += 1;
-        self.commit();
+        self.break_history_group();
         Some(selection)
     }
 
@@ -217,6 +217,9 @@ impl Document {
     }
 
     fn apply_change(&mut self, range: Range<usize>, replacement: &str) {
+        if self.replace_island(&range, replacement) {
+            return;
+        }
         let cache = std::mem::take(&mut self.blocks)
             .into_iter()
             .filter_map(|mut block| {
@@ -236,44 +239,15 @@ impl Document {
     }
 
     fn reparse_cached(&mut self, cache: Vec<Block>) {
-        let mut ranges = Vec::new();
-        let mut depth = 0_usize;
-        let mut start = 0;
-        for (event, range) in Parser::new_ext(&self.source, Options::all()).into_offset_iter() {
-            match event {
-                Event::Start(_) => {
-                    if depth == 0 {
-                        start = range.start;
-                    }
-                    depth += 1;
-                }
-                Event::End(_) => {
-                    depth = depth.saturating_sub(1);
-                    if depth == 0 {
-                        ranges.push(start..range.end);
-                    }
-                }
-                Event::Rule | Event::Html(_) if depth == 0 => ranges.push(range),
-                _ => {}
-            }
-        }
-        // Preserve invisible Markdown such as reference definitions and blank documents.
-        let mut covered = 0;
-        let mut complete = Vec::new();
-        for range in ranges {
-            if !self.source[covered..range.start].trim().is_empty() {
-                complete.push(covered..range.start);
-            }
-            covered = range.end;
-            complete.push(range);
-        }
-        if !self.source[covered..].trim().is_empty() || complete.is_empty() {
-            complete.push(covered..self.source.len());
-        }
+        self.block_change = None;
+        let scan = block_parser::scan(&self.source);
+        self.global_dependencies = scan.global_dependencies;
         let mut cache = VecDeque::from(cache);
-        self.blocks = complete
+        self.blocks = scan
+            .spans
             .into_iter()
-            .map(|mut range| {
+            .map(|span| {
+                let mut range = span.range;
                 range.end = range.start
                     + self.source[range.clone()]
                         .trim_end_matches(['\r', '\n'])
@@ -285,18 +259,89 @@ impl Document {
                     cache.pop_front();
                 }
                 if cache.front().is_some_and(|block| block.range == range) {
-                    cache.pop_front().expect("front was checked")
+                    let mut block = cache.pop_front().expect("front was checked");
+                    block.independent = span.independent;
+                    block
                 } else {
-                    parse_block(&self.source[range.clone()], range)
+                    parse_block(&self.source[range.clone()], range, span.independent)
                 }
             })
             .collect();
         self.words = self.blocks.iter().map(|block| block.words).sum();
         self.characters = self.blocks.iter().map(|block| block.characters).sum();
     }
+
+    fn replace_island(&mut self, edit: &Range<usize>, replacement: &str) -> bool {
+        const MAX_ISLAND_BYTES: usize = 64 * 1024;
+        if self.global_dependencies {
+            return false;
+        }
+        let index = self.block_at(edit.start);
+        let block = &self.blocks[index];
+        // Container continuations and definition lists can cross blank lines.
+        // Keep their neighboring blocks on the general path as well. A literal
+        // colon paragraph is not certified by the scanner: changing an earlier
+        // rule into a term could otherwise absorb it as a definition.
+        if index > 0 && !self.blocks[index - 1].independent
+            || self
+                .blocks
+                .get(index + 1)
+                .is_some_and(|next| !next.independent)
+        {
+            return false;
+        }
+        if !block.independent || edit.start < block.range.start || edit.end > block.range.end {
+            return false;
+        }
+        let Some(old) = block_parser::island(&self.source, &block.range) else {
+            return false;
+        };
+        let new = old.start..old.end - edit.len() + replacement.len();
+        if old.len() > MAX_ISLAND_BYTES || new.len() > MAX_ISLAND_BYTES {
+            return false;
+        }
+        let mut fragment = self.source[old.clone()].to_owned();
+        fragment.replace_range(edit.start - old.start..edit.end - old.start, replacement);
+        let scan = block_parser::scan(&fragment);
+        if scan.global_dependencies || scan.spans.iter().any(|span| !span.independent) {
+            return false;
+        }
+        let blocks = scan
+            .spans
+            .into_iter()
+            .map(|span| {
+                let end = span.range.start
+                    + fragment[span.range.clone()]
+                        .trim_end_matches(['\r', '\n'])
+                        .len();
+                let range = span.range.start..end;
+                parse_block(
+                    &fragment[range.clone()],
+                    range.start + old.start..range.end + old.start,
+                    true,
+                )
+            })
+            .collect::<Vec<_>>();
+        self.words =
+            self.words - block.words + blocks.iter().map(|block| block.words).sum::<usize>();
+        self.characters = self.characters - block.characters
+            + blocks.iter().map(|block| block.characters).sum::<usize>();
+        self.source.replace_range(edit.clone(), replacement);
+        for block in &mut self.blocks[index + 1..] {
+            block.range.start = block.range.start - edit.len() + replacement.len();
+            block.range.end = block.range.end - edit.len() + replacement.len();
+        }
+        self.blocks.splice(index..index + 1, blocks);
+        self.block_change = Some(BlockChange {
+            previous_revision: self.revision,
+            old,
+            new,
+        });
+        true
+    }
 }
 
-fn parse_block(source: &str, range: Range<usize>) -> Block {
+fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
     let mut heading = None;
     let mut level = None;
     let mut heading_text = String::new();
@@ -338,12 +383,115 @@ fn parse_block(source: &str, range: Range<usize>) -> Block {
         heading,
         words: plain.split_whitespace().count(),
         characters: source.chars().count(),
+        independent,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Document;
+
+    fn assert_full(document: &Document) {
+        let full = Document::new(document.source().into());
+        assert_eq!(
+            (document.words, document.characters),
+            (full.words, full.characters)
+        );
+        assert_eq!(document.global_dependencies, full.global_dependencies);
+        assert_eq!(
+            document.blocks.len(),
+            full.blocks.len(),
+            "{:?}",
+            document.source()
+        );
+        for (actual, expected) in document.blocks.iter().zip(&full.blocks) {
+            assert_eq!(actual.range, expected.range, "{:?}", document.source());
+            assert_eq!(actual.heading, expected.heading);
+            assert_eq!(
+                (actual.words, actual.characters, actual.independent),
+                (expected.words, expected.characters, expected.independent)
+            );
+        }
+    }
+
+    #[test]
+    fn local_and_fallback_edits_match_full_commonmark_boundaries() {
+        let mut incremental = 0;
+        let mut fallback = 0;
+        for fixture in
+            include_str!("../../tests/fixtures/block-parsing.md").split("\n<!-- case -->\n")
+        {
+            for source in [fixture.to_owned(), fixture.replace('\n', "\r\n")] {
+                let boundaries = source
+                    .char_indices()
+                    .map(|(n, _)| n)
+                    .chain([source.len()])
+                    .collect::<Vec<_>>();
+                for (index, &point) in boundaries.iter().enumerate() {
+                    for replacement in [
+                        "x",
+                        "_",
+                        "日本 e\u{301}",
+                        "\n\n## New",
+                        "```\n",
+                        "  ",
+                        "[ref]: /new\n",
+                        "",
+                    ] {
+                        for end in [point, *boundaries.get(index + 1).unwrap_or(&point)] {
+                            let mut document = Document::new(source.clone());
+                            document.replace(point..end, replacement);
+                            if point == end && replacement.is_empty() {
+                                continue;
+                            }
+                            if document.block_change.is_some() {
+                                incremental += 1;
+                            } else {
+                                fallback += 1;
+                            }
+                            assert_full(&document);
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            incremental > 100 && fallback > 100,
+            "{incremental} / {fallback}"
+        );
+        println!("block boundaries: {incremental} incremental, {fallback} fallback edits");
+    }
+
+    #[test]
+    fn repeated_splits_joins_and_history_keep_full_parse_equivalence() {
+        let mut document = Document::new("# First\n\nPlain **words**.\n\nTail\n".into());
+        for replacement in [
+            "日本語",
+            "one\n\ntwo",
+            "## Heading\n\n| a | b |\n|---|---|\n| x | y |",
+            "```\nunclosed",
+            "- list\n\n  continuation",
+            "[ref]: /target\n\n[ref]",
+            "Plain again",
+        ] {
+            document.break_history_group();
+            let start = document.source().find("\n\n").unwrap() + 2;
+            let end = document
+                .source()
+                .rfind("\n\nTail")
+                .unwrap_or(document.source().len());
+            document.replace(start..end, replacement);
+            assert_full(&document);
+        }
+        while document.can_undo() {
+            document.undo();
+            assert_full(&document);
+        }
+        while document.can_redo() {
+            document.redo();
+            assert_full(&document);
+        }
+    }
     fn replace_block(document: &mut Document, index: usize, replacement: &str) {
         let range = document.blocks[index].range.clone();
         document.replace(range, replacement);
@@ -353,7 +501,7 @@ mod tests {
     fn round_trips_crlf_unicode_fences_and_references_losslessly() {
         let source = "\r\n# 日本語 🦀\r\n\r\nA [link][ref].\r\n\r\n```rust\r\n\r\nlet x = 1;\r\n```\r\n\r\n[ref]: https://example.com\r\n";
         let mut document = Document::new(source.to_owned());
-        document.commit();
+        document.reparse();
         assert_eq!(document.source(), source);
         assert!(
             document

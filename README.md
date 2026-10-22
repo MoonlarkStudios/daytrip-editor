@@ -2,7 +2,7 @@
 
 A quiet, native Markdown editor built with **Iced 0.14** and Rust. Warm paper, considered typography, a restrained sidebar, and one surface for writing and reading.
 
-Still is a working technology evaluation toward a Typora-like editor. It uses production-oriented file handling and tested document state, but **is not yet a production-ready Typora replacement**. Continuous editing includes rich heading sizes, editable tables, images, viewport virtualization, and deferred native-buffer shaping. The key remaining work is incremental document parsing, broader editing fidelity, recovery, and accessibility.
+Still is a working technology evaluation toward a Typora-like editor. It uses production-oriented file handling and tested document state, but **is not yet a production-ready Typora replacement**. Continuous editing includes rich heading sizes, editable tables, images, viewport virtualization, deferred native-buffer shaping, and conservative incremental block parsing. Broader editing fidelity, remaining linear document work, recovery, and accessibility remain release work.
 
 ## Run
 
@@ -65,7 +65,7 @@ Typography supports `body_size` (12–32), `line_height` (1.2–2.2), and `conte
 
 ## Engineering
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for source boundaries, validation commands, Rust conventions and project exceptions, and commit policy. [AGENTS.md](AGENTS.md) provides concise instructions for agent work. The code follows the applicable [Google Rust style guidance](https://google.github.io/styleguide/rustguide.html). Technical details are in [architecture](docs/architecture.md), [evaluation notes](docs/evaluation.md), the [large-document baseline](docs/performance.md), the [viewport virtualization profile](docs/virtualization.md), and the [native-buffer profile](docs/native-buffer.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for source boundaries, validation commands, Rust conventions and project exceptions, and commit policy. [AGENTS.md](AGENTS.md) provides concise instructions for agent work. The code follows the applicable [Google Rust style guidance](https://google.github.io/styleguide/rustguide.html). Technical details are in [architecture](docs/architecture.md), [evaluation notes](docs/evaluation.md), the [large-document baseline](docs/performance.md), [viewport virtualization](docs/virtualization.md), [native-buffer initialization](docs/native-buffer.md), and [incremental block parsing](docs/incremental-parsing.md).
 
 Current support includes headings, inline styles, links, nested lists, tasks, blockquotes, rules, GFM tables, code fences, and PNG/JPEG/GIF/WebP images. Reference-style links resolve across blocks in the live projection. Image objects use block layout even when written inline; GIFs show their first frame. Strikethrough lines and clickable task controls remain in Read view. LaTeX math, Mermaid, footnote popovers, image property/resize controls, column/row manipulation controls, typewriter scrolling, PDF/office exports, tabs, and folder watching remain unfinished.
 

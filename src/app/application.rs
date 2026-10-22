@@ -968,10 +968,24 @@ impl App {
         let caret =
             (self.mode == EditorMode::Live && self.editor_focused).then_some(self.selection.head);
         let next = if self.projection_revision != Some(self.document.revision) {
+            let previous_revision = self.projection_revision;
             self.projection_revision = Some(self.document.revision);
             Some(
                 self.projection
                     .updating(self.document.source(), caret)
+                    .or_else(|| {
+                        self.document
+                            .block_change
+                            .as_ref()
+                            .filter(|change| Some(change.previous_revision) == previous_revision)
+                            .and_then(|change| {
+                                self.projection.updating_blocks(
+                                    self.document.source(),
+                                    change,
+                                    caret,
+                                )
+                            })
+                    })
                     .unwrap_or_else(|| Projection::with_context(self.document.source(), caret)),
             )
         } else {
@@ -2504,6 +2518,57 @@ mod tests {
         assert_eq!(app.document.source(), "Before 日本語 e\u{301} 🧑‍💻");
         send(&mut app, Message::Undo);
         assert_eq!(app.document.source(), "Before ");
+    }
+
+    #[test]
+    fn incremental_unicode_edit_preserves_disclosure_cursor_and_reverse_history() {
+        let source = "# Heading\n\nPlain **bold** and café.\n\n| a | b |\n|---|---|\n| x | y |\n\n![alt](missing.png)\n\nTail";
+        let mut app = app(source);
+        let point = source.find("café").unwrap() + 2;
+        let before = Selection::caret(point);
+        send(&mut app, Message::SelectSource(before));
+        let old_tail = Arc::clone(app.projection.highlights.last().unwrap());
+        let committed = "日本語 e\u{301}";
+        send(
+            &mut app,
+            Message::Edit(Action::Edit(Edit::Paste(Arc::new(committed.into())))),
+        );
+        assert!(app.document.block_change.is_some());
+        assert!(app.projection.change.is_some());
+        assert!(Arc::ptr_eq(
+            &old_tail,
+            app.projection.highlights.last().unwrap()
+        ));
+        assert_eq!(app.selection, Selection::caret(point + committed.len()));
+        assert_eq!(app.editor.text(), app.projection.text);
+        send(&mut app, Message::Undo);
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, before);
+        assert!(app.document.block_change.is_some());
+        assert!(app.projection.change.is_some());
+
+        let selection = Selection {
+            anchor: point,
+            head: source.find("bold").unwrap() + 2,
+        };
+        send(&mut app, Message::SelectSource(selection));
+        send(
+            &mut app,
+            Message::Edit(Action::Edit(Edit::Paste(Arc::new(
+                "new\n\nparagraph".into(),
+            )))),
+        );
+        let after = app.document.source().to_owned();
+        send(&mut app, Message::Undo);
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, selection);
+        assert_eq!(
+            Selection::from_cursor(&app.projection.text, app.editor.cursor()),
+            app.projection.display_selection(selection)
+        );
+        send(&mut app, Message::Redo);
+        assert_eq!(app.document.source(), after);
+        assert_eq!(app.editor.text(), app.projection.text);
     }
 
     #[test]

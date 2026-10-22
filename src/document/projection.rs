@@ -28,6 +28,8 @@ impl Style {
 
 pub type HighlightLines = Vec<Arc<[(Range<usize>, Style)]>>;
 
+#[path = "projection_blocks.rs"]
+mod block_update;
 #[path = "projection_disclosure.rs"]
 mod disclosure_update;
 #[path = "projection_update.rs"]
@@ -71,7 +73,7 @@ pub struct OffsetMap {
     display_length: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Parsed {
     decorations: Vec<Decoration>,
     marks: Vec<Mark>,
@@ -79,6 +81,7 @@ struct Parsed {
     pairs: Vec<Pair>,
     block_prefixes: Vec<Range<usize>>,
     safe_text: Vec<Range<usize>>,
+    global_dependencies: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -89,14 +92,14 @@ struct Piece {
     separator: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Pair {
     open: Range<usize>,
     body: Range<usize>,
     close: Range<usize>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Decoration {
     range: Range<usize>,
     text: String,
@@ -109,7 +112,7 @@ enum Concealment {
     Heading,
     Structural,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Mark {
     range: Range<usize>,
     style: u8,
@@ -213,7 +216,13 @@ impl Projection {
                 });
             }
         };
-        for (event, range) in Parser::new_ext(source, Options::all()).into_offset_iter() {
+        let parser = Parser::new_ext(source, Options::all());
+        let mut global_dependencies = parser.reference_definitions().iter().next().is_some();
+        for (event, range) in parser.into_offset_iter() {
+            global_dependencies |= matches!(
+                &event,
+                Event::Start(Tag::FootnoteDefinition(_)) | Event::FootnoteReference(_)
+            );
             rich.observe(&event, range.clone(), source);
             let raw = &source[range.clone()];
             match event {
@@ -466,6 +475,7 @@ impl Projection {
             pairs,
             block_prefixes,
             safe_text,
+            global_dependencies,
         })
     }
 

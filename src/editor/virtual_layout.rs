@@ -587,9 +587,19 @@ mod tests {
         let images = ImageStore::default();
         let mut projection = Projection::new(&source);
         let mut window = VirtualLayout::default();
-        for step in 0..44 {
+        let block_edit =
+            |source: &mut String, projection: &Projection, head: &mut usize, inserted: &str| {
+                let mut document = crate::document::Document::new(source.clone());
+                document.replace(*head..*head, inserted);
+                *source = document.source().to_owned();
+                *head += inserted.len();
+                projection
+                    .updating_blocks(source, document.block_change.as_ref().unwrap(), Some(*head))
+                    .unwrap()
+            };
+        for step in 0..56 {
             let mut head = source.find("Paragraph 152").unwrap() + "Paragraph 152 w".len();
-            if matches!(step % 5, 0 | 2) {
+            if matches!(step % 7, 0 | 2 | 5 | 6) {
                 projection = projection.disclosing(projection.disclosure_at(None));
                 let input = LayoutInput {
                     projection: &projection,
@@ -602,27 +612,38 @@ mod tests {
                 window.rebuild(input);
                 window.show_source(input, head, 500.0);
             }
-            projection = match step % 5 {
+            projection = match step % 7 {
                 0 => {
+                    let mut document = crate::document::Document::new(source.clone());
+                    document.replace(head..head, "x");
                     source.insert(head, 'x');
                     head += 1;
-                    projection.updating(&source, Some(head)).unwrap()
+                    projection
+                        .updating(&source, Some(head))
+                        .or_else(|| {
+                            projection.updating_blocks(
+                                &source,
+                                document.block_change.as_ref().unwrap(),
+                                Some(head),
+                            )
+                        })
+                        .unwrap()
                 }
                 1 => projection.disclosing(
                     projection.disclosure_at(Some(source.find("bold words").unwrap() + 3)),
                 ),
                 2 => {
                     head = source.find("Cell 311").unwrap() + "Cell 311 w".len();
-                    source.insert(head, 'z');
-                    head += 1;
-                    projection.updating(&source, Some(head)).unwrap()
+                    block_edit(&mut source, &projection, &mut head, "**z**")
                 }
                 3 => projection.disclosing(projection.disclosure_at(Some(4))),
-                _ => {
+                4 => {
                     source.insert_str(0, "New line\n\n");
                     head += "New line\n\n".len();
                     Projection::with_context(&source, Some(head))
                 }
+                5 => block_edit(&mut source, &projection, &mut head, "日本語 e\u{301}"),
+                _ => block_edit(&mut source, &projection, &mut head, "\n\nNew paragraph\n\n"),
             };
             let input = LayoutInput {
                 projection: &projection,

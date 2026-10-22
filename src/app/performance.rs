@@ -457,3 +457,40 @@ fn large_document_load_components() {
     assert_eq!(document.blocks.len(), 50_000);
     std::hint::black_box(content);
 }
+
+#[test]
+#[ignore = "run using mise run bench; source parsing without native/render costs"]
+fn performance_incremental_block_parsing() {
+    for count in [10_000, 50_000] {
+        let source = fixture(count);
+        let mut document = crate::document::Document::new(source);
+        let mut parsed = 0;
+        let mut full_equivalent = 0;
+        let start = Instant::now();
+        for _ in 0..100 {
+            let point = document.blocks[count / 2 + 1].range.start + 12;
+            document.replace(point..point, "日_");
+            let change = document.block_change.as_ref().expect("isolated paragraph");
+            assert_eq!(change.previous_revision + 1, document.revision);
+            parsed += change.new.len();
+            full_equivalent += document.source().len();
+        }
+        println!(
+            "blocks={count} local_source_edits=100 elapsed={:?} boundary_scan_bytes={parsed} full_scan_equivalent_bytes={full_equivalent}",
+            start.elapsed()
+        );
+        assert_eq!(document.blocks.len(), count);
+        let full = crate::document::Document::new(document.source().into());
+        assert_eq!(
+            (document.words, document.characters),
+            (full.words, full.characters)
+        );
+        assert!(
+            document
+                .blocks
+                .iter()
+                .zip(&full.blocks)
+                .all(|(a, b)| a.range == b.range && a.heading == b.heading)
+        );
+    }
+}
