@@ -19,7 +19,8 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::app::Message;
 use crate::document::projection::{HighlightLines, Projection};
 use crate::document::selection::Selection;
-use crate::editor::rich_layout::{Decoration, FragmentKind, RichLayout};
+use crate::editor::rich_layout::{Decoration, FragmentKind, LayoutInput};
+use crate::editor::virtual_layout::VirtualLayout;
 use crate::io::image_store::ImageStore;
 use crate::theme::{ResolvedTheme, Tokens, Typography};
 
@@ -40,7 +41,10 @@ impl<'a> RichEditor<'a> {
     #[cfg(test)]
     pub(crate) fn profile_stats(tree: &widget::Tree) -> (usize, usize) {
         let state = tree.state.downcast_ref::<State>();
-        (state.rich.fragments.len(), state.rich.rows.len())
+        (
+            state.rich.resident().fragments.len(),
+            state.rich.resident().rows.len(),
+        )
     }
 
     pub fn new(
@@ -82,6 +86,24 @@ impl<'a> RichEditor<'a> {
         self.app_focused = focused;
         self
     }
+    fn layout_input(&self, width: f32) -> LayoutInput<'_> {
+        LayoutInput {
+            projection: self.projection,
+            theme: self.theme,
+            zoom: self.zoom,
+            width: (width - 12.0).max(1.0),
+            base: self.base,
+            images: self.images,
+        }
+    }
+    fn refresh_viewport(&self, state: &mut State, bounds: Size) {
+        state.scroll =
+            state
+                .rich
+                .show_viewport(self.layout_input(bounds.width), state.scroll, bounds.height);
+        state.clamp_scroll();
+    }
+
     fn raw_selection(&self, selection: Selection) -> Selection {
         self.projection.normalize_caret(
             self.projection
@@ -122,7 +144,7 @@ impl<'a> RichEditor<'a> {
         state: &mut State,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
-        height: f32,
+        bounds: Size,
     ) {
         if !matches!(binding, Binding::Move(_) | Binding::Select(_)) {
             state.preferred_x = None;
@@ -169,6 +191,13 @@ impl<'a> RichEditor<'a> {
             }
             Binding::Move(motion) | Binding::Select(motion) => {
                 let selecting = matches!(binding, Binding::Select(_));
+                if !state.rich.contains_source(self.source_selection.head) {
+                    state.scroll = state.rich.show_source(
+                        self.layout_input(bounds.width),
+                        self.source_selection.head,
+                        bounds.height,
+                    );
+                }
                 let caret = state.caret(self.source_selection.head);
                 let target = match motion {
                     Motion::Up | Motion::Down | Motion::PageUp | Motion::PageDown => {
@@ -179,22 +208,23 @@ impl<'a> RichEditor<'a> {
                             1.0
                         };
                         let page = matches!(motion, Motion::PageUp | Motion::PageDown)
-                            .then_some(height * 0.85);
+                            .then_some(bounds.height * 0.85);
                         let (head, y) = state
                             .rich
+                            .resident()
                             .vertical_source(caret, x, direction, page)
                             .unwrap_or((self.source_selection.head, caret.y));
-                        state.visual_cursor = Some((head, y));
+                        state.set_visual_cursor(head, y);
                         Some(head)
                     }
                     Motion::Home | Motion::End => {
                         state.preferred_x = None;
-                        let head = state.rich.source_line_edge(
+                        let head = state.rich.resident().source_line_edge(
                             self.source_selection.head,
                             caret,
                             motion == Motion::End,
                         );
-                        state.visual_cursor = Some((head, caret.y));
+                        state.set_visual_cursor(head, caret.y);
                         Some(head)
                     }
                     _ => {
@@ -234,7 +264,7 @@ impl<'a> RichEditor<'a> {
             Binding::Delete => shell.publish(Message::Edit(Action::Edit(Edit::Delete))),
             Binding::Sequence(sequence) => {
                 for binding in sequence {
-                    self.apply_binding(binding, state, clipboard, shell, height);
+                    self.apply_binding(binding, state, clipboard, shell, bounds);
                 }
             }
             Binding::Custom(message) => shell.publish(message),
@@ -244,7 +274,7 @@ impl<'a> RichEditor<'a> {
 
 #[derive(Default)]
 struct State {
-    rich: RichLayout,
+    rich: VirtualLayout,
     layout_key: Option<LayoutKey>,
     focused: bool,
     window_focused: bool,
@@ -254,7 +284,7 @@ struct State {
     drag_position: Option<Point>,
     modifiers: keyboard::Modifiers,
     preferred_x: Option<f32>,
-    visual_cursor: Option<(usize, f32)>,
+    visual_cursor: Option<(usize, bool)>,
     scroll: f32,
     scroll_drag: Option<f32>,
     viewport_height: f32,
@@ -276,12 +306,14 @@ struct LayoutKey {
 
 impl State {
     fn caret(&self, source: usize) -> Rectangle {
-        self.rich.source_caret(
-            source,
-            self.visual_cursor
-                .filter(|(head, _)| *head == source)
-                .map(|(_, y)| y),
-        )
+        if let Some((_, upstream)) = self.visual_cursor.filter(|(head, _)| *head == source) {
+            self.rich.source_caret_on_side(source, upstream)
+        } else {
+            self.rich.source_caret(source, None)
+        }
+    }
+    fn set_visual_cursor(&mut self, source: usize, y: f32) {
+        self.visual_cursor = Some((source, self.rich.resident().upstream_affinity(source, y)));
     }
     fn reset_blink(&mut self) {
         let now = Instant::now();
@@ -303,13 +335,13 @@ impl State {
     fn clamp_scroll(&mut self) {
         self.scroll = self
             .scroll
-            .clamp(0.0, (self.rich.height - self.viewport_height).max(0.0));
+            .clamp(0.0, (self.rich.height() - self.viewport_height).max(0.0));
     }
     fn scrollbar(&self) -> (f32, f32) {
-        let height = (self.viewport_height * self.viewport_height / self.rich.height.max(1.0))
+        let height = (self.viewport_height * self.viewport_height / self.rich.height().max(1.0))
             .max(24.0)
             .min(self.viewport_height);
-        let y = self.scroll / (self.rich.height - self.viewport_height).max(1.0)
+        let y = self.scroll / (self.rich.height() - self.viewport_height).max(1.0)
             * (self.viewport_height - height);
         (y, height)
     }
@@ -317,7 +349,7 @@ impl State {
     fn drag_scrollbar(&mut self, y: f32, anchor: f32) {
         let (_, height) = self.scrollbar();
         self.scroll = (y - anchor) / (self.viewport_height - height).max(1.0)
-            * (self.rich.height - self.viewport_height);
+            * (self.rich.height() - self.viewport_height);
         self.clamp_scroll();
     }
     fn drag(&mut self, projection: &Projection, shell: &mut Shell<'_, Message>) {
@@ -326,8 +358,8 @@ impl State {
                 position.x,
                 position.y.clamp(0.0, self.viewport_height) + self.scroll,
             );
-            let (head, y) = self.rich.hit_source_with_row(point);
-            self.visual_cursor = Some((head, y));
+            let (head, y) = self.rich.resident().hit_source_with_row(point);
+            self.set_visual_cursor(head, y);
             let head = projection.normalize_caret(Selection::caret(head)).head;
             shell.publish(Message::SelectSource(Selection { anchor, head }));
         }
@@ -368,6 +400,10 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
     ) -> layout::Node {
         let state = tree.state.downcast_mut::<State>();
         let bounds = limits.width(Length::Fill).height(Length::Fill).max();
+        let source_changed = state
+            .layout_key
+            .as_ref()
+            .is_some_and(|key| !Arc::ptr_eq(&key.source, &self.projection.source));
         let content_changed = state.layout_key.as_ref().is_none_or(|key| {
             !Arc::ptr_eq(&key.source, &self.projection.source)
                 || key.tokens != self.theme.tokens
@@ -382,41 +418,25 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 .layout_key
                 .as_ref()
                 .is_none_or(|key| !Arc::ptr_eq(&key.lines, &self.projection.highlights));
+        let input = self.layout_input(bounds.width);
+        let selection_changed = state.last_selection != Some(self.source_selection);
         let previous_caret = state.caret(self.source_selection.head);
         let was_visible = previous_caret.y >= state.scroll
             && previous_caret.y + previous_caret.height <= state.scroll + state.viewport_height;
         let disclosure_only = changed && !content_changed;
-        let viewport_anchor = disclosure_only
+        let viewport_anchor = changed
             .then(|| {
                 if was_visible {
                     Some((self.source_selection.head, previous_caret.y))
                 } else {
-                    state.rich.viewport_anchor(state.scroll)
+                    state.rich.resident().viewport_anchor(state.scroll)
                 }
             })
             .flatten();
-        let affinity = state
-            .visual_cursor
-            .map(|(source, y)| (source, state.rich.upstream_affinity(source, y)));
+        let affinity = state.visual_cursor;
         if changed {
             state.visual_cursor = None;
-            state.rich.rebuild(
-                self.projection,
-                self.theme,
-                self.zoom,
-                (bounds.width - 12.0).max(1.0),
-                self.base,
-                self.images,
-            );
-            if disclosure_only {
-                if let Some((source, upstream)) = affinity {
-                    let caret = state.rich.source_caret_on_side(source, upstream);
-                    state.visual_cursor = Some((source, caret.y));
-                }
-                if let Some((source, previous_y)) = viewport_anchor {
-                    state.scroll += state.caret(source).y - previous_y;
-                }
-            }
+            state.rich.rebuild(input);
             state.layout_key = Some(LayoutKey {
                 lines: Arc::clone(&self.projection.highlights),
                 source: Arc::clone(&self.projection.source),
@@ -429,8 +449,27 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             });
         }
         state.viewport_height = bounds.height;
-        let selection_changed = state.last_selection != Some(self.source_selection);
+        // A source jump measures its destination, never the intervening blocks.
+        let jump = (selection_changed || source_changed) && !was_visible;
+        let anchored_screen_y = viewport_anchor.map(|(_, y)| y - state.scroll);
+        state.scroll = if jump {
+            state
+                .rich
+                .show_source(input, self.source_selection.head, bounds.height)
+        } else if let Some((source, _)) = viewport_anchor {
+            state.rich.show_source(input, source, bounds.height)
+        } else {
+            state.rich.show_viewport(input, state.scroll, bounds.height)
+        };
+        if changed {
+            state.visual_cursor = affinity;
+            if !jump && let Some((source, _)) = viewport_anchor {
+                state.scroll =
+                    state.caret(source).y - anchored_screen_y.expect("anchor has screen position");
+            }
+        }
         if selection_changed && !(disclosure_only && was_visible)
+            || source_changed
             || content_changed && state.focused && was_visible
         {
             let caret = state.caret(self.source_selection.head);
@@ -441,6 +480,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 state.scroll = caret.y + caret.height - bounds.height + 12.0;
             }
         }
+        self.refresh_viewport(state, bounds);
         state.last_selection = Some(self.source_selection);
         state.clamp_scroll();
         layout::Node::new(bounds)
@@ -481,7 +521,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if let Some(position) = cursor.position_in(bounds) {
-                    if position.x >= bounds.width - 10.0 && state.rich.height > bounds.height {
+                    if position.x >= bounds.width - 10.0 && state.rich.height() > bounds.height {
                         let (y, height) = state.scrollbar();
                         let anchor = if y <= position.y && position.y <= y + height {
                             position.y - y
@@ -490,6 +530,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         };
                         state.scroll_drag = Some(anchor);
                         state.drag_scrollbar(position.y, anchor);
+                        self.refresh_viewport(state, bounds.size());
                         shell.capture_event();
                         shell.request_redraw();
                         return;
@@ -497,8 +538,9 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     let click = mouse::Click::new(position, mouse::Button::Left, state.last_click);
                     let (head, y) = state
                         .rich
+                        .resident()
                         .hit_source_with_row(position + Vector::new(0.0, state.scroll));
-                    state.visual_cursor = Some((head, y));
+                    state.set_visual_cursor(head, y);
                     let anchor = if state.modifiers.shift() {
                         self.source_selection.anchor
                     } else {
@@ -534,6 +576,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             Event::Mouse(mouse::Event::CursorMoved { .. }) if state.scroll_drag.is_some() => {
                 if let Some(position) = cursor.position() {
                     state.drag_scrollbar(position.y - bounds.y, state.scroll_drag.unwrap_or(0.0));
+                    self.refresh_viewport(state, bounds.size());
                     shell.capture_event();
                     shell.request_redraw();
                 }
@@ -560,6 +603,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 };
                 state.scroll += amount;
                 state.clamp_scroll();
+                self.refresh_viewport(state, bounds.size());
                 shell.capture_event();
                 shell.request_redraw();
             }
@@ -594,7 +638,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     shell.publish(Message::TableTab(modifiers.shift()));
                     shell.capture_event();
                 } else if let Some(binding) = (self.key_binding)(press) {
-                    self.apply_binding(binding, state, clipboard, shell, bounds.height);
+                    self.apply_binding(binding, state, clipboard, shell, bounds.size());
                     shell.capture_event();
                 }
                 state.reset_blink();
@@ -651,6 +695,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     if overflow != 0.0 {
                         state.scroll += overflow.clamp(-24.0, 24.0);
                         state.clamp_scroll();
+                        self.refresh_viewport(state, bounds.size());
                         state.drag(self.projection, shell);
                         shell.request_redraw_at(*now + Duration::from_millis(16));
                     }
@@ -692,7 +737,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         use iced::advanced::Renderer as _;
         renderer.with_layer(clip, |renderer| {
             let visible = clip.y - translation.y..clip.y + clip.height - translation.y;
-            for (rect, kind) in state.rich.visible_decorations(visible.clone()) {
+            for (rect, kind) in state.rich.resident().visible_decorations(visible.clone()) {
                 let rect = *rect + translation;
                 if !rect.intersects(&clip) {
                     continue;
@@ -720,6 +765,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             if state.focused {
                 for rect in state
                     .rich
+                    .resident()
                     .source_selection_rects_in(self.source_selection, visible.clone())
                 {
                     renderer.fill_quad(
@@ -731,7 +777,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     );
                 }
             }
-            for fragment in state.rich.visible_fragments(visible) {
+            for fragment in state.rich.resident().visible_fragments(visible) {
                 let rect = fragment.bounds + translation;
                 if !rect.intersects(&clip) {
                     continue;
@@ -825,7 +871,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     tokens.accent,
                 );
             }
-            if state.rich.height > bounds.height {
+            if state.rich.height() > bounds.height {
                 let (y, height) = state.scrollbar();
                 renderer.fill_quad(
                     renderer::Quad {
@@ -858,7 +904,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             || cursor
                 .position_in(layout.bounds())
                 .is_some_and(|p| p.x >= layout.bounds().width - 10.0)
-                && state.rich.height > layout.bounds().height
+                && state.rich.height() > layout.bounds().height
         {
             mouse::Interaction::Pointer
         } else if cursor.is_over(layout.bounds()) {
@@ -915,7 +961,7 @@ mod tests {
             &mut State::default(),
             &mut clipboard,
             &mut Shell::new(&mut Vec::new()),
-            600.0,
+            Size::new(640.0, 600.0),
         );
         assert_eq!(clipboard.0, source);
     }
@@ -950,7 +996,7 @@ mod tests {
         let start_offset = 2;
         let end_offset = projection.text.find("After").unwrap() + 3;
         let point = |offset| {
-            let caret = state.rich.caret(offset);
+            let caret = state.rich.resident().caret(offset);
             Point::new(caret.x + 0.1, caret.center_y())
         };
         let (start, end) = (point(start_offset), point(end_offset));
@@ -1015,6 +1061,7 @@ mod tests {
                 tree.state
                     .downcast_ref::<State>()
                     .rich
+                    .resident()
                     .selection_rects(selected)
                     .len()
                     > 5
@@ -1079,7 +1126,7 @@ mod tests {
                     &layout::Limits::new(Size::ZERO, Size::new(640.0, 1100.0)),
                 );
                 let state = tree.state.downcast_ref::<State>();
-                let caret = state.rich.caret(projection.to_display(target));
+                let caret = state.rich.resident().caret(projection.to_display(target));
                 let point = Point::new(caret.x + 0.1, caret.center_y() - state.scroll);
                 let event = if matches!(event, Event::Mouse(mouse::Event::CursorMoved { .. })) {
                     Event::Mouse(mouse::Event::CursorMoved { position: point })
@@ -1164,7 +1211,7 @@ mod tests {
         state.scroll = state.rich.source_caret(first, None).y - 80.0;
         state.preferred_x = Some(73.0);
         state.drag_anchor = Some(first);
-        let height = state.rich.height;
+        let height = state.rich.height();
         let mut reflowed = false;
         for (head, focused) in [
             (first, true),
@@ -1186,7 +1233,7 @@ mod tests {
             assert_eq!(state.last_selection, Some(selection));
             assert_eq!(state.preferred_x, Some(73.0));
             assert_eq!(state.drag_anchor, Some(first));
-            reflowed |= state.rich.height != height;
+            reflowed |= state.rich.height() != height;
         }
         assert!(
             reflowed,
@@ -1195,9 +1242,9 @@ mod tests {
 
         let state = tree.state.downcast_mut::<State>();
         let caret = state.rich.source_caret(first, None);
-        let edge = state.rich.source_line_edge(first, caret, true);
+        let edge = state.rich.resident().source_line_edge(first, caret, true);
         assert!(state.rich.source_caret_on_side(edge, false).y > caret.y);
-        state.visual_cursor = Some((edge, caret.y));
+        state.visual_cursor = Some((edge, true));
         let expected_y = state.caret(edge).y - state.scroll;
         projection = projection.disclosing(projection.disclosure_at(None));
         relayout(&mut tree, &projection, Selection::caret(edge), false);
@@ -1217,14 +1264,273 @@ mod tests {
             .y
             + 7.0;
         state.last_selection = Some(Selection::caret(first));
-        let (anchor, y) = state.rich.viewport_anchor(state.scroll).unwrap();
+        let (anchor, y) = state.rich.resident().viewport_anchor(state.scroll).unwrap();
         let screen_y = y - state.scroll;
         projection = projection.disclosing(projection.disclosure_at(Some(first)));
         relayout(&mut tree, &projection, Selection::caret(first), true);
         let state = tree.state.downcast_ref::<State>();
         assert!((state.rich.source_caret(anchor, None).y - state.scroll - screen_y).abs() < 0.01);
         assert!(state.caret(first).y < state.scroll);
-        assert!(state.scroll <= state.rich.height - state.viewport_height);
+        assert!(state.scroll <= state.rich.height() - state.viewport_height);
+
+        // An explicit offscreen navigation jump must also retain wrap intent
+        // when it changes the active disclosure context.
+        projection = projection.disclosing(projection.disclosure_at(None));
+        relayout(&mut tree, &projection, Selection::caret(first), false);
+        let state = tree.state.downcast_mut::<State>();
+        let edge = state
+            .rich
+            .resident()
+            .source_line_edge(first, state.caret(first), true);
+        state.visual_cursor = Some((edge, true));
+        state.last_selection = Some(Selection::caret(first));
+        projection = projection.disclosing(projection.disclosure_at(Some(edge)));
+        relayout(&mut tree, &projection, Selection::caret(edge), true);
+        let state = tree.state.downcast_ref::<State>();
+        assert_eq!(state.visual_cursor, Some((edge, true)));
+        assert_eq!(
+            state.caret(edge),
+            state.rich.source_caret_on_side(edge, true)
+        );
+    }
+
+    #[test]
+    fn virtualized_navigation_disclosure_resize_and_drag_keep_source_anchors() {
+        let source = (0..600).map(|i| format!(
+            "## Heading {i}\n\nParagraph {i} with [label](https://example.com/a/very/long/destination/which/wraps) **bold words** and café 🦀.\n\n"
+        )).collect::<String>();
+        let theme = Preset::Paper.resolve();
+        let images = ImageStore::default();
+        let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+            iced::Font::DEFAULT,
+            18.0.into(),
+        ));
+        let head = source.find("Paragraph 300").unwrap() + "Paragraph 300 with [la".len();
+        let mut projection = Projection::with_context(&source, Some(head));
+        let mut content = Content::with_text(&projection.text);
+        let mut selection = Selection { anchor: 0, head };
+        let initial = RichEditor::new(
+            &content,
+            &projection,
+            &source,
+            &theme,
+            &images,
+            Binding::from_key_press,
+        );
+        let mut tree = widget::Tree::new(&initial as &dyn Widget<Message, Theme, Renderer>);
+        let relayout = |tree: &mut widget::Tree,
+                        content: &Content,
+                        projection: &Projection,
+                        selection,
+                        width| {
+            RichEditor::new(
+                content,
+                projection,
+                &source,
+                &theme,
+                &images,
+                Binding::from_key_press,
+            )
+            .selection(selection)
+            .focused(true)
+            .layout(
+                tree,
+                &renderer,
+                &layout::Limits::new(Size::ZERO, Size::new(width, 500.0)),
+            );
+        };
+        relayout(&mut tree, &content, &projection, selection, 240.0);
+        tree.state.downcast_mut::<State>().focused = true;
+        for focus in [false, true, false, true] {
+            let state = tree.state.downcast_ref::<State>();
+            let screen_y = state.caret(head).y - state.scroll;
+            projection = projection.disclosing(projection.disclosure_at(focus.then_some(head)));
+            content = Content::with_text(&projection.text);
+            relayout(&mut tree, &content, &projection, selection, 240.0);
+            let state = tree.state.downcast_ref::<State>();
+            assert!((state.caret(head).y - state.scroll - screen_y).abs() < 0.1);
+            assert_eq!(state.last_selection, Some(selection));
+            assert!(state.rich.resident().fragments.len() < 100);
+        }
+        // Scroll away, then disclose and resize while the selection is offscreen.
+        let state = tree.state.downcast_mut::<State>();
+        state.scroll += 12_000.0;
+        let editor = RichEditor::new(
+            &content,
+            &projection,
+            &source,
+            &theme,
+            &images,
+            Binding::from_key_press,
+        )
+        .selection(selection);
+        editor.refresh_viewport(state, Size::new(240.0, 500.0));
+        let (anchor, y) = state.rich.resident().viewport_anchor(state.scroll).unwrap();
+        let screen_y = y - state.scroll;
+        projection = projection.disclosing(projection.disclosure_at(None));
+        content = Content::with_text(&projection.text);
+        relayout(&mut tree, &content, &projection, selection, 180.0);
+        let state = tree.state.downcast_ref::<State>();
+        assert!((state.rich.source_caret(anchor, None).y - state.scroll - screen_y).abs() < 0.15);
+        assert!(state.caret(head).y < state.scroll);
+
+        // Shift+PageUp measures a distant, evicted caret before navigating.
+        let mut messages = Vec::new();
+        RichEditor::new(
+            &content,
+            &projection,
+            &source,
+            &theme,
+            &images,
+            Binding::from_key_press,
+        )
+        .selection(selection)
+        .apply_binding(
+            Binding::Select(Motion::PageUp),
+            tree.state.downcast_mut::<State>(),
+            &mut iced::advanced::clipboard::Null,
+            &mut Shell::new(&mut messages),
+            Size::new(180.0, 500.0),
+        );
+        selection = messages
+            .into_iter()
+            .find_map(|message| match message {
+                Message::SelectSource(next) => Some(next),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(selection.anchor, 0);
+        assert!(selection.head < head);
+        relayout(&mut tree, &content, &projection, selection, 180.0);
+        let state = tree.state.downcast_ref::<State>();
+        let caret = state.caret(selection.head);
+        assert!(caret.y >= state.scroll && caret.y + caret.height <= state.scroll + 500.0);
+
+        // Drag anchors remain source offsets across several evicted windows,
+        // in both directions, without retaining geometry between endpoints.
+        for (anchor, positions) in [(0, [0.8, 0.2, 0.7]), (source.len(), [0.1, 0.7, 0.0])] {
+            let state = tree.state.downcast_mut::<State>();
+            state.drag_anchor = Some(anchor);
+            state.drag_position = Some(Point::new(80.0, 250.0));
+            for fraction in positions {
+                state.scroll = state.rich.height() * fraction;
+                let editor = RichEditor::new(
+                    &content,
+                    &projection,
+                    &source,
+                    &theme,
+                    &images,
+                    Binding::from_key_press,
+                );
+                editor.refresh_viewport(state, Size::new(180.0, 500.0));
+                let expected = state
+                    .rich
+                    .resident()
+                    .hit_source_with_row(Point::new(80.0, state.scroll + 250.0))
+                    .0;
+                let mut messages = Vec::new();
+                state.drag(&projection, &mut Shell::new(&mut messages));
+                assert!(
+                    matches!(messages.as_slice(), [Message::SelectSource(next)] if next.anchor == anchor && next.head == expected)
+                );
+                assert!(state.rich.resident().fragments.len() < 100);
+            }
+        }
+
+        // Replacing a document must reveal its initial caret even when the old
+        // document was scrolled away with that same source selection.
+        let state = tree.state.downcast_mut::<State>();
+        state.scroll = state.rich.height() * 0.7;
+        let editor = RichEditor::new(
+            &content,
+            &projection,
+            &source,
+            &theme,
+            &images,
+            Binding::from_key_press,
+        );
+        editor.refresh_viewport(state, Size::new(180.0, 500.0));
+        state.last_selection = Some(Selection::caret(0));
+        state.focused = false;
+        let replacement = "A new document with its own text.\n\n".repeat(600);
+        let projection = Projection::new(&replacement);
+        let content = Content::with_text(&projection.text);
+        RichEditor::new(
+            &content,
+            &projection,
+            &replacement,
+            &theme,
+            &images,
+            Binding::from_key_press,
+        )
+        .layout(
+            &mut tree,
+            &renderer,
+            &layout::Limits::new(Size::ZERO, Size::new(180.0, 500.0)),
+        );
+        let state = tree.state.downcast_ref::<State>();
+        assert!(state.scroll <= 5.0);
+        assert!(state.caret(0).y >= state.scroll);
+        assert!(state.rich.resident().fragments.len() < 100);
+    }
+
+    #[test]
+    fn wrap_affinity_survives_eviction_before_keyboard_navigation() {
+        let source = format!("{}\n\n", "Continuouswordswithoutspaces".repeat(6)).repeat(300);
+        let projection = Projection::new(&source);
+        let content = Content::with_text(&projection.text);
+        let theme = Preset::Paper.resolve();
+        let images = ImageStore::default();
+        let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+            iced::Font::DEFAULT,
+            18.0.into(),
+        ));
+        let head = source.len() / 2 + 2;
+        let mut editor = RichEditor::new(
+            &content,
+            &projection,
+            &source,
+            &theme,
+            &images,
+            Binding::from_key_press,
+        )
+        .selection(Selection::caret(head));
+        let mut tree = widget::Tree::new(&editor as &dyn Widget<Message, Theme, Renderer>);
+        editor.layout(
+            &mut tree,
+            &renderer,
+            &layout::Limits::new(Size::ZERO, Size::new(180.0, 500.0)),
+        );
+        let state = tree.state.downcast_mut::<State>();
+        let edge = state
+            .rich
+            .resident()
+            .source_line_edge(head, state.caret(head), true);
+        assert!(
+            state.rich.source_caret_on_side(edge, false).y
+                > state.rich.source_caret_on_side(edge, true).y
+        );
+        state.visual_cursor = Some((edge, true));
+        let expected = state
+            .rich
+            .resident()
+            .source_line_edge(edge, state.caret(edge), false);
+        assert_ne!(expected, edge);
+        state.scroll = 0.0;
+        editor.refresh_viewport(state, Size::new(180.0, 500.0));
+        assert!(!state.rich.contains_source(edge));
+        let mut messages = Vec::new();
+        editor.source_selection = Selection::caret(edge);
+        editor.apply_binding(
+            Binding::Move(Motion::Home),
+            state,
+            &mut iced::advanced::clipboard::Null,
+            &mut Shell::new(&mut messages),
+            Size::new(180.0, 500.0),
+        );
+        assert!(
+            matches!(messages.as_slice(), [Message::SelectSource(next)] if *next == Selection::caret(expected))
+        );
     }
 
     #[test]

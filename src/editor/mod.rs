@@ -4,3 +4,4 @@ pub(crate) mod markdown_view;
 pub(crate) mod rich_editor;
 pub(crate) mod rich_layout;
 pub(crate) mod viewport;
+mod virtual_layout;

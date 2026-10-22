@@ -206,6 +206,23 @@ fn typing_event() -> Event {
     })
 }
 
+/// Current test-process RSS, distinct from the command's process-tree peak.
+fn report_memory(label: &str) {
+    #[cfg(target_os = "macos")]
+    if let Ok(output) = std::process::Command::new("/bin/ps")
+        .args(["-o", "rss=", "-p", &std::process::id().to_string()])
+        .output()
+        && output.status.success()
+    {
+        println!(
+            "memory/{label} rss_kib={}",
+            String::from_utf8_lossy(&output.stdout).trim()
+        );
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = label;
+}
+
 #[test]
 #[ignore = "run with mise run profile; large documents and software rasterization"]
 fn large_document_interactions() {
@@ -234,6 +251,7 @@ fn large_document_interactions() {
         let mut harness = Harness::new(source);
         let load = start.elapsed();
         assert_eq!(harness.app.document.blocks.len(), blocks);
+        report_memory("source-load");
         let mut cold = Sample::default();
         harness.frame(&mut cold);
         println!(
@@ -241,6 +259,17 @@ fn large_document_interactions() {
             RichEditor::profile_stats(&harness.tree)
         );
         report("cold", &[cold]);
+        report_memory("cold");
+        if std::env::var_os("STILL_PROFILE_COLD_ONLY").is_some() {
+            continue;
+        }
+        let mut jumps = Vec::new();
+        for step in [9, 0, 5, 2, 8, 1, 7, 3, 6, 4] {
+            let offset = harness.app.document.blocks[step * blocks / 10].range.start;
+            jumps.push(harness.message(Message::SelectSource(Selection::caret(offset))));
+        }
+        report("jump/distant", &jumps);
+        report_memory("distant-jumps");
         for event in [
             mouse::Event::ButtonPressed(mouse::Button::Left),
             mouse::Event::ButtonReleased(mouse::Button::Left),
@@ -367,6 +396,11 @@ fn large_document_interactions() {
             })
             .collect::<Vec<_>>();
         report("typing/syntax-fallback", &timings);
+        println!(
+            "final_layout_counts={:?}",
+            RichEditor::profile_stats(&harness.tree)
+        );
+        report_memory("final");
     }
 }
 

@@ -999,16 +999,51 @@ impl App {
             self.projection.display_selection(self.selection)
         };
         if current != target {
-            let diff = projection::difference(current, target);
-            Selection {
-                anchor: diff.old.start,
-                head: diff.old.end,
+            // Distant disclosure can change two small spans with megabytes of
+            // unchanged text between them. Replacing that envelope is quadratic
+            // in cosmic-text's line deletion. Apply proven regions from the end
+            // so earlier native line/column positions remain valid.
+            let regions = self.projection.change.as_ref().filter(|change| {
+                native_after.is_none()
+                    && !self.editor_source
+                    && self.mode != EditorMode::Source
+                    && Arc::ptr_eq(&old.highlights, &change.previous)
+            });
+            let changes = regions.map_or_else(
+                || vec![projection::difference(current, target)],
+                |change| {
+                    change
+                        .regions
+                        .iter()
+                        .map(|region| {
+                            let diff = projection::difference(
+                                &current[region.old.clone()],
+                                &target[region.new.clone()],
+                            );
+                            projection::TextChange {
+                                old: region.old.start + diff.old.start
+                                    ..region.old.start + diff.old.end,
+                                new: region.new.start + diff.new.start
+                                    ..region.new.start + diff.new.end,
+                            }
+                        })
+                        .collect()
+                },
+            );
+            for diff in changes.into_iter().rev() {
+                if diff.old.is_empty() && diff.new.is_empty() {
+                    continue;
+                }
+                Selection {
+                    anchor: diff.old.start,
+                    head: diff.old.end,
+                }
+                .restore(&mut self.editor, current);
+                self.editor
+                    .perform(text_editor::Action::Edit(text_editor::Edit::Paste(
+                        Arc::new(target[diff.new].to_owned()),
+                    )));
             }
-            .restore(&mut self.editor, current);
-            self.editor
-                .perform(text_editor::Action::Edit(text_editor::Edit::Paste(
-                    Arc::new(target[diff.new].to_owned()),
-                )));
         }
         if Selection::from_cursor(target, self.editor.cursor()) != selection
             || selection.is_caret() && self.editor.cursor().selection.is_some()
@@ -2310,6 +2345,36 @@ mod tests {
         app.set_document(source.into(), None, "Test.md".into());
         app
     }
+    #[test]
+    fn distant_disclosure_splices_preserve_native_text_reverse_selection_and_history() {
+        let source = format!(
+            "# First **title**\n\n{}Last *title*\n============\n",
+            "Plain café 🦀 words.\n\n".repeat(600)
+        );
+        let mut app = app(&source);
+        let first = source.find("First").unwrap() + 2;
+        let last = source.find("Last").unwrap() + 2;
+        for head in [first, last, first, last] {
+            let selection = Selection {
+                anchor: source.len(),
+                head,
+            };
+            send(&mut app, Message::SelectSource(selection));
+            assert_eq!(app.selection, selection);
+            assert_eq!(app.editor.text(), app.projection.text);
+            assert_eq!(app.document.source(), source);
+            assert!(!app.dirty);
+            let change = app.projection.change.as_ref().unwrap();
+            assert!(change.regions.iter().map(|r| r.old.len()).sum::<usize>() < 100);
+            assert_eq!(
+                Selection::from_cursor(&app.projection.text, app.editor.cursor()),
+                app.projection.display_selection(selection)
+            );
+        }
+        send(&mut app, Message::Undo);
+        assert_eq!(app.document.source(), source);
+    }
+
     fn send(app: &mut App, message: Message) {
         drop(app.update(message));
     }

@@ -524,9 +524,45 @@ impl Projection {
         );
         next.change = Some(ProjectionChange {
             previous: Arc::clone(&self.highlights),
-            regions: vec![difference(&self.text, &next.text)],
+            regions: self.disclosure_regions(&next),
         });
         next
+    }
+
+    /// Keep distant and multiline disclosure changes separate. Whole source
+    /// lines contain every affected replacement, including a Setext underline.
+    fn disclosure_regions(&self, next: &Self) -> Vec<TextChange> {
+        let mut lines = self
+            .disclosure
+            .0
+            .iter()
+            .chain(&next.disclosure.0)
+            .map(|range| {
+                let start = self.source[..range.start].rfind('\n').map_or(0, |n| n + 1);
+                let end = self.source[range.end..]
+                    .find('\n')
+                    .map_or(self.source.len(), |n| range.end + n);
+                start..end
+            })
+            .collect::<Vec<_>>();
+        lines.sort_by_key(|range| range.start);
+        let mut merged: Vec<Range<usize>> = Vec::new();
+        for range in lines {
+            if let Some(last) = merged.last_mut()
+                && range.start <= last.end
+            {
+                last.end = last.end.max(range.end);
+            } else {
+                merged.push(range);
+            }
+        }
+        merged
+            .into_iter()
+            .map(|range| TextChange {
+                old: self.to_display(range.start)..self.to_display(range.end),
+                new: next.to_display(range.start)..next.to_display(range.end),
+            })
+            .collect()
     }
 
     fn from_parsed(source: Arc<str>, disclosure: Disclosure, parsed: Arc<Parsed>) -> Self {

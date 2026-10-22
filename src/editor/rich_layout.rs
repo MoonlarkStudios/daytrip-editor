@@ -85,6 +85,87 @@ pub struct ParagraphStyle {
     alignment: u8,
 }
 
+/// A physical paragraph or one table row, with global display offsets.
+/// Table rows are independent units so a tall table can also be virtualized.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct LayoutUnit {
+    pub range: Range<usize>,
+    pub kind: UnitKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum UnitKind {
+    Line(Option<u8>),
+    TableRow { table: usize, row: usize },
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct LayoutInput<'a> {
+    pub projection: &'a Projection,
+    pub theme: &'a ResolvedTheme,
+    pub zoom: f32,
+    pub width: f32,
+    pub base: Option<&'a Path>,
+    pub images: &'a ImageStore,
+}
+
+pub(super) fn layout_units(projection: &Projection) -> Vec<LayoutUnit> {
+    let mut units = Vec::with_capacity(projection.line_starts.len());
+    let mut start = 0;
+    let mut table_index = 0;
+    while start <= projection.text.len() {
+        if let Some(table) = projection.rich.tables.get(table_index)
+            && table.range.start >= start
+            && !projection.text[start..table.range.start].contains('\n')
+        {
+            if table.range.start > start {
+                units.push(LayoutUnit {
+                    range: start..table.range.start,
+                    kind: UnitKind::Line(None),
+                });
+            }
+            for (row, cells) in table.rows.iter().enumerate() {
+                units.push(LayoutUnit {
+                    range: cells.first().map_or(table.range.start, |cell| cell.start)
+                        ..cells.last().map_or(table.range.start, |cell| cell.end),
+                    kind: UnitKind::TableRow {
+                        table: table_index,
+                        row,
+                    },
+                });
+            }
+            table_index += 1;
+            if table.range.end > start {
+                start = table.range.end;
+                continue;
+            }
+        }
+        let end = projection.text[start..]
+            .find('\n')
+            .map_or(projection.text.len(), |n| start + n);
+        let heading = projection
+            .rich
+            .headings
+            .get(
+                projection
+                    .rich
+                    .headings
+                    .partition_point(|heading| heading.range.end <= start),
+            )
+            .filter(|heading| heading.range.start <= start && start < heading.range.end)
+            .map(|heading| heading.level);
+        units.push(LayoutUnit {
+            range: start..end,
+            kind: UnitKind::Line(heading),
+        });
+        if end == projection.text.len() {
+            break;
+        }
+        start = end + 1;
+    }
+    units
+}
+
 #[derive(Default)]
 pub struct RichLayout {
     pub fragments: Vec<Fragment>,
@@ -162,6 +243,69 @@ impl VisualRow {
 }
 
 impl RichLayout {
+    /// Shapes only the resident units. Heights are returned in unit order;
+    /// all geometry retains global offsets and document-space coordinates.
+    pub(super) fn rebuild_units(
+        &mut self,
+        input: LayoutInput<'_>,
+        units: &[LayoutUnit],
+        top: f32,
+    ) -> Vec<f32> {
+        let LayoutInput {
+            projection,
+            theme,
+            zoom,
+            width,
+            base,
+            images,
+        } = input;
+        let mut previous = std::mem::take(&mut self.cache);
+        if self.tokens != Some(theme.tokens) {
+            previous.clear();
+        }
+        self.tokens = Some(theme.tokens);
+        self.mapping = Some(Arc::clone(&projection.mapping));
+        self.highlights = Some(Arc::clone(&projection.highlights));
+        self.metrics = None;
+        self.fragments.clear();
+        self.rows.clear();
+        self.decorations.clear();
+        let mut builder = Builder {
+            layout: self,
+            previous,
+            projection,
+            tokens: theme.tokens,
+            size: theme.typography.body_size * zoom,
+            line_height: theme.typography.line_height,
+            width: width.max(1.0),
+            y: top,
+            line_starts: Arc::clone(&projection.line_starts),
+            base,
+            images,
+            zoom,
+        };
+        let heights = units
+            .iter()
+            .map(|unit| {
+                let top = builder.y;
+                match unit.kind {
+                    UnitKind::Line(heading) => {
+                        let size = heading.map_or(builder.size, |level| {
+                            styles::heading_size(builder.size, level)
+                        });
+                        builder.line(unit.range.clone(), size, heading.is_some());
+                    }
+                    UnitKind::TableRow { table, row } => {
+                        builder.table_row(&projection.rich.tables[table], row)
+                    }
+                }
+                builder.y - top
+            })
+            .collect();
+        self.reindex();
+        heights
+    }
+
     pub fn rebuild(
         &mut self,
         projection: &Projection,
@@ -1032,43 +1176,48 @@ impl Builder<'_> {
     }
 
     fn table(&mut self, table: &crate::document::rich_document::Table) {
+        for row_index in 0..table.rows.len() {
+            self.table_row(table, row_index);
+        }
+    }
+
+    fn table_row(&mut self, table: &crate::document::rich_document::Table, row_index: usize) {
         let columns = table.alignment.len().max(1);
         let cell_width = self.width / columns as f32;
         let padding = (self.size * 0.65).min(cell_width / 4.0);
-        for (row_index, row) in table.rows.iter().enumerate() {
-            let y = self.y;
-            let mut height = self.size * self.line_height + padding * 2.0;
-            for (column, cell) in row.iter().enumerate() {
-                let alignment = match table.alignment.get(column) {
-                    Some(pulldown_cmark::Alignment::Center) => 1,
-                    Some(pulldown_cmark::Alignment::Right) => 2,
-                    _ => 0,
-                };
-                let h = self.flow(
-                    cell.clone(),
-                    Point::new(column as f32 * cell_width + padding, y + padding),
-                    (cell_width - padding * 2.0).max(1.0),
-                    self.size,
-                    row_index == 0,
-                    alignment,
-                );
-                height = height.max(h + padding * 2.0);
-            }
-            let bounds = Rectangle::new(Point::new(0.0, y), Size::new(self.width, height));
-            if row_index == 0 {
-                self.layout.decorations.push((bounds, Decoration::Header));
-            }
-            for column in 0..columns {
-                self.layout.decorations.push((
-                    Rectangle::new(
-                        Point::new(column as f32 * cell_width, y),
-                        Size::new(cell_width, height),
-                    ),
-                    Decoration::Border,
-                ));
-            }
-            self.y += height;
+        let row = &table.rows[row_index];
+        let y = self.y;
+        let mut height = self.size * self.line_height + padding * 2.0;
+        for (column, cell) in row.iter().enumerate() {
+            let alignment = match table.alignment.get(column) {
+                Some(pulldown_cmark::Alignment::Center) => 1,
+                Some(pulldown_cmark::Alignment::Right) => 2,
+                _ => 0,
+            };
+            let h = self.flow(
+                cell.clone(),
+                Point::new(column as f32 * cell_width + padding, y + padding),
+                (cell_width - padding * 2.0).max(1.0),
+                self.size,
+                row_index == 0,
+                alignment,
+            );
+            height = height.max(h + padding * 2.0);
         }
+        let bounds = Rectangle::new(Point::new(0.0, y), Size::new(self.width, height));
+        if row_index == 0 {
+            self.layout.decorations.push((bounds, Decoration::Header));
+        }
+        for column in 0..columns {
+            self.layout.decorations.push((
+                Rectangle::new(
+                    Point::new(column as f32 * cell_width, y),
+                    Size::new(cell_width, height),
+                ),
+                Decoration::Border,
+            ));
+        }
+        self.y += height;
     }
 }
 

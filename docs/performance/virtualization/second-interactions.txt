@@ -1,0 +1,71 @@
+[profile] $ cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1
+    Finished `release` profile [optimized] target(s) in 0.54s
+     Running unittests src/lib.rs (target/release/deps/still-1e7d549fdb02224e)
+
+running 1 test
+test app::application::performance::large_document_interactions ... memory/source-load rss_kib=306016
+
+blocks=10000 bytes=910450 load=636.368834ms layout_counts=(44, 52)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=7.660/7.660/7.660ms draw=0.032/0.032/0.032ms raster=2.253/2.253/2.253ms total=9.945/9.945/9.945ms (p50/p95/max)
+memory/cold rss_kib=312192
+jump/distant n=10 input=0.000/0.000/0.000ms update=2.090/2.388/2.388ms layout=0.999/1.170/1.170ms draw=0.002/0.004/0.004ms raster=1.174/1.540/1.540ms total=4.209/4.942/4.942ms (p50/p95/max)
+memory/distant-jumps rss_kib=314800
+typing/start n=30 input=0.003/0.007/0.009ms update=7.113/7.743/18.363ms layout=0.224/0.325/2.731ms draw=0.002/0.004/0.005ms raster=1.011/1.197/1.205ms total=8.384/9.168/22.306ms (p50/p95/max)
+typing/middle n=30 input=0.003/0.006/0.007ms update=7.011/7.525/7.569ms layout=0.229/0.267/0.466ms draw=0.003/0.005/0.007ms raster=0.953/1.121/1.390ms total=8.208/8.833/8.965ms (p50/p95/max)
+typing/end n=30 input=0.003/0.005/0.017ms update=7.430/8.821/20.161ms layout=0.070/0.180/3.379ms draw=0.003/0.005/0.006ms raster=0.905/1.149/1.664ms total=8.432/10.555/24.712ms (p50/p95/max)
+disclosure n=30 input=0.000/0.000/0.000ms update=2.216/2.917/3.280ms layout=0.200/0.278/0.298ms draw=0.002/0.004/0.008ms raster=0.956/1.276/1.331ms total=3.415/4.416/4.764ms (p50/p95/max)
+selection/local n=30 input=0.000/0.000/0.000ms update=0.572/0.674/0.747ms layout=0.001/0.003/0.004ms draw=0.002/0.004/0.014ms raster=0.963/1.080/1.092ms total=1.533/1.664/1.830ms (p50/p95/max)
+selection/half-document n=30 input=0.000/0.000/0.000ms update=0.595/0.693/0.787ms layout=0.001/0.002/0.002ms draw=0.003/0.006/0.015ms raster=1.144/1.380/1.569ms total=1.765/2.170/2.256ms (p50/p95/max)
+scroll n=30 input=0.035/0.214/0.218ms update=0.000/0.000/0.000ms layout=0.000/0.001/0.001ms draw=0.003/0.005/0.007ms raster=1.356/1.944/2.105ms total=1.420/1.975/2.146ms (p50/p95/max)
+selection/keyboard n=30 input=0.003/0.007/0.007ms update=0.565/2.213/2.320ms layout=0.001/2.520/2.862ms draw=0.002/0.006/0.012ms raster=0.985/1.475/1.584ms total=1.622/5.887/6.138ms (p50/p95/max)
+selection/drag n=30 input=0.003/0.004/0.004ms update=0.574/2.405/2.620ms layout=0.001/0.341/0.367ms draw=0.002/0.004/0.004ms raster=1.242/1.569/1.576ms total=1.886/4.348/4.376ms (p50/p95/max)
+typing/syntax-fallback n=30 input=0.000/0.000/0.000ms update=20.578/27.932/30.608ms layout=2.926/4.796/5.192ms draw=0.004/0.005/0.005ms raster=1.009/2.111/2.290ms total=25.279/32.576/35.293ms (p50/p95/max)
+final_layout_counts=(65, 77)
+memory/final rss_kib=697680
+memory/source-load rss_kib=1283024
+
+blocks=50000 bytes=4574450 load=3.132908959s layout_counts=(44, 52)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=13.680/13.680/13.680ms draw=0.004/0.004/0.004ms raster=1.602/1.602/1.602ms total=15.286/15.286/15.286ms (p50/p95/max)
+memory/cold rss_kib=1288000
+jump/distant n=10 input=0.000/0.000/0.000ms update=13.876/19.898/19.898ms layout=1.158/1.709/1.709ms draw=0.003/0.004/0.004ms raster=1.239/1.658/1.658ms total=16.104/22.374/22.374ms (p50/p95/max)
+memory/distant-jumps rss_kib=1352992
+typing/start n=30 input=0.005/0.012/0.199ms update=43.803/50.893/130.299ms layout=0.455/0.977/16.282ms draw=0.004/0.004/0.004ms raster=1.114/2.311/3.946ms total=46.330/52.713/148.901ms (p50/p95/max)
+typing/middle n=30 input=0.004/0.007/0.061ms update=44.411/56.520/59.854ms layout=0.328/0.481/0.644ms draw=0.004/0.009/0.028ms raster=0.989/1.699/2.224ms total=45.957/57.884/61.947ms (p50/p95/max)
+typing/end n=30 input=0.004/0.008/0.041ms update=42.845/46.820/107.549ms layout=0.086/0.160/15.218ms draw=0.004/0.007/0.025ms raster=0.931/1.004/1.067ms total=43.932/47.860/123.763ms (p50/p95/max)
+disclosure n=30 input=0.000/0.000/0.000ms update=15.242/16.168/16.679ms layout=0.340/0.425/0.663ms draw=0.004/0.005/0.007ms raster=0.969/1.146/1.370ms total=16.691/17.470/18.155ms (p50/p95/max)
+selection/local n=30 input=0.000/0.000/0.000ms update=2.705/2.988/3.032ms layout=0.001/0.004/0.007ms draw=0.002/0.005/0.006ms raster=0.886/1.016/1.212ms total=3.571/3.993/4.209ms (p50/p95/max)
+selection/half-document n=30 input=0.000/0.000/0.000ms update=2.436/3.036/3.042ms layout=0.001/0.001/0.001ms draw=0.002/0.004/0.005ms raster=1.081/1.143/1.143ms total=3.536/4.172/4.187ms (p50/p95/max)
+scroll n=30 input=0.026/0.161/0.176ms update=0.000/0.000/0.000ms layout=0.000/0.001/0.001ms draw=0.002/0.003/0.004ms raster=1.223/1.661/1.789ms total=1.283/1.683/1.819ms (p50/p95/max)
+selection/keyboard n=30 input=0.003/0.010/0.010ms update=2.701/16.093/16.843ms layout=0.001/11.806/12.880ms draw=0.002/0.008/0.009ms raster=0.905/1.668/1.684ms total=3.618/27.228/28.699ms (p50/p95/max)
+selection/drag n=30 input=0.005/0.008/0.010ms update=3.260/16.966/17.034ms layout=0.006/0.480/0.557ms draw=0.004/0.006/0.008ms raster=1.269/1.625/1.727ms total=4.794/18.780/19.083ms (p50/p95/max)
+typing/syntax-fallback n=30 input=0.000/0.000/0.000ms update=105.293/113.766/115.215ms layout=14.055/15.342/15.478ms draw=0.004/0.006/0.006ms raster=0.965/1.121/2.320ms total=119.806/130.303/130.795ms (p50/p95/max)
+final_layout_counts=(65, 77)
+memory/final rss_kib=1477040
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 84 filtered out; finished in 15.51s
+
+     Running unittests src/main.rs (target/release/deps/still-8d7c581f591337ea)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+       16.30 real        12.92 user         2.48 sys
+          1587658752  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              968983  page reclaims
+                  68  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   2  messages sent
+                   2  messages received
+                   2  signals received
+                1947  voluntary context switches
+               43386  involuntary context switches
+           472661911  instructions retired
+           247113420  cycles elapsed
+            15827496  peak memory footprint

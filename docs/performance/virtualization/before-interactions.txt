@@ -1,0 +1,53 @@
+[profile] $ cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 30.02s
+     Running unittests src/lib.rs (target/release/deps/still-1e7d549fdb02224e)
+
+running 1 test
+test app::application::performance::large_document_interactions ... memory/source-load rss_kib=305632
+
+blocks=10000 bytes=910450 load=628.712792ms layout_counts=(26001, 30001)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=311.070/311.070/311.070ms draw=0.040/0.040/0.040ms raster=3.149/3.149/3.149ms total=314.260/314.260/314.260ms (p50/p95/max)
+memory/cold rss_kib=510544
+jump/distant n=10 input=0.000/0.000/0.000ms update=1956.863/3189.151/3189.151ms layout=0.481/0.667/0.667ms draw=0.004/0.007/0.007ms raster=1.065/1.483/1.483ms total=1958.261/3191.150/3191.150ms (p50/p95/max)
+memory/distant-jumps rss_kib=517072
+typing/start n=30 input=0.003/0.004/0.004ms update=7.974/8.943/19.416ms layout=0.440/0.580/9.249ms draw=0.004/0.004/0.005ms raster=1.136/1.285/1.424ms total=9.669/10.732/29.931ms (p50/p95/max)
+typing/middle n=30 input=0.003/0.008/0.013ms update=8.550/9.222/9.370ms layout=0.421/0.566/0.691ms draw=0.004/0.005/0.005ms raster=1.061/1.305/1.458ms total=10.045/10.994/11.089ms (p50/p95/max)
+typing/end n=30 input=0.003/0.003/0.006ms update=8.873/10.488/19.960ms layout=0.244/0.309/10.495ms draw=0.004/0.005/0.005ms raster=0.966/1.079/1.201ms total=10.024/11.737/31.495ms (p50/p95/max)
+disclosure n=30 input=0.000/0.000/0.000ms update=2.158/2.483/2.640ms layout=0.362/0.452/0.484ms draw=0.002/0.004/0.004ms raster=1.099/1.357/1.400ms total=3.621/4.203/4.334ms (p50/p95/max)
+selection/local n=30 input=0.000/0.000/0.000ms update=0.563/0.611/0.612ms layout=0.001/0.001/0.001ms draw=0.002/0.003/0.003ms raster=1.061/1.143/1.275ms total=1.650/1.722/1.825ms (p50/p95/max)
+selection/half-document n=30 input=0.000/0.000/0.000ms update=0.522/0.665/0.716ms layout=0.001/0.001/0.002ms draw=0.003/0.005/0.007ms raster=1.283/1.419/1.427ms total=1.771/1.918/1.922ms (p50/p95/max)
+scroll n=30 input=0.001/0.001/0.001ms update=0.000/0.000/0.000ms layout=0.000/0.000/0.000ms draw=0.003/0.005/0.015ms raster=1.347/1.782/1.788ms total=1.350/1.791/1.798ms (p50/p95/max)
+selection/keyboard n=30 input=0.043/0.112/0.146ms update=0.568/2.309/2.358ms layout=0.001/7.916/8.266ms draw=0.003/0.008/0.009ms raster=1.173/1.393/1.450ms total=1.794/11.595/12.035ms (p50/p95/max)
+selection/drag n=30 input=0.327/0.386/0.434ms update=0.589/2.436/2.471ms layout=0.001/8.176/8.295ms draw=0.003/0.006/0.010ms raster=1.016/1.308/1.386ms total=1.977/11.783/12.220ms (p50/p95/max)
+typing/syntax-fallback n=30 input=0.000/0.000/0.000ms update=18.834/21.544/22.541ms layout=7.603/8.930/9.171ms draw=0.004/0.005/0.005ms raster=1.081/1.303/1.362ms total=27.736/31.227/32.113ms (p50/p95/max)
+final_layout_counts=(26001, 30001)
+memory/final rss_kib=875088
+memory/source-load rss_kib=1381632
+
+blocks=50000 bytes=4574450 load=3.119355667s layout_counts=(130001, 150001)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=1646.886/1646.886/1646.886ms draw=0.011/0.011/0.011ms raster=2.237/2.237/2.237ms total=1649.134/1649.134/1649.134ms (p50/p95/max)
+memory/cold rss_kib=2354416
+error: test failed, to rerun pass `--lib`
+
+Caused by:
+  process didn't exit successfully: `/Users/johnslaughter/Development/iced-md-editor/target/release/deps/still-1e7d549fdb02224e large_document_interactions --ignored --nocapture --test-threads=1` (signal: 2, SIGINT: terminal interrupt signal)
+[profile] ERROR task failed
+      426.95 real       465.41 user         8.42 sys
+          2430287872  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              726438  page reclaims
+               20122  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   2  messages sent
+                   2  messages received
+                   4  signals received
+                3181  voluntary context switches
+              726625  involuntary context switches
+           476328318  instructions retired
+           236291862  cycles elapsed
+            15745552  peak memory footprint
