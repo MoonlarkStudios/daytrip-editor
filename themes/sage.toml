@@ -1,0 +1,21 @@
+name = "Sage"
+
+[colors]
+canvas = "#F3F5EF"
+surface = "#E7EDE2"
+elevated = "#FBFCF9"
+text = "#283C33"
+muted = "#627466"
+faint = "#84917F"
+border = "#D5DFCF"
+accent = "#456A43"
+accent_soft = "#D9E5D2"
+selection = "#C6D8BB"
+code = "#E6ECDD"
+danger = "#B64B43"
+success = "#456A43"
+
+[typography]
+body_size = 18
+line_height = 1.65
+content_width = 720

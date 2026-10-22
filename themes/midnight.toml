@@ -1,0 +1,21 @@
+name = "Midnight"
+
+[colors]
+canvas = "#1D2325"
+surface = "#181E20"
+elevated = "#272F31"
+text = "#E2E6DF"
+muted = "#A0ACA5"
+faint = "#7E8E86"
+border = "#35403D"
+accent = "#A5C9AD"
+accent_soft = "#2D4238"
+selection = "#3F5C4C"
+code = "#252F2C"
+danger = "#F1998D"
+success = "#A5C9AD"
+
+[typography]
+body_size = 18
+line_height = 1.65
+content_width = 720

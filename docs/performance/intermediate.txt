@@ -1,0 +1,29 @@
+[profile] $ cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 21.83s
+     Running unittests src/main.rs (target/release/deps/still-b525043e86079c66)
+
+running 1 test
+test app::performance::large_document_interactions ...
+blocks=10000 bytes=910450 load=623.725333ms layout_counts=(26001, 30001)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=306.894/306.894/306.894ms draw=0.045/0.045/0.045ms raster=2.393/2.393/2.393ms total=309.332/309.332/309.332ms (p50/p95/max)
+typing/start n=10 input=0.002/0.004/0.004ms update=16.550/17.067/17.067ms layout=7.281/7.682/7.682ms draw=0.002/0.005/0.005ms raster=0.996/1.205/1.205ms total=24.724/25.770/25.770ms (p50/p95/max)
+typing/middle n=10 input=0.002/0.005/0.005ms update=16.908/18.007/18.007ms layout=7.504/9.342/9.342ms draw=0.003/0.004/0.004ms raster=0.994/1.136/1.136ms total=25.560/26.580/26.580ms (p50/p95/max)
+typing/end n=10 input=0.001/0.002/0.002ms update=16.710/17.200/17.200ms layout=7.271/8.766/8.766ms draw=0.002/0.006/0.006ms raster=0.852/0.902/0.902ms total=24.782/26.358/26.358ms (p50/p95/max)
+disclosure n=10 input=0.000/0.000/0.000ms update=4.487/4.556/4.556ms layout=7.188/8.653/8.653ms draw=0.003/0.005/0.005ms raster=1.057/1.157/1.157ms total=12.727/14.017/14.017ms (p50/p95/max)
+selection/local n=10 input=0.000/0.000/0.000ms update=0.554/0.682/0.682ms layout=0.001/0.002/0.002ms draw=0.002/0.006/0.006ms raster=1.045/1.130/1.130ms total=1.621/1.747/1.747ms (p50/p95/max)
+selection/half-document n=10 input=0.000/0.000/0.000ms update=0.514/0.652/0.652ms layout=0.001/0.001/0.001ms draw=0.003/0.007/0.007ms raster=1.286/1.368/1.368ms total=1.774/1.891/1.891ms (p50/p95/max)
+scroll n=10 input=0.001/0.001/0.001ms update=0.000/0.000/0.000ms layout=0.000/0.000/0.000ms draw=0.003/0.005/0.005ms raster=1.302/1.456/1.456ms total=1.306/1.459/1.459ms (p50/p95/max)
+
+blocks=50000 bytes=4574450 load=3.01972275s layout_counts=(130001, 150001)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=1490.160/1490.160/1490.160ms draw=0.021/0.021/0.021ms raster=1.841/1.841/1.841ms total=1492.022/1492.022/1492.022ms (p50/p95/max)
+typing/start n=10 input=0.003/0.004/0.004ms update=91.859/100.477/100.477ms layout=39.340/42.030/42.030ms draw=0.005/0.005/0.005ms raster=0.985/1.206/1.206ms total=132.157/141.896/141.896ms (p50/p95/max)
+typing/middle n=10 input=0.003/0.005/0.005ms update=93.190/95.718/95.718ms layout=39.902/41.077/41.077ms draw=0.005/0.006/0.006ms raster=0.979/1.112/1.112ms total=133.302/137.821/137.821ms (p50/p95/max)
+typing/end n=10 input=0.003/0.007/0.007ms update=96.008/100.840/100.840ms layout=41.698/43.212/43.212ms draw=0.005/0.005/0.005ms raster=0.865/0.942/0.942ms total=137.656/143.667/143.667ms (p50/p95/max)
+disclosure n=10 input=0.000/0.000/0.000ms update=28.721/30.319/30.319ms layout=39.798/42.378/42.378ms draw=0.005/0.006/0.006ms raster=1.071/1.115/1.115ms total=69.844/73.772/73.772ms (p50/p95/max)
+selection/local n=10 input=0.000/0.000/0.000ms update=2.701/2.808/2.808ms layout=0.001/0.002/0.002ms draw=0.002/0.004/0.004ms raster=0.985/1.070/1.070ms total=3.710/3.882/3.882ms (p50/p95/max)
+selection/half-document n=10 input=0.000/0.000/0.000ms update=2.459/3.070/3.070ms layout=0.001/0.002/0.002ms draw=0.003/0.007/0.007ms raster=1.237/1.302/1.302ms total=3.658/4.058/4.058ms (p50/p95/max)
+scroll n=10 input=0.001/0.001/0.001ms update=0.000/0.000/0.000ms layout=0.000/0.000/0.000ms draw=0.003/0.004/0.004ms raster=1.214/1.410/1.410ms total=1.217/1.414/1.414ms (p50/p95/max)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 11.77s

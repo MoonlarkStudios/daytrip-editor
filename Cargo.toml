@@ -1,0 +1,43 @@
+[package]
+name = "still"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "A quiet, native Markdown writing environment built with Iced"
+license = "MIT"
+publish = false
+
+[dependencies]
+iced = { version = "0.14.0", default-features = false, features = ["advanced", "wgpu", "tiny-skia", "crisp", "tokio", "markdown", "highlighter", "canvas", "image-without-codecs", "advanced-shaping", "x11", "wayland"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+pulldown-cmark = "0.12"
+unicode-segmentation = "1.13"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+percent-encoding = "2.3"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.9"
+rfd = "0.16"
+tokio = { version = "1", features = ["fs", "rt-multi-thread", "macros", "sync"] }
+tempfile = "3"
+directories = "6"
+thiserror = "2"
+open = "5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+iced_tiny_skia = "0.14"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+undocumented_unsafe_blocks = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

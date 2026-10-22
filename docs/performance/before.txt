@@ -1,0 +1,21 @@
+[profile] $ cargo test --locked --release performance_large_interactions -- --ignored --nocapture --test-threads=1
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 23.97s
+     Running unittests src/main.rs (target/release/deps/still-b525043e86079c66)
+
+running 1 test
+test app::performance::performance_large_interactions ...
+blocks=10000 bytes=910450 load=1.857635125s layout_counts=(26001, 30001)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=599.868/599.868/599.868ms draw=0.425/0.425/0.425ms raster=4.141/4.141/4.141ms total=604.434/604.434/604.434ms (p50/p95/max)
+typing/start n=30 input=0.095/0.103/0.108ms update=21.093/21.919/22.826ms layout=41.831/43.380/44.821ms draw=0.060/0.079/0.084ms raster=0.993/1.165/1.186ms total=64.133/66.680/67.355ms (p50/p95/max)
+typing/middle n=30 input=372.242/379.974/398.420ms update=21.863/23.614/23.959ms layout=42.382/44.021/46.820ms draw=0.300/0.327/0.338ms raster=1.010/1.099/1.102ms total=438.360/450.336/462.207ms (p50/p95/max)
+typing/end n=30 input=1020.708/1031.758/1041.877ms update=22.764/24.006/24.543ms layout=42.751/44.419/44.643ms draw=0.531/0.688/0.774ms raster=0.902/0.996/1.016ms total=1087.890/1098.537/1109.620ms (p50/p95/max)
+disclosure n=30 input=0.000/0.000/0.000ms update=6.014/6.546/6.627ms layout=42.380/43.718/45.500ms draw=0.293/0.344/0.385ms raster=1.081/1.236/1.713ms total=49.685/50.925/53.121ms (p50/p95/max)
+selection/local n=30 input=0.000/0.000/0.000ms update=1.084/1.206/1.207ms layout=0.028/0.042/0.044ms draw=0.516/0.598/0.604ms raster=1.041/1.284/1.316ms total=2.711/3.048/3.116ms (p50/p95/max)
+selection/half-document n=30 input=0.000/0.000/0.000ms update=1.113/1.252/1.254ms layout=0.029/0.038/0.040ms draw=1.670/2.118/2.291ms raster=1.352/1.629/1.731ms total=4.213/4.887/4.916ms (p50/p95/max)
+scroll n=30 input=0.019/0.027/0.070ms update=0.000/0.000/0.000ms layout=0.012/0.015/0.019ms draw=1.672/2.147/2.154ms raster=1.478/1.932/1.997ms total=3.124/4.061/4.073ms (p50/p95/max)
+error: test failed, to rerun pass `--bin still`
+
+Caused by:
+  process didn't exit successfully: `/Users/johnslaughter/Development/iced-md-editor/target/release/deps/still-b525043e86079c66 performance_large_interactions --ignored --nocapture --test-threads=1` (signal: 2, SIGINT: terminal interrupt signal)
+[profile] ERROR task failed

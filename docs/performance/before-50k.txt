@@ -1,0 +1,18 @@
+[profile] $ cargo test --locked --release performance_large_interactions -- --ignored --nocapture --test-threads=1
+    Finished `release` profile [optimized] target(s) in 1.46s
+     Running unittests src/main.rs (target/release/deps/still-b525043e86079c66)
+
+running 1 test
+test app::performance::performance_large_interactions ...
+blocks=50000 bytes=4574450 load=39.304416959s layout_counts=(130001, 150001)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=1530.373/1530.373/1530.373ms draw=1.070/1.070/1.070ms raster=1.796/1.796/1.796ms total=1533.239/1533.239/1533.239ms (p50/p95/max)
+typing/start n=3 input=0.440/0.577/0.577ms update=133.445/134.217/134.217ms layout=220.131/225.028/225.028ms draw=0.320/0.584/0.584ms raster=1.284/1.312/1.312ms total=355.621/359.515/359.515ms (p50/p95/max)
+typing/middle n=3 input=9808.619/9897.106/9897.106ms update=132.161/134.620/134.620ms layout=221.274/238.221/238.221ms draw=1.518/1.587/1.587ms raster=1.013/1.203/1.203ms total=10164.585/10272.737/10272.737ms (p50/p95/max)
+typing/end n=3 input=26012.206/26314.031/26314.031ms update=132.638/135.261/135.261ms layout=215.466/220.203/220.203ms draw=2.661/2.927/2.927ms raster=0.832/0.853/0.853ms total=26349.807/26670.631/26670.631ms (p50/p95/max)
+disclosure n=3 input=0.000/0.000/0.000ms update=40.303/40.535/40.535ms layout=218.876/225.389/225.389ms draw=1.491/1.573/1.573ms raster=1.209/1.252/1.252ms total=262.235/268.391/268.391ms (p50/p95/max)
+selection/local n=3 input=0.000/0.000/0.000ms update=5.985/42.090/42.090ms layout=0.149/221.170/221.170ms draw=2.752/2.769/2.769ms raster=1.061/1.083/1.083ms total=9.964/267.095/267.095ms (p50/p95/max)
+selection/half-document n=3 input=0.000/0.000/0.000ms update=6.592/6.713/6.713ms layout=0.152/0.160/0.160ms draw=10.422/13.368/13.368ms raster=2.898/3.962/3.962ms total=20.362/23.138/23.138ms (p50/p95/max)
+scroll n=3 input=0.089/0.092/0.092ms update=0.000/0.000/0.000ms layout=0.059/0.059/0.059ms draw=8.433/9.231/9.231ms raster=2.144/2.277/2.277ms total=10.513/11.656/11.656ms (p50/p95/max)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 70 filtered out; finished in 153.69s

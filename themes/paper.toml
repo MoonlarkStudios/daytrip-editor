@@ -1,0 +1,21 @@
+name = "Paper"
+
+[colors]
+canvas = "#FAF9F6"
+surface = "#F1F0EB"
+elevated = "#FFFFFF"
+text = "#2D3431"
+muted = "#737A74"
+faint = "#92998F"
+border = "#E4E5DD"
+accent = "#416C58"
+accent_soft = "#E3EBE1"
+selection = "#D2E1D1"
+code = "#EFF0E9"
+danger = "#B64B43"
+success = "#4D7C5B"
+
+[typography]
+body_size = 18
+line_height = 1.65
+content_width = 720

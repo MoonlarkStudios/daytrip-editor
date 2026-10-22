@@ -1,0 +1,25 @@
+[tools]
+rust = { version = "1.95.0", components = "rustfmt,clippy" }
+
+[env]
+RUST_BACKTRACE = "1"
+
+[tasks.dev]
+description = "Run Still"
+run = "cargo run --locked"
+
+[tasks.check]
+description = "Format, lint, and test"
+run = ["cargo fmt --all -- --check", "cargo clippy --locked --all-targets -- -D warnings", "cargo test --locked"]
+
+[tasks.release]
+description = "Build an optimized desktop binary"
+run = "cargo build --locked --release"
+
+[tasks.bench]
+description = "Measure parsing and continuous editing"
+run = "cargo test --locked --release performance_ -- --ignored --nocapture"
+
+[tasks.profile]
+description = "Profile 10k/50k-block interactions through software rasterization"
+run = "cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1"

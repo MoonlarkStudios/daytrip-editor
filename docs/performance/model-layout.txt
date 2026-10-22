@@ -1,0 +1,14 @@
+[bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
+    Finished `release` profile [optimized] target(s) in 0.46s
+     Running unittests src/main.rs (target/release/deps/still-b525043e86079c66)
+
+running 3 tests
+Rich 2000 blocks: 100 syntax disclosure + cached layouts=29.930792ms, mean=299.308µs
+Continuous 2000 blocks: load=118.398542ms, 100 native-buffer/source/projection edits=79.967208ms, mean=799.672µs
+test app::tests::performance_continuous_edit_projection ... ok
+Rich 2000 blocks: initial layout=123.324291ms, 100 projection + cached layouts=205.294ms, mean=2.05294ms
+test rich_layout::tests::performance_rich_layout_cache ... ok
+6000 blocks: parse=9.876666ms, 1000 source edits=911.8905ms, per edit=911.89µs
+test document::tests::performance_large_document_source_edits ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 75 filtered out; finished in 0.92s

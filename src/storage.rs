@@ -1,0 +1,193 @@
+//! File operations run off the UI thread. Saves are atomic and detect external changes.
+
+use std::fs;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
+use directories::ProjectDirs;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+pub const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
+
+#[derive(Debug, Clone, Error)]
+pub enum FileError {
+    #[error("{0}")]
+    Io(String),
+    #[error("This file changed outside Still. Use Save As to keep both versions.")]
+    Conflict,
+    #[error("This file exceeds Still's current 16 MiB document limit.")]
+    TooLarge,
+}
+
+impl From<std::io::Error> for FileError {
+    fn from(error: std::io::Error) -> Self {
+        Self::Io(error.to_string())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LoadedFile {
+    pub path: PathBuf,
+    pub source: String,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Preferences {
+    pub theme: String,
+    pub custom_theme: Option<PathBuf>,
+    pub recent: Vec<PathBuf>,
+}
+
+pub fn preferences_path() -> Option<PathBuf> {
+    if let Some(directory) = std::env::var_os("STILL_CONFIG_DIR") {
+        return Some(PathBuf::from(directory).join("preferences.toml"));
+    }
+    ProjectDirs::from("app", "Still", "Still")
+        .map(|dirs| dirs.config_dir().join("preferences.toml"))
+}
+
+pub fn load_preferences() -> Preferences {
+    preferences_path()
+        .and_then(|path| fs::read_to_string(path).ok())
+        .and_then(|text| toml::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+pub async fn save_preferences(preferences: Preferences) -> Result<(), FileError> {
+    let Some(path) = preferences_path() else {
+        return Ok(());
+    };
+    let source =
+        toml::to_string_pretty(&preferences).map_err(|error| FileError::Io(error.to_string()))?;
+    tokio::task::spawn_blocking(move || {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        atomic_write(&path, source.as_bytes())
+    })
+    .await
+    .map_err(|error| FileError::Io(error.to_string()))?
+}
+
+pub async fn load(path: PathBuf) -> Result<LoadedFile, FileError> {
+    tokio::task::spawn_blocking(move || {
+        // Read from one handle with a hard cap, even if the file grows after metadata.
+        use std::io::Read as _;
+        let file = fs::File::open(&path)?;
+        let mut bytes = Vec::new();
+        file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > MAX_FILE_BYTES {
+            return Err(FileError::TooLarge);
+        }
+        let source = String::from_utf8(bytes)
+            .map_err(|_| FileError::Io("This is not a UTF-8 text file.".into()))?;
+        Ok(LoadedFile { path, source })
+    })
+    .await
+    .map_err(|error| FileError::Io(error.to_string()))?
+}
+
+pub async fn save(
+    path: PathBuf,
+    source: String,
+    expected: Option<String>,
+) -> Result<PathBuf, FileError> {
+    tokio::task::spawn_blocking(move || {
+        if let Some(expected) = expected {
+            match fs::read_to_string(&path) {
+                Ok(actual) if actual == expected => {}
+                _ => return Err(FileError::Conflict),
+            }
+        }
+        atomic_write(&path, source.as_bytes())?;
+        Ok(path)
+    })
+    .await
+    .map_err(|error| FileError::Io(error.to_string()))?
+}
+
+fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), FileError> {
+    // Resolve symlinks so a save updates the target, rather than replacing the link.
+    let target = if path.is_symlink() {
+        fs::canonicalize(path)?
+    } else {
+        path.to_path_buf()
+    };
+    let parent = target
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
+    if let Ok(metadata) = fs::metadata(&target) {
+        temporary
+            .as_file()
+            .set_permissions(metadata.permissions())?;
+    }
+    temporary.write_all(bytes)?;
+    temporary.as_file().sync_all()?;
+    temporary
+        .persist(&target)
+        .map_err(|error| FileError::Io(error.error.to_string()))?;
+    #[cfg(unix)]
+    fs::File::open(parent)?.sync_all()?;
+    Ok(())
+}
+
+pub fn export_html(source: &str) -> String {
+    let mut body = String::new();
+    // Markdown HTML is escaped in export so a note cannot embed executable scripts.
+    let events =
+        pulldown_cmark::Parser::new_ext(source, pulldown_cmark::Options::all()).map(|event| {
+            match event {
+                pulldown_cmark::Event::Html(html) | pulldown_cmark::Event::InlineHtml(html) => {
+                    pulldown_cmark::Event::Text(html)
+                }
+                other => other,
+            }
+        });
+    pulldown_cmark::html::push_html(&mut body, events);
+    format!(
+        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src https: data:; style-src 'unsafe-inline'\"><title>Still — document</title><style>body{{max-width:720px;margin:64px auto;padding:0 24px;color:#2d3431;background:#faf9f6;font:18px/1.7 Georgia,serif}}h1,h2,h3{{line-height:1.25}}a{{color:#416c58}}pre,code{{background:#eff0e9;border-radius:5px}}pre{{padding:20px;overflow:auto}}blockquote{{border-left:3px solid #416c58;margin-left:0;padding-left:24px;color:#737a74}}table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #ddd;padding:8px 12px}}img{{max-width:100%}}</style></head><body>\n{body}\n</body></html>"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FileError, atomic_write, export_html};
+
+    #[test]
+    fn atomic_save_replaces_exact_bytes() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("note.md");
+        atomic_write(&path, b"old").expect("initial save");
+        atomic_write(&path, "日本語\r\n".as_bytes()).expect("replacement save");
+        assert_eq!(
+            std::fs::read_to_string(path).expect("saved file"),
+            "日本語\r\n"
+        );
+    }
+
+    #[tokio::test]
+    async fn detects_external_changes_before_overwriting() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("note.md");
+        atomic_write(&path, b"external change").expect("initial save");
+        assert!(matches!(
+            super::save(path.clone(), "ours".into(), Some("old".into())).await,
+            Err(FileError::Conflict)
+        ));
+        assert_eq!(
+            std::fs::read_to_string(path).expect("saved file"),
+            "external change"
+        );
+    }
+
+    #[test]
+    fn html_export_escapes_raw_scripts() {
+        let html = export_html("# Hello\n\n<script>alert(1)</script>");
+        assert!(html.contains("<h1>Hello</h1>"));
+        assert!(!html.contains("<script>"));
+    }
+}
