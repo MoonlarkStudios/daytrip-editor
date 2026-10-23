@@ -1,0 +1,42 @@
+
+running 1 test
+test app::application::performance::large_offline_import_shapes ... remote/sparse-32/10000 n=10 input=0.000/0.000/0.000ms update=13.257/50.111/50.111ms crdt=5.636/42.200/42.200ms source=0.692/0.829/0.829ms adapters=6.929/7.597/7.597ms layout=0.096/0.165/0.165ms draw=0.002/0.003/0.003ms raster=0.998/1.101/1.101ms total=14.277/51.307/51.307ms (p50/p95/max)
+import/windows blocks=10000 shape=sparse-32 certified=10/10
+memory/remote/sparse-32/10000 rss_kib=210400
+remote/fallback-128/10000 n=10 input=0.000/0.000/0.000ms update=30.547/172.852/172.852ms crdt=6.469/149.780/149.780ms source=8.271/9.692/9.692ms adapters=15.830/16.965/16.965ms layout=2.515/3.449/3.449ms draw=0.003/0.003/0.003ms raster=1.004/1.039/1.039ms total=34.124/176.335/176.335ms (p50/p95/max)
+import/windows blocks=10000 shape=fallback-128 certified=0/10
+memory/remote/fallback-128/10000 rss_kib=207920
+remote/structural-8/10000 n=10 input=0.000/0.000/0.000ms update=10.526/20.382/20.382ms crdt=5.543/15.162/15.162ms source=0.236/0.314/0.314ms adapters=4.747/5.826/5.826ms layout=2.246/2.338/2.338ms draw=0.003/0.003/0.003ms raster=0.988/1.064/1.064ms total=13.727/23.665/23.665ms (p50/p95/max)
+import/windows blocks=10000 shape=structural-8 certified=10/10
+memory/remote/structural-8/10000 rss_kib=226752
+remote/sparse-32/50000 n=10 input=0.000/0.000/0.000ms update=70.065/291.707/291.707ms crdt=30.467/249.242/249.242ms source=2.626/5.803/5.803ms adapters=36.411/41.941/41.941ms layout=0.244/0.763/0.763ms draw=0.003/0.003/0.003ms raster=1.033/1.170/1.170ms total=71.277/293.627/293.627ms (p50/p95/max)
+import/windows blocks=50000 shape=sparse-32 certified=10/10
+memory/remote/sparse-32/50000 rss_kib=646400
+remote/fallback-128/50000 n=10 input=0.000/0.000/0.000ms update=159.886/875.932/875.932ms crdt=29.609/761.519/761.519ms source=36.910/42.516/42.516ms adapters=91.382/95.192/95.192ms layout=13.478/14.111/14.111ms draw=0.003/0.006/0.006ms raster=1.008/1.238/1.238ms total=174.965/890.338/890.338ms (p50/p95/max)
+import/windows blocks=50000 shape=fallback-128 certified=0/10
+memory/remote/fallback-128/50000 rss_kib=739840
+remote/structural-8/50000 n=10 input=0.000/0.000/0.000ms update=50.901/118.158/118.158ms crdt=28.729/78.198/78.198ms source=0.987/2.591/2.591ms adapters=21.164/37.369/37.369ms layout=12.523/13.848/13.848ms draw=0.003/0.003/0.003ms raster=0.965/1.099/1.099ms total=64.703/133.107/133.107ms (p50/p95/max)
+import/windows blocks=50000 shape=structural-8 certified=10/10
+memory/remote/structural-8/50000 rss_kib=685280
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 11.66s
+
+       11.69 real        10.14 user         1.32 sys
+           765214720  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              562903  page reclaims
+                   7  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  12  voluntary context switches
+                8084  involuntary context switches
+        154264014156  instructions retired
+         37703741192  cycles elapsed
+           604341544  peak memory footprint

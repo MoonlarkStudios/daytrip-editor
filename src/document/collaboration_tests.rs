@@ -550,3 +550,71 @@ fn fragmented_unicode_items_keep_byte_anchors_history_and_reopen_compatibility()
     assert_eq!(reopened.source(), document.source());
     oracle(&reopened);
 }
+
+#[test]
+fn known_insertions_do_not_hide_delete_only_updates_or_invalid_envelopes() {
+    let mut document = Document::new(RICH.into());
+    let mut peer = Document::from_state(&document.collaboration.state()).unwrap();
+    let clock = document
+        .collaboration
+        .doc_for_test()
+        .transact()
+        .state_vector();
+    let point = peer.source().find("日本語").unwrap();
+    edit(
+        &mut peer,
+        point..point + "日本語".len(),
+        "",
+        EditOrigin::Human,
+    );
+    let deletes = peer.collaboration.diff_for_test(&clock);
+    // Same insertion clocks, nonempty delete set. A state-vector-only shortcut
+    // must not classify this as already applied.
+    assert_eq!(
+        clock,
+        peer.collaboration.doc_for_test().transact().state_vector()
+    );
+    document.receive(&deletes).unwrap();
+    assert_eq!(document.source(), peer.source());
+    let generation = document.collaboration.generation();
+    document.receive(&deletes).unwrap();
+    assert_eq!(document.collaboration.generation(), generation);
+    let mut invalid = document.collaboration.state();
+    invalid.update.push(0); // trailing bytes, even though all operations are known
+    assert!(document.receive(&invalid).is_err());
+    assert_eq!(document.collaboration.generation(), generation);
+    oracle(&document);
+}
+
+#[test]
+fn mixed_batches_retain_one_full_parse_fallback_and_exact_markdown() {
+    for source in [
+        "# Title\n\nParagraph.\n\nTail.\n",
+        "[id]: /old\n\n[Paragraph][id].\n\nTail.\n",
+        "```\nParagraph.\n```\n\nTail.\n",
+        "- item\n\nParagraph.\n\nTail.\n",
+    ] {
+        let mut document = Document::new(source.into());
+        let point = source.find("Paragraph").unwrap();
+        let tail = source.find("Tail").unwrap();
+        let edits = [
+            SourceEdit {
+                range: point..point + 9,
+                text: "one\n\ntwo".into(),
+            },
+            SourceEdit {
+                range: tail..tail + 4,
+                text: "[link](image.png)".into(),
+            },
+        ];
+        document
+            .transact(&edits, EditOrigin::Agent, None, true)
+            .unwrap();
+        oracle(&document);
+        document.history(EditOrigin::Agent, false).unwrap();
+        assert_eq!(document.source(), source);
+        oracle(&document);
+        document.history(EditOrigin::Agent, true).unwrap();
+        oracle(&document);
+    }
+}

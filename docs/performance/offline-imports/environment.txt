@@ -1,0 +1,17 @@
+Darwin jslaughter--20230906-336H1 25.6.0 Darwin Kernel Version 25.6.0: Tue Aug 18 17:50:45 PDT 2026; root:xnu-12377.161.15.700.19~2/RELEASE_ARM64_T6020 arm64
+rustc 1.95.0 (59807616e 2026-04-14)
+binary: rustc
+commit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860
+commit-date: 2026-04-14
+host: aarch64-apple-darwin
+release: 1.95.0
+LLVM version: 22.1.2
+ProductName:		macOS
+ProductVersion:		26.7.1
+BuildVersion:		25G241
+Apple M2 Max
+34359738368
+
+Baseline commit: 21df3848f4bef96018e80333c81bf081431c911c
+Initial working tree: clean
+Profile: release; thin LTO; codegen-units=1; 10000,50000 blocks; 720x800 software rasterizer; standard samples=30; extended shapes=10

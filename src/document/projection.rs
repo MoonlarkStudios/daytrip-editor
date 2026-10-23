@@ -145,7 +145,7 @@ impl TextChange {
         } else if offset <= self.new.end {
             self.old.start + (offset - self.new.start).min(self.old.len())
         } else {
-            offset - self.new.len() + self.old.len()
+            offset - self.new.end + self.old.end
         }
     }
 }

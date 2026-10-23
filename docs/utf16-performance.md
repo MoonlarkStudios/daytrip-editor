@@ -1,5 +1,7 @@
 # Cached Yrs UTF-16 traversal
 
+The subsequent [offline import optimization](offline-imports.md) supersedes the remote-batch costs below.
+
 Still pins Yrs 0.28.0 with a narrow dependency patch that reuses existing item lengths. `Item.len` already records UTF-16 clock length. Previously `content_len(Utf16)` recounted every scalar of the retained string while traversing text, including retained suffixes in edit deltas and prefixes in stable-position capture/resolution. Successful item merging also recounted the concatenated text. The patch returns the cached length for UTF-16 and adds the two cached lengths on merge. Byte lengths keep their original path. Construction, splitting, trimming, and GC already maintain this invariant.
 
 This removes repeated **scalar counting**, not traversal of the item list, conversion within an item during splitting, or copying split string contents. It adds no fields or per-position metadata. Still keeps its UTF-16 Yrs configuration and incremental Ropey byte bridge. Stable positions, origin-scoped undo, history-selection restoration, transient preedit/exactly-once IME commit, persistence format, replica identity, and offline admission paths are unchanged.

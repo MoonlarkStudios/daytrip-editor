@@ -7,6 +7,9 @@ use super::{Disclosure, OffsetMap, Parsed, Piece, Projection, ProjectionChange, 
 use crate::document::block_parser::BlockChange;
 use crate::document::rich_document::RichDocument;
 
+#[path = "projection_batch.rs"]
+mod batch;
+
 impl Projection {
     /// Preflight every splice before mutating the retained source or metadata.
     pub(crate) fn update_blocks(
@@ -478,7 +481,7 @@ mod tests {
         assert!(Arc::ptr_eq(&id, &projection.source_id));
         assert!(projection.update_blocks(
             document.source(),
-            document.block_change.as_ref().unwrap(),
+            document.block_changes.first().unwrap(),
             Some(point + 8)
         ));
         assert_full(&projection, document.source(), Some(point + 8));
@@ -539,7 +542,7 @@ mod tests {
                         let mut document = Document::new(source.clone());
                         let mut next = Projection::with_context(&source, Some(point));
                         document.replace(point..point, inserted).unwrap();
-                        let Some(change) = &document.block_change else {
+                        let Some(change) = document.block_changes.first() else {
                             continue;
                         };
                         let head = Some(point + inserted.len());
@@ -581,8 +584,8 @@ mod tests {
             document.replace(start..end, replacement).unwrap();
             let head = Some(start + replacement.len());
             if document
-                .block_change
-                .as_ref()
+                .block_changes
+                .first()
                 .is_some_and(|change| projection.update_blocks(document.source(), change, head))
             {
                 accepted += 1;
@@ -608,9 +611,89 @@ mod tests {
         let mut old = Projection::with_context(source, Some(4));
         let point = source.find("words").unwrap();
         document.replace(point..point, "日本").unwrap();
-        let change = document.block_change.as_ref().unwrap();
+        let change = document.block_changes.first().unwrap();
         assert!(!old.update_blocks(document.source(), change, Some(point)));
         let mut stale = Projection::new(&format!("Other {source}"));
         assert!(!stale.update_blocks(document.source(), change, None));
+    }
+
+    #[test]
+    fn sparse_batches_match_full_projection_at_every_disclosure_position() {
+        use crate::document::collaboration::{EditOrigin, SourceEdit};
+        let source = "# First **title**\r\n\r\nAlpha **bold** and café 🧑‍💻.\n\n| A | B |\n|---|---|\n| cat | dog |\n\n![alt](image.png)\n\nTail _words_.\n\n# Last\n";
+        for head in source.char_indices().map(|(n, _)| n).chain([source.len()]) {
+            let mut document = Document::new(source.into());
+            let mut projection = Projection::with_context(source, Some(head));
+            let old_map = Arc::clone(&projection.mapping);
+            let old_lines = Arc::clone(&projection.line_starts);
+            let old_highlights = Arc::clone(&projection.highlights);
+            let target = document.collaboration.position(head, yrs::Assoc::After);
+            let edits: Vec<_> = [
+                ("First", "New 🦀"),
+                ("Alpha", "Alpha日"),
+                ("café", "tea"),
+                ("cat", "日本語"),
+                ("alt", "new"),
+                ("words", "words é"),
+            ]
+            .into_iter()
+            .map(|(old, new)| {
+                let point = source.find(old).unwrap();
+                SourceEdit {
+                    range: point..point + old.len(),
+                    text: new.into(),
+                }
+            })
+            .collect();
+            document
+                .transact(&edits, EditOrigin::Agent, None, true)
+                .unwrap();
+            assert_eq!(document.block_changes.len(), 5);
+            let next_head = document.collaboration.resolve(&target);
+            assert!(
+                projection.update_block_batch(
+                    document.source(),
+                    &document.block_changes,
+                    next_head
+                ),
+                "head={head}"
+            );
+            assert_full(&projection, document.source(), next_head);
+            assert_eq!(projection.change.as_ref().unwrap().regions.len(), 5);
+            let original = Projection::with_context(source, Some(head));
+            assert_eq!(old_lines, original.line_starts);
+            assert_eq!(old_highlights, original.highlights);
+            for (point, _) in source.char_indices() {
+                assert_eq!(old_map.to_display(point), original.to_display(point));
+            }
+        }
+    }
+
+    #[test]
+    fn rejected_batch_preflight_keeps_the_predecessor_intact() {
+        use crate::document::collaboration::{EditOrigin, SourceEdit};
+        let source = "# Before\n\nFirst paragraph.\n\nLast paragraph.\n\n# After\n";
+        let mut document = Document::new(source.into());
+        let edits = ["First", "Last"].map(|text| {
+            let point = source.find(text).unwrap();
+            SourceEdit {
+                range: point..point + text.len(),
+                text: "new".into(),
+            }
+        });
+        document
+            .transact(&edits, EditOrigin::Agent, None, true)
+            .unwrap();
+        for (next, caret) in [
+            (format!("{}stale", document.source()), None),
+            (
+                document.source().into(),
+                Some(document.source().find("After").unwrap()),
+            ),
+        ] {
+            let mut projection = Projection::with_context(source, Some(3));
+            assert!(!projection.update_block_batch(&next, &document.block_changes, caret));
+            assert_full(&projection, source, Some(3));
+        }
     }
 }

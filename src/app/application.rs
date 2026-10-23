@@ -1263,17 +1263,18 @@ impl App {
         if self.projection_revision != Some(self.document.revision) {
             let previous_revision = self.projection_revision;
             self.projection_revision = Some(self.document.revision);
-            if !self.projection.update_words(self.document.source(), caret)
-                && !self
+            let updated = self.projection.update_words(self.document.source(), caret)
+                || (self
                     .document
-                    .block_change
-                    .as_ref()
-                    .filter(|change| Some(change.previous_revision) == previous_revision)
-                    .is_some_and(|change| {
-                        self.projection
-                            .update_blocks(self.document.source(), change, caret)
-                    })
-            {
+                    .block_changes
+                    .first()
+                    .is_some_and(|change| Some(change.previous_revision) == previous_revision)
+                    && self.projection.update_block_batch(
+                        self.document.source(),
+                        &self.document.block_changes,
+                        caret,
+                    ));
+            if !updated {
                 self.projection = Projection::with_context(self.document.source(), caret);
             }
         } else {
@@ -2872,7 +2873,7 @@ mod tests {
             &mut app,
             Message::Edit(Action::Edit(Edit::Paste(Arc::new(committed.into())))),
         );
-        assert!(app.document.block_change.is_some());
+        assert!(!app.document.block_changes.is_empty());
         assert!(app.projection.change.is_some());
         assert!(Arc::ptr_eq(
             &old_tail,
@@ -2883,7 +2884,7 @@ mod tests {
         send(&mut app, Message::Undo);
         assert_eq!(app.document.source(), source);
         assert_eq!(app.selection, before);
-        assert!(app.document.block_change.is_some());
+        assert!(!app.document.block_changes.is_empty());
         assert!(app.projection.change.is_some());
 
         let selection = Selection {

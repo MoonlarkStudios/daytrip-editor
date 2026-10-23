@@ -1,0 +1,12 @@
+
+running 1 test
+test app::application::performance::large_document_collaboration ... remote/batch-8/10000 n=3 input=0.000/0.000/0.000ms update=9.361/17.370/17.370ms crdt=5.748/14.017/14.017ms source=0.194/0.227/0.227ms adapters=3.126/3.418/3.418ms layout=0.088/0.127/0.127ms draw=0.002/0.002/0.002ms raster=1.013/1.213/1.213ms total=10.463/18.712/18.712ms (p50/p95/max)
+app/churn-400/10000 n=400 input=0.000/0.000/0.000ms update=0.687/1.164/1.659ms crdt=0.008/0.020/0.032ms source=0.025/0.095/0.311ms adapters=0.652/1.073/1.586ms layout=0.183/0.284/0.640ms draw=0.001/0.003/0.015ms raster=0.795/0.896/1.172ms total=1.675/2.288/3.218ms (p50/p95/max)
+app/persistence blocks=10000 before_churn_bytes=911286 after_churn_bytes=915523
+remote/batch-8/50000 n=3 input=0.000/0.000/0.000ms update=45.914/92.436/92.436ms crdt=28.526/71.821/71.821ms source=0.754/2.479/2.479ms adapters=16.635/18.136/18.136ms layout=0.258/0.413/0.413ms draw=0.002/0.003/0.003ms raster=1.001/1.012/1.012ms total=47.188/93.830/93.830ms (p50/p95/max)
+app/churn-400/50000 n=400 input=0.000/0.000/0.000ms update=3.293/3.454/4.502ms crdt=0.011/0.016/0.034ms source=0.089/0.097/0.119ms adapters=3.191/3.351/4.360ms layout=0.285/0.300/0.368ms draw=0.001/0.002/0.005ms raster=0.786/0.820/1.212ms total=4.369/4.538/5.602ms (p50/p95/max)
+app/persistence blocks=50000 before_churn_bytes=4575306 after_churn_bytes=4579545
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 142 filtered out; finished in 3.82s
+

@@ -595,7 +595,7 @@ mod tests {
                 *head += inserted.len();
                 assert!(projection.update_blocks(
                     source,
-                    document.block_change.as_ref().unwrap(),
+                    document.block_changes.first().unwrap(),
                     Some(*head)
                 ));
             };
@@ -624,7 +624,7 @@ mod tests {
                         projection.update_words(&source, Some(head))
                             || projection.update_blocks(
                                 &source,
-                                document.block_change.as_ref().unwrap(),
+                                document.block_changes.first().unwrap(),
                                 Some(head)
                             )
                     );

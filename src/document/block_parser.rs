@@ -4,6 +4,8 @@ use std::ops::Range;
 
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
+pub(super) const MAX_INCREMENTAL_WINDOWS: usize = 32;
+
 /// Proof that one isolated source window was reparsed for this predecessor.
 #[derive(Debug)]
 pub(crate) struct BlockChange {

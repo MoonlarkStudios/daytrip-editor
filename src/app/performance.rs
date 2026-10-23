@@ -493,7 +493,7 @@ fn performance_incremental_block_parsing() {
         for _ in 0..100 {
             let point = document.blocks[count / 2 + 1].range.start + 12;
             document.replace(point..point, "日_").unwrap();
-            let change = document.block_change.as_ref().expect("isolated paragraph");
+            let change = document.block_changes.first().expect("isolated paragraph");
             assert_eq!(change.previous_revision + 1, document.revision);
             parsed += change.new.len();
             full_equivalent += document.source().len();
@@ -555,7 +555,7 @@ fn performance_source_projection_updates() {
                 if !word {
                     assert!(projection.update_blocks(
                         document.source(),
-                        document.block_change.as_ref().expect("isolated paragraph"),
+                        document.block_changes.first().expect("isolated paragraph"),
                         Some(head)
                     ));
                 }
@@ -563,7 +563,7 @@ fn performance_source_projection_updates() {
                 mirror_bytes += if word {
                     inserted.len()
                 } else {
-                    document.block_change.as_ref().unwrap().new.len()
+                    document.block_changes.first().unwrap().new.len()
                 };
                 full_equivalent += document.source().len();
             }
@@ -1079,4 +1079,201 @@ fn crdt_source_widget_composition_uses_the_same_stable_exactly_once_commit() {
     assert_eq!(app.document.source(), remote.source());
     drop(app.update(Message::Redo));
     assert_eq!(app.document.source().matches("日本").count(), 1);
+}
+
+#[test]
+fn crdt_sparse_import_keeps_reverse_selection_preedit_and_viewport() {
+    use crate::document::Document;
+    use crate::document::collaboration::{EditOrigin, SourceEdit};
+    use crate::document::projection::Projection;
+    let source = fixture(1000);
+    let mut harness = Harness::new(source.clone());
+    harness.frame(&mut Sample::default());
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+        Point::new(80.0, 40.0),
+    );
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+        Point::new(80.0, 40.0),
+    );
+    let mut peer = Document::from_state(&harness.app.document.collaboration.state()).unwrap();
+    let selection = Selection {
+        anchor: source.find("![A local").unwrap(),
+        head: source.find("**bold").unwrap() + 2,
+    };
+    harness.message(Message::SelectSource(selection));
+    let target = harness.app.document.collaboration.selection(selection);
+    let edits = ["Paragraph 0.0", "Paragraph 30.0", "Paragraph 70.0"].map(|text| {
+        let point = peer.source().find(text).unwrap();
+        SourceEdit {
+            range: point..point + text.len(),
+            text: "日本 é 🧑‍💻".into(),
+        }
+    });
+    peer.transact(&edits, EditOrigin::Human, None, true)
+        .unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(peer.collaboration.state())));
+    assert_eq!(
+        harness.app.selection,
+        harness
+            .app
+            .document
+            .collaboration
+            .resolve_selection(&target)
+            .unwrap()
+    );
+    assert!(!harness.app.selection.is_caret());
+    assert!(harness.app.selection.anchor > harness.app.selection.head);
+    assert_eq!(
+        harness
+            .app
+            .projection
+            .change
+            .as_ref()
+            .unwrap()
+            .regions
+            .len(),
+        3
+    );
+    assert!(!harness.app.document.can_undo());
+    harness.message(Message::SelectSource(Selection::caret(
+        harness.app.selection.head,
+    )));
+    let before = harness.app.document.source().to_owned();
+    harness.event(
+        Event::InputMethod(input_method::Event::Opened),
+        Point::ORIGIN,
+    );
+    harness.event(
+        Event::InputMethod(input_method::Event::Preedit("にほん".into(), Some(0..9))),
+        Point::ORIGIN,
+    );
+    let edits = ["Paragraph 0.1", "Paragraph 30.1", "Paragraph 70.1"].map(|text| {
+        let point = peer.source().find(text).unwrap();
+        SourceEdit {
+            range: point..point,
+            text: "prefix 日 ".into(),
+        }
+    });
+    peer.transact(&edits, EditOrigin::Human, None, true)
+        .unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(peer.collaboration.state())));
+    assert!(RichEditor::intent_stats(&harness.tree).1);
+    assert_ne!(harness.app.document.source(), before);
+    harness.event(
+        Event::InputMethod(input_method::Event::Commit("確定 🦀".into())),
+        Point::ORIGIN,
+    );
+    assert_eq!(harness.app.document.source().matches("確定 🦀").count(), 1);
+    harness.message(Message::Undo);
+    assert_eq!(harness.app.document.source(), peer.source());
+    harness.message(Message::Redo);
+    assert_eq!(harness.app.document.source().matches("確定 🦀").count(), 1);
+    let fresh = Projection::with_context(
+        harness.app.document.source(),
+        Some(harness.app.selection.head),
+    );
+    assert_eq!(harness.app.projection.text, fresh.text);
+    assert_eq!(harness.app.projection.rich, fresh.rich);
+    assert_eq!(harness.app.projection.highlights, fresh.highlights);
+    assert_eq!(harness.app.editor.snapshot(), fresh.text);
+
+    // An offscreen caret must not pull the viewport back during sparse imports.
+    harness.message(Message::SelectSource(Selection::caret(0)));
+    harness.event(
+        Event::Mouse(mouse::Event::WheelScrolled {
+            delta: mouse::ScrollDelta::Pixels { x: 0.0, y: -1200.0 },
+        }),
+        Point::new(200.0, 200.0),
+    );
+    let visible = RichEditor::visible_anchor(&harness.tree).unwrap();
+    let anchored = harness
+        .app
+        .document
+        .collaboration
+        .position(visible, yrs::Assoc::After);
+    let y = RichEditor::screen_y(&harness.tree, visible);
+    peer.receive(&harness.app.document.collaboration.state())
+        .unwrap();
+    let edits = ["Paragraph 0.2", "Paragraph 30.2"].map(|text| {
+        let point = peer.source().find(text).unwrap();
+        SourceEdit {
+            range: point..point,
+            text: "Another prefix ".into(),
+        }
+    });
+    peer.transact(&edits, EditOrigin::Human, None, true)
+        .unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(peer.collaboration.state())));
+    let visible = harness
+        .app
+        .document
+        .collaboration
+        .resolve(&anchored)
+        .unwrap();
+    assert!((y - RichEditor::screen_y(&harness.tree, visible)).abs() < 1.0);
+}
+
+#[test]
+#[ignore = "large offline batch shapes, including bounded incremental fallback"]
+fn large_offline_import_shapes() {
+    use crate::document::collaboration::{Collaboration, EditOrigin, SourceEdit};
+    use crate::document::projection::Projection;
+    load_profile_fonts();
+    let samples = std::env::var("STILL_IMPORT_SAMPLES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(10_usize)
+        .max(1);
+    for blocks in [10_000, 50_000] {
+        for (name, count, inserted) in [
+            ("sparse-32", 32, "日"),
+            ("fallback-128", 128, "日"),
+            ("structural-8", 8, "\n\n# Added heading\n\n"),
+        ] {
+            let mut harness = Harness::new(fixture(blocks));
+            harness.frame(&mut Sample::default());
+            let (mut peer, mut source) =
+                Collaboration::from_state(&harness.app.document.collaboration.state()).unwrap();
+            let mut timings = Vec::new();
+            let mut certified = 0;
+            for _ in 0..samples {
+                let paragraphs: Vec<_> = source
+                    .match_indices("Paragraph ")
+                    .step_by(4)
+                    .map(|(p, _)| p)
+                    .collect();
+                let edits: Vec<_> = (1..=count)
+                    .map(|step| {
+                        let paragraph = paragraphs[step * paragraphs.len() / (count + 1)];
+                        let point = paragraph + source[paragraph..].find(':').unwrap() + 2;
+                        SourceEdit {
+                            range: point..point,
+                            text: inserted.into(),
+                        }
+                    })
+                    .collect();
+                let committed = peer
+                    .commit(&source, &edits, EditOrigin::Human, None, true)
+                    .unwrap();
+                for edit in committed.into_iter().rev() {
+                    source.replace_range(edit.range, &edit.text);
+                }
+                timings.push(harness.message(Message::ReplicaLoaded(Ok(peer.state()))));
+                certified += usize::from(!harness.app.document.block_changes.is_empty());
+                assert_eq!(harness.app.document.source(), source);
+                assert_eq!(harness.app.document.collaboration.materialize(), source);
+                let fresh = Projection::with_context(&source, Some(harness.app.selection.head));
+                assert_eq!(harness.app.projection.text, fresh.text);
+                assert_eq!(harness.app.projection.rich, fresh.rich);
+                assert_eq!(harness.app.projection.highlights, fresh.highlights);
+                assert_eq!(harness.app.editor.snapshot(), fresh.text);
+            }
+            report(&format!("remote/{name}/{blocks}/first"), &timings[..1]);
+            report(&format!("remote/{name}/{blocks}"), &timings);
+            println!("import/windows blocks={blocks} shape={name} certified={certified}/{samples}");
+            report_memory(&format!("remote/{name}/{blocks}"));
+        }
+    }
 }

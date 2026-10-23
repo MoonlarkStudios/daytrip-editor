@@ -40,7 +40,7 @@ pub struct Document {
     pub revision: u64,
     pub(crate) collaboration: Collaboration,
     global_dependencies: bool,
-    pub(crate) block_change: Option<BlockChange>,
+    pub(crate) block_changes: Vec<BlockChange>,
 }
 
 impl Document {
@@ -55,7 +55,7 @@ impl Document {
             characters: 0,
             revision: 0,
             global_dependencies: false,
-            block_change: None,
+            block_changes: Vec::new(),
         };
         document.reparse();
         document
@@ -81,7 +81,7 @@ impl Document {
             characters: 0,
             revision: 0,
             global_dependencies: false,
-            block_change: None,
+            block_changes: Vec::new(),
         };
         document.reparse();
         Ok(document)
@@ -132,7 +132,7 @@ impl Document {
             return;
         }
         let batch = changes.len() > 1;
-        if batch {
+        if batch && !self.replace_islands(&changes) {
             let mut shifts = vec![0isize];
             for change in &changes {
                 shifts.push(
@@ -168,15 +168,10 @@ impl Document {
                 self.source.replace_range(change.range, &change.text);
             }
             self.reparse_cached(cache);
-        } else {
+        } else if !batch {
             for change in changes {
-                self.apply_change(change.range, &change.text);
+                self.apply_change(change);
             }
-        }
-        // A single certified window has one predecessor. Disjoint batches use
-        // conservative projection invalidation; CRDT operations stay granular.
-        if batch {
-            self.block_change = None;
         }
         self.revision += 1;
         #[cfg(test)]
@@ -306,10 +301,12 @@ impl Document {
         self.reparse_cached(cache);
     }
 
-    fn apply_change(&mut self, range: Range<usize>, replacement: &str) {
-        if self.replace_island(&range, replacement) {
+    fn apply_change(&mut self, edit: SourceEdit) {
+        if self.replace_island(&edit) {
             return;
         }
+        let range = edit.range;
+        let replacement = &edit.text;
         let cache = std::mem::take(&mut self.blocks)
             .into_iter()
             .filter_map(|mut block| {
@@ -329,7 +326,7 @@ impl Document {
     }
 
     fn reparse_cached(&mut self, cache: Vec<Block>) {
-        self.block_change = None;
+        self.block_changes.clear();
         let scan = block_parser::scan(&self.source);
         self.global_dependencies = scan.global_dependencies;
         let mut cache = VecDeque::from(cache);
@@ -361,15 +358,14 @@ impl Document {
         self.characters = self.blocks.iter().map(|block| block.characters).sum();
     }
 
-    fn replace_island(&mut self, edit: &Range<usize>, replacement: &str) -> bool {
+    fn prepare_island(&self, edits: &[SourceEdit]) -> Option<Island> {
         const MAX_ISLAND_BYTES: usize = 64 * 1024;
         if self.global_dependencies {
-            return false;
+            return None;
         }
+        let edit = edits.first()?.range.start..edits.last()?.range.end;
         let index = self.block_at(edit.start);
-        let Some(block) = self.blocks.get(index) else {
-            return false;
-        };
+        let block = self.blocks.get(index)?;
         // Container continuations and definition lists can cross blank lines.
         // Keep their neighboring blocks on the general path as well. A literal
         // colon paragraph is not certified by the scanner: changing an earlier
@@ -380,23 +376,29 @@ impl Document {
                 .get(index + 1)
                 .is_some_and(|next| !next.independent)
         {
-            return false;
+            return None;
         }
         if !block.independent || edit.start < block.range.start || edit.end > block.range.end {
-            return false;
+            return None;
         }
-        let Some(old) = block_parser::island(&self.source, &block.range) else {
-            return false;
-        };
-        let new = old.start..old.end - edit.len() + replacement.len();
+        let old = block_parser::island(&self.source, &block.range)?;
+        let length = edits.iter().fold(old.len(), |len, edit| {
+            len - edit.range.len() + edit.text.len()
+        });
+        let new = old.start..old.start + length;
         if old.len() > MAX_ISLAND_BYTES || new.len() > MAX_ISLAND_BYTES {
-            return false;
+            return None;
         }
         let mut fragment = self.source[old.clone()].to_owned();
-        fragment.replace_range(edit.start - old.start..edit.end - old.start, replacement);
+        for edit in edits.iter().rev() {
+            fragment.replace_range(
+                edit.range.start - old.start..edit.range.end - old.start,
+                &edit.text,
+            );
+        }
         let scan = block_parser::scan(&fragment);
         if scan.global_dependencies || scan.spans.iter().any(|span| !span.independent) {
-            return false;
+            return None;
         }
         let blocks = scan
             .spans
@@ -414,25 +416,101 @@ impl Document {
                 )
             })
             .collect::<Vec<_>>();
+        Some(Island {
+            index,
+            old,
+            new,
+            blocks,
+        })
+    }
+
+    fn replace_island(&mut self, edit: &SourceEdit) -> bool {
+        let Some(plan) = self.prepare_island(std::slice::from_ref(edit)) else {
+            return false;
+        };
+        self.block_changes = vec![BlockChange {
+            previous_revision: self.revision,
+            old: plan.old.clone(),
+            new: plan.new.clone(),
+        }];
+        self.apply_island(plan);
+        self.source.replace_range(edit.range.clone(), &edit.text);
+        true
+    }
+
+    fn replace_islands(&mut self, edits: &[SourceEdit]) -> bool {
+        // Validate all windows against the immutable predecessor before changing
+        // any cache. Edits in the same block are parsed together exactly once.
+        let mut plans = Vec::new();
+        let mut first = 0;
+        while first < edits.len() {
+            if plans.len() == block_parser::MAX_INCREMENTAL_WINDOWS {
+                return false;
+            }
+            let index = self.block_at(edits[first].range.start);
+            let mut end = first + 1;
+            while end < edits.len() && self.block_at(edits[end].range.start) == index {
+                end += 1;
+            }
+            let Some(plan) = self.prepare_island(&edits[first..end]) else {
+                return false;
+            };
+            plans.push(plan);
+            first = end;
+        }
+        let mut shift = 0isize;
+        self.block_changes = plans
+            .iter()
+            .map(|plan| {
+                let start = plan
+                    .old
+                    .start
+                    .checked_add_signed(shift)
+                    .expect("validated source size");
+                shift += plan.new.len() as isize - plan.old.len() as isize;
+                BlockChange {
+                    previous_revision: self.revision,
+                    old: plan.old.clone(),
+                    new: start..start + plan.new.len(),
+                }
+            })
+            .collect();
+        for plan in plans.into_iter().rev() {
+            self.apply_island(plan);
+        }
+        for edit in edits.iter().rev() {
+            self.source.replace_range(edit.range.clone(), &edit.text);
+        }
+        true
+    }
+
+    fn apply_island(&mut self, plan: Island) {
+        let Island {
+            index,
+            old,
+            new,
+            blocks,
+        } = plan;
+        let block = &self.blocks[index];
         self.words =
             self.words - block.words + blocks.iter().map(|block| block.words).sum::<usize>();
         self.characters = self.characters - block.characters
             + blocks.iter().map(|block| block.characters).sum::<usize>();
-        self.source.replace_range(edit.clone(), replacement);
-        if edit.len() != replacement.len() {
+        if old.len() != new.len() {
             for block in &mut self.blocks[index + 1..] {
-                block.range.start = block.range.start - edit.len() + replacement.len();
-                block.range.end = block.range.end - edit.len() + replacement.len();
+                block.range.start = block.range.start - old.len() + new.len();
+                block.range.end = block.range.end - old.len() + new.len();
             }
         }
         self.blocks.splice(index..index + 1, blocks);
-        self.block_change = Some(BlockChange {
-            previous_revision: self.revision,
-            old,
-            new,
-        });
-        true
     }
+}
+
+struct Island {
+    index: usize,
+    old: Range<usize>,
+    new: Range<usize>,
+    blocks: Vec<Block>,
 }
 
 fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
@@ -538,7 +616,7 @@ mod tests {
                             if point == end && replacement.is_empty() {
                                 continue;
                             }
-                            if document.block_change.is_some() {
+                            if !document.block_changes.is_empty() {
                                 incremental += 1;
                             } else {
                                 fallback += 1;

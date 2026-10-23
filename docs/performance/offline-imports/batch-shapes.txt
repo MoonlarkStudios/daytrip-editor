@@ -1,0 +1,48 @@
+
+running 1 test
+test app::application::performance::large_offline_import_shapes ... remote/sparse-32/10000/first n=1 input=0.000/0.000/0.000ms update=69.766/69.766/69.766ms crdt=55.412/55.412/55.412ms source=1.237/1.237/1.237ms adapters=13.117/13.117/13.117ms layout=0.115/0.115/0.115ms draw=0.003/0.003/0.003ms raster=1.359/1.359/1.359ms total=71.243/71.243/71.243ms (p50/p95/max)
+remote/sparse-32/10000 n=10 input=0.000/0.000/0.000ms update=20.595/69.766/69.766ms crdt=7.281/55.412/55.412ms source=1.237/2.251/2.251ms adapters=11.801/21.530/21.530ms layout=0.140/0.198/0.198ms draw=0.003/0.003/0.003ms raster=1.379/3.857/3.857ms total=22.165/71.243/71.243ms (p50/p95/max)
+import/windows blocks=10000 shape=sparse-32 certified=10/10
+memory/remote/sparse-32/10000 rss_kib=208464
+remote/fallback-128/10000/first n=1 input=0.000/0.000/0.000ms update=262.231/262.231/262.231ms crdt=204.626/204.626/204.626ms source=33.022/33.022/33.022ms adapters=24.584/24.584/24.584ms layout=3.187/3.187/3.187ms draw=0.003/0.003/0.003ms raster=1.470/1.470/1.470ms total=266.891/266.891/266.891ms (p50/p95/max)
+remote/fallback-128/10000 n=10 input=0.000/0.000/0.000ms update=43.559/262.231/262.231ms crdt=8.051/204.626/204.626ms source=11.882/33.022/33.022ms adapters=23.743/29.025/29.025ms layout=3.241/3.542/3.542ms draw=0.003/0.003/0.003ms raster=1.339/1.486/1.486ms total=48.515/266.891/266.891ms (p50/p95/max)
+import/windows blocks=10000 shape=fallback-128 certified=0/10
+memory/remote/fallback-128/10000 rss_kib=210944
+remote/structural-8/10000/first n=1 input=0.000/0.000/0.000ms update=35.383/35.383/35.383ms crdt=18.145/18.145/18.145ms source=0.357/0.357/0.357ms adapters=16.881/16.881/16.881ms layout=2.588/2.588/2.588ms draw=0.003/0.003/0.003ms raster=1.334/1.334/1.334ms total=39.308/39.308/39.308ms (p50/p95/max)
+remote/structural-8/10000 n=10 input=0.000/0.000/0.000ms update=21.482/35.383/35.383ms crdt=6.829/18.145/18.145ms source=0.366/0.647/0.647ms adapters=14.428/23.577/23.577ms layout=2.767/3.019/3.019ms draw=0.003/0.013/0.013ms raster=1.333/1.473/1.473ms total=25.531/39.308/39.308ms (p50/p95/max)
+import/windows blocks=10000 shape=structural-8 certified=10/10
+memory/remote/structural-8/10000 rss_kib=230752
+remote/sparse-32/50000/first n=1 input=0.000/0.000/0.000ms update=419.134/419.134/419.134ms crdt=329.446/329.446/329.446ms source=8.159/8.159/8.159ms adapters=81.529/81.529/81.529ms layout=0.884/0.884/0.884ms draw=0.005/0.005/0.005ms raster=2.478/2.478/2.478ms total=422.501/422.501/422.501ms (p50/p95/max)
+remote/sparse-32/50000 n=10 input=0.000/0.000/0.000ms update=114.073/419.134/419.134ms crdt=51.830/329.446/329.446ms source=6.385/15.104/15.104ms adapters=58.208/109.139/109.139ms layout=0.414/0.884/0.884ms draw=0.003/0.029/0.029ms raster=1.869/3.910/3.910ms total=116.378/422.501/422.501ms (p50/p95/max)
+import/windows blocks=50000 shape=sparse-32 certified=10/10
+memory/remote/sparse-32/50000 rss_kib=542544
+remote/fallback-128/50000/first n=1 input=0.000/0.000/0.000ms update=993.947/993.947/993.947ms crdt=846.392/846.392/846.392ms source=43.259/43.259/43.259ms adapters=104.296/104.296/104.296ms layout=15.872/15.872/15.872ms draw=0.003/0.003/0.003ms raster=1.406/1.406/1.406ms total=1011.229/1011.229/1011.229ms (p50/p95/max)
+remote/fallback-128/50000 n=10 input=0.000/0.000/0.000ms update=164.588/993.947/993.947ms crdt=33.696/846.392/846.392ms source=36.674/47.976/47.976ms adapters=94.004/105.089/105.089ms layout=14.051/20.656/20.656ms draw=0.003/0.003/0.003ms raster=1.126/1.406/1.406ms total=182.990/1011.229/1011.229ms (p50/p95/max)
+import/windows blocks=50000 shape=fallback-128 certified=0/10
+memory/remote/fallback-128/50000 rss_kib=680240
+remote/structural-8/50000/first n=1 input=0.000/0.000/0.000ms update=110.533/110.533/110.533ms crdt=74.439/74.439/74.439ms source=3.328/3.328/3.328ms adapters=32.766/32.766/32.766ms layout=13.893/13.893/13.893ms draw=0.003/0.003/0.003ms raster=0.973/0.973/0.973ms total=125.402/125.402/125.402ms (p50/p95/max)
+remote/structural-8/50000 n=10 input=0.000/0.000/0.000ms update=51.453/110.533/110.533ms crdt=28.551/74.439/74.439ms source=0.997/3.328/3.328ms adapters=21.360/32.766/32.766ms layout=12.595/14.731/14.731ms draw=0.003/0.003/0.003ms raster=0.983/1.155/1.155ms total=64.382/125.402/125.402ms (p50/p95/max)
+import/windows blocks=50000 shape=structural-8 certified=10/10
+memory/remote/structural-8/50000 rss_kib=877232
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 15.15s
+
+       15.83 real        10.86 user         1.72 sys
+           902873088  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              535624  page reclaims
+                  67  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                 648  voluntary context switches
+               91256  involuntary context switches
+        154920644145  instructions retired
+         40750388433  cycles elapsed
+           706053440  peak memory footprint

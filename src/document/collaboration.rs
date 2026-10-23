@@ -15,6 +15,7 @@ use uuid::Uuid;
 use yrs::types::Delta;
 use yrs::undo::UndoManager;
 use yrs::updates::decoder::Decode;
+use yrs::updates::encoder::Encode;
 use yrs::{
     Any, Assoc, Doc, GetString, IndexedSequence, Observable, OffsetKind, Out, ReadTxn, StateVector,
     StickyIndex, Text, TextRef, Transact, Update,
@@ -801,13 +802,25 @@ impl Collaboration {
         if state.update.len() > MAX_STATE_BYTES {
             return Err(CollaborationError::TooLarge);
         }
+        // Validate the COMPLETE envelope before filtering known operations.
+        // Update-level diffing retains delete sets and unknown/pending structs;
+        // a transaction's integrated-state diff would lose pending operations.
+        crate::document::collaboration_wire::validate(&state.update)?;
+        let incoming = yrs::diff_updates_v1(
+            &state.update,
+            &self.doc.transact().state_vector().encode_v1(),
+        )
+        .map_err(|error| CollaborationError::InvalidData(error.to_string()))?;
+        if incoming == [0, 0] {
+            return Ok(Vec::new());
+        }
         let current = self.state();
         if current.update.len().saturating_add(state.update.len()) > MAX_STATE_BYTES {
             return Err(CollaborationError::TooLarge);
         }
         let (candidate, text) = decode_state(&current)?;
         let observed = observe(&text);
-        apply_encoded(&candidate, &state.update)?;
+        apply_encoded(&candidate, &incoming)?;
         validate_schema(&candidate, &text)?;
         let observed = observed.lock().expect("candidate observer lock");
         if observed.invalid {
@@ -825,9 +838,9 @@ impl Collaboration {
         if candidate_state.len() > MAX_STATE_BYTES {
             return Err(CollaborationError::TooLarge);
         }
-        apply_encoded(&self.doc, &state.update)?;
+        apply_encoded(&self.doc, &incoming)?;
         self.retained_structures = structures;
-        self.retained_bytes = current.update.len() + state.update.len();
+        self.retained_bytes = candidate_state.len();
         self.generation += 1;
         // Remote transactions are deliberately absent from both undo scopes.
         self.take_edits()
