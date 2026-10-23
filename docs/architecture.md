@@ -98,4 +98,4 @@ Collaborative saves compare both Markdown and checkpoint baselines under an advi
 
 HTML export escapes raw Markdown HTML and includes a restrictive content security policy. Live images resolve relative to the saved document; remote URLs are fetched automatically. The optional older Read renderer still uses local image handles and remote placeholders. Preferences contain appearance and recent paths, and writes are serialized.
 
-The current collaboration measurements follow in [CRDT performance](crdt-performance.md).
+The collaboration foundation measurements are in [CRDT performance](crdt-performance.md), followed by [cached UTF-16 traversal](utf16-performance.md).

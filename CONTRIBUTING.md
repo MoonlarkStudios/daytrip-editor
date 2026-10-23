@@ -18,6 +18,7 @@ mise run dev
 | --- | --- |
 | `mise exec -- cargo fmt --all` | Apply formatting |
 | `mise run check` | Check formatting, run Clippy with warnings denied, run regression tests |
+| `mise run check-yrs` | Validate the pinned Yrs dependency patch when changing it |
 | `mise run release` | Build the optimized application |
 | `mise run bench` | Run the ignored model and layout benchmarks |
 | `mise run profile` | Profile 10k/50k-block interactions through software rasterization |
@@ -62,6 +63,12 @@ Follow the applicable [Google Rust Style Guide](https://google.github.io/stylegu
 - **Shared snapshots:** `Arc` is appropriate for immutable source snapshots, highlight arrays, shaped paragraphs, and asynchronous payloads where shared ownership or identity is required. Avoid copying whole buffers to satisfy borrowing when a borrowed snapshot suffices.
 - **Imports:** grouped imports of Iced widget helpers are accepted for readable declarative views. Private unit-test modules may use `use super::*`; production imports should name their dependencies.
 - **Module roots:** prefer declarations and deliberate re-exports in `lib.rs` and group `mod.rs` files. Native startup lives in `app/startup.rs`, with a small executable bootstrap in `main.rs`.
+
+Vendored dependencies retain upstream formatting and existing implementation details;
+Still's safe-Rust requirement applies to application code and our dependency patch.
+The narrowly patched Yrs dependency, its provenance and removal policy are in
+[vendor/README.md](vendor/README.md). Run `mise run check-yrs` when changing it;
+do not apply application lint cleanup to imported third-party source.
 
 Record additional guide exceptions here when they become necessary, with their reason.
 

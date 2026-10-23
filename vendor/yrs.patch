@@ -1,0 +1,88 @@
+--- a/src/block.rs
++++ b/src/block.rs
+@@ -696,7 +696,8 @@
+             && (!self.info.is_linked() && !other.info.is_linked()) // linked items cannot be merged
+             && self.content.try_squash(&other.content)
+         {
+-            self.len = self.content.len(OffsetKind::Utf16);
++            // Squashing concatenates content without changing its UTF-16 units.
++            self.len += other.len;
+             if let Some(mut right_right) = other.right {
+                 right_right.left = Some(*self);
+             }
+@@ -1536,8 +1537,14 @@
+         self.len
+     }
+ 
++    #[inline]
+     pub fn content_len(&self, kind: OffsetKind) -> u32 {
+-        self.content.len(kind)
++        // Item clocks already cache UTF-16 length. Recounting the string here
++        // makes text deltas and sticky-position traversal scan retained text.
++        match kind {
++            OffsetKind::Utf16 => self.len,
++            OffsetKind::Bytes => self.content.len(kind),
++        }
+     }
+ 
+     /// Returns an ID of the last element that can be considered a part of this item.
+@@ -2381,6 +2388,59 @@
+     use crate::doc::OffsetKind;
+     use std::ops::Deref;
+ 
++    // Still regression: compare cached lengths with a fresh count after every
++    // valid Unicode split and squash. Byte indexing must keep its old behavior.
++    #[test]
++    fn cached_item_lengths_survive_unicode_splits_and_squashes() {
++        use crate::block::{ClientID, Item, ItemContent, ItemPtr, ID};
++        use crate::types::TypePtr;
++
++        let source = "a日本e\u{301}🧑‍💻שלום\r\nlast";
++        let make = |content| {
++            Item::new(
++                ID::new(ClientID::new(1), 0),
++                None,
++                None,
++                None,
++                None,
++                TypePtr::Named("text".into()),
++                None,
++                content,
++            )
++            .unwrap()
++        };
++        let check = |item: &Item| {
++            for kind in [OffsetKind::Utf16, OffsetKind::Bytes] {
++                assert_eq!(item.content_len(kind), item.content.len(kind));
++            }
++        };
++        let mut offset = 0;
++        for scalar in source.chars().take(source.chars().count() - 1) {
++            offset += scalar.len_utf16() as u32;
++            let mut left = make(ItemContent::String(source.into()));
++            let mut ptr = ItemPtr::from(&mut left);
++            let mut right = ptr.splice(offset, OffsetKind::Utf16).unwrap();
++            check(&left);
++            check(&right);
++            assert!(ptr.try_squash(ItemPtr::from(&mut right)));
++            check(&left);
++            assert_eq!(
++                left.content_len(OffsetKind::Utf16),
++                source.encode_utf16().count() as u32
++            );
++        }
++        // Non-text and non-countable items still use the same logical length.
++        for content in [
++            ItemContent::Deleted(7),
++            ItemContent::Any(vec![crate::Any::Null; 3]),
++            ItemContent::JSON(vec!["a".into(), "b".into()]),
++            ItemContent::Binary(vec![1, 2, 3]),
++            ItemContent::Format("bold".into(), Box::new(crate::Any::Bool(true))),
++        ] {
++            check(&make(content));
++        }
++    }
++
+     #[test]
+     fn splittable_string_len() {
+         let s: SplittableString = "Zażółć gęślą jaźń😀 女".into();

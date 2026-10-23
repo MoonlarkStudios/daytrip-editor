@@ -47,3 +47,7 @@ undocumented_unsafe_blocks = "deny"
 lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
+
+# Narrow UTF-16 traversal fix; provenance and removal policy in vendor/README.md.
+[patch.crates-io]
+yrs = { path = "vendor/yrs" }

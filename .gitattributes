@@ -1,0 +1,4 @@
+# Preserve upstream source, valid patch context, and raw tool output verbatim.
+vendor/yrs/** -whitespace
+vendor/yrs.patch -whitespace
+docs/performance/utf16/*.txt -whitespace

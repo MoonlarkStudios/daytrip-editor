@@ -23,3 +23,7 @@ run = "cargo test --locked --release performance_ -- --ignored --nocapture"
 [tasks.profile]
 description = "Profile 10k/50k-block interactions through software rasterization"
 run = "cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1"
+
+[tasks.check-yrs]
+description = "Test the pinned Yrs traversal patch (upstream external-asset tests excluded)"
+run = "cargo test --manifest-path vendor/yrs/Cargo.toml --locked --features sync --lib -- --test-threads=1 --skip tests::edit_traces_tests --skip tests::compatibility_tests::test_small_data_set --skip tests::compatibility_tests::test_medium_data_set"

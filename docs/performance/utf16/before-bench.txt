@@ -1,0 +1,52 @@
+
+running 7 tests
+test app::application::performance::performance_crdt_churn ... memory/crdt/10000/initial rss_kib=78144
+memory/crdt/10000/churn rss_kib=81184
+crdt/churn blocks=10000 transactions=2000 locations=1000 cold=130.600458ms total=2.746035375s crdt=2.668159171s source_cache=77.65052ms initial_state_bytes=910476 churn_state_bytes=989430 source_bytes=910450
+crdt/reopen blocks=10000 total=111.383792ms checkpoint_bytes=989494
+memory/crdt/50000/initial rss_kib=312512
+memory/crdt/50000/churn rss_kib=287024
+crdt/churn blocks=50000 transactions=2000 locations=1000 cold=525.488667ms total=12.569603375s crdt=12.246962779s source_cache=322.294537ms initial_state_bytes=4574477 churn_state_bytes=4655078 source_bytes=4574450
+crdt/reopen blocks=50000 total=547.24475ms checkpoint_bytes=4655142
+ok
+test app::application::performance::performance_incremental_block_parsing ... blocks=10000 local_source_edits=100 elapsed=107.344209ms boundary_scan_bytes=37300 full_scan_equivalent_bytes=91065200
+blocks=50000 local_source_edits=100 elapsed=539.032625ms boundary_scan_bytes=37400 full_scan_equivalent_bytes=457465200
+ok
+test app::application::performance::performance_source_projection_updates ... blocks=10000 kind=word edits=100 source_including_crdt=108.499285ms crdt=106.051122ms source_cache=2.427507ms projection=40.746631ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91050050
+blocks=10000 kind=unicode-syntax edits=100 source_including_crdt=109.000379ms crdt=106.122163ms source_cache=2.864254ms projection=39.396375ms source_mirror_splice_bytes=37300 full_source_equivalent_bytes=91065200
+blocks=10000 kind=equal-length edits=100 source_including_crdt=132.65709ms crdt=132.120338ms source_cache=521.59µs projection=18.970287ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91045000
+blocks=50000 kind=word edits=100 source_including_crdt=540.150206ms crdt=530.66404ms source_cache=9.452376ms projection=223.135036ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457450050
+blocks=50000 kind=unicode-syntax edits=100 source_including_crdt=558.231919ms crdt=544.788249ms source_cache=13.417958ms projection=228.310795ms source_mirror_splice_bytes=37400 full_source_equivalent_bytes=457465200
+blocks=50000 kind=equal-length edits=100 source_including_crdt=677.15534ms crdt=675.729791ms source_cache=1.389042ms projection=105.160243ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457445000
+ok
+test app::application::tests::performance_continuous_edit_projection ... Continuous 2000 blocks: load=159.032041ms, 100 native-buffer/source/projection edits=21.079625ms, mean=210.796µs
+ok
+test document::source::tests::performance_large_document_source_edits ... 6000 blocks: parse=9.839666ms, 1000 source edits=279.523292ms, per edit=279.523µs
+ok
+test editor::native_buffer::tests::performance_native_snapshots ... blocks=10000 bytes=400000 native_edits=100 full_snapshot=48.163208ms retained_snapshot=575.416µs full_snapshot_bytes=40015150 local_snapshot_bytes=19250
+blocks=50000 bytes=2000000 native_edits=100 full_snapshot=251.458042ms retained_snapshot=3.034041ms full_snapshot_bytes=200015150 local_snapshot_bytes=19250
+ok
+test editor::rich_layout::tests::performance_rich_layout_cache ... Rich 2000 blocks: 100 syntax disclosure + cached layouts=28.849709ms, mean=288.497µs
+Rich 2000 blocks: initial layout=8.951375ms, 100 projection + cached layouts=188.1685ms, mean=1.881687ms
+ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 130 filtered out; finished in 25.30s
+
+       25.34 real        24.56 user         0.50 sys
+           732037120  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              123154  page reclaims
+                  72  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                 700  voluntary context switches
+                5002  involuntary context switches
+        408878665515  instructions retired
+         86104972264  cycles elapsed
+           516342720  peak memory footprint

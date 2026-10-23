@@ -1,0 +1,1085 @@
+[check-yrs] $ cargo test --manifest-path vendor/yrs/Cargo.toml --locked --features sync --lib -- --test-threads=1 --skip tests::edit_traces_tests --skip tests::compatibility_tests::test_small_data_set --skip tests::compatibility_tests::test_medium_data_set
+warning: unused import: `crate::utils::OptionExt`
+  --> src/doc.rs:10:5
+   |
+10 | use crate::utils::OptionExt;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1922:9
+     |
+1922 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1931:9
+     |
+1931 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1938:9
+     |
+1938 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1946:9
+     |
+1946 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1955:9
+     |
+1955 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:2071:9
+     |
+2071 |         assert_matches!(&block, &Block::GC(_));
+     |         ^^^^^^^^^^^^^^
+
+warning: unused imports: `BlockRange` and `Block`
+ --> src/transaction.rs:1:20
+  |
+1 | use crate::block::{Block, BlockRange, Item, ItemContent, ItemPosition, ItemPtr, Prelim, ID};
+  |                    ^^^^^  ^^^^^^^^^^
+
+warning: unused import: `Block`
+ --> src/block_iter.rs:1:20
+  |
+1 | use crate::block::{Block, Item, ItemContent, ItemPtr, Prelim};
+  |                    ^^^^^
+
+warning: unused import: `ItemContent`
+ --> src/iter.rs:1:20
+  |
+1 | use crate::block::{ItemContent, ItemPtr};
+  |                    ^^^^^^^^^^^
+
+warning: unused imports: `SmallVec` and `smallvec`
+ --> src/iter.rs:4:16
+  |
+4 | use smallvec::{smallvec, SmallVec};
+  |                ^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `crate::test_utils::exchange_updates`
+   --> src/iter.rs:317:9
+    |
+317 |     use crate::test_utils::exchange_updates;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches2::assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+   --> src/doc.rs:652:26
+    |
+652 |     use assert_matches2::assert_matches;
+    |                          ^^^^^^^^^^^^^^
+
+warning: unused import: `TxnIterator`
+   --> src/iter.rs:316:73
+    |
+316 |     use crate::iter::{BlockIterator, BlockSliceIterator, IntoBlockIter, TxnIterator};
+    |                                                                         ^^^^^^^^^^^
+
+warning: value assigned to `left` is never read
+   --> src/block.rs:494:24
+    |
+494 |         let mut left = None;
+    |                        ^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ptr`
+   --> src/block.rs:887:21
+    |
+887 |                 let ptr = BranchPtr::from(branch);
+    |                     ^^^ help: if this is intentional, prefix it with an underscore: `_ptr`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> src/doc.rs:1023:17
+     |
+1023 |             for mut block in u.blocks.into_blocks(false) {
+     |                 ----^^^^^
+     |                 |
+     |                 help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `m0`
+    --> src/doc.rs:2081:13
+     |
+2081 |         let m0 = doc.get_or_insert_map("map");
+     |             ^^ help: if this is intentional, prefix it with an underscore: `_m0`
+
+warning: unused variable: `s3`
+    --> src/doc.rs:2096:13
+     |
+2096 |         let s3 = {
+     |             ^^ help: if this is intentional, prefix it with an underscore: `_s3`
+
+warning: unused variable: `e`
+    --> src/doc.rs:2241:48
+     |
+2241 |         doc.observe_update_v2("sub", move |tx, e| {
+     |                                                ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: variable does not need to be mutable
+   --> src/id_map.rs:673:13
+    |
+673 |         let mut merged = IdMap::merge_many(&[id_map_1.clone(), id_map_2.clone()]);
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `ptr`
+   --> src/transaction.rs:778:13
+    |
+778 |         let ptr = item.clone();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_ptr`
+
+warning: variable does not need to be mutable
+   --> src/transaction.rs:958:13
+    |
+958 |         let mut block = Item::new(
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> src/ids.rs:1422:13
+     |
+1422 |         let mut map = IdSet::from_iter([
+     |             ----^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: unused variable: `txn`
+   --> src/iter.rs:329:13
+    |
+329 |         let txn = doc.transact();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_txn`
+
+warning: unused variable: `txn`
+   --> src/iter.rs:351:13
+    |
+351 |         let txn = doc.transact();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_txn`
+
+warning: unused variable: `txn`
+   --> src/iter.rs:373:13
+    |
+373 |         let txn = doc.transact();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_txn`
+
+warning: unused variable: `txn`
+   --> src/iter.rs:395:13
+    |
+395 |         let txn = doc.transact();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_txn`
+
+warning: unused variable: `txn`
+   --> src/iter.rs:417:13
+    |
+417 |         let txn = doc.transact();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_txn`
+
+warning: unused variable: `txn`
+   --> src/iter.rs:508:13
+    |
+508 |         let txn = doc.transact();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_txn`
+
+warning: variable does not need to be mutable
+   --> src/undo.rs:133:13
+    |
+133 |         let mut state = Arc::new(Inner {
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `clear_undo`
+   --> src/undo.rs:379:34
+    |
+379 |     fn clear_internal(&mut self, clear_undo: bool, clear_redo: bool) {
+    |                                  ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_clear_undo`
+
+warning: unused variable: `clear_redo`
+   --> src/undo.rs:379:52
+    |
+379 |     fn clear_internal(&mut self, clear_undo: bool, clear_redo: bool) {
+    |                                                    ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_clear_redo`
+
+warning: unused variable: `e`
+    --> src/undo.rs:1349:21
+     |
+1349 |                 let e = e.meta_mut().entry("test".to_string()).or_default();
+     |                     ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `txt_clone`
+    --> src/undo.rs:1347:17
+     |
+1347 |             let txt_clone = txt.clone();
+     |                 ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_txt_clone`
+
+warning: methods `last_id`, `is_item`, and `is_gc` are never used
+   --> src/block.rs:264:12
+    |
+221 | impl Block {
+    | ---------- methods in this implementation
+...
+264 |     pub fn last_id(&self) -> ID {
+    |            ^^^^^^^
+...
+281 |     pub fn is_item(&self) -> bool {
+    |            ^^^^^^^
+...
+291 |     pub fn is_gc(&self) -> bool {
+    |            ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `delete_as_cleanup` is never used
+   --> src/block.rs:632:19
+    |
+444 | impl ItemPtr {
+    | ------------ method in this implementation
+...
+632 |     pub(crate) fn delete_as_cleanup(&self, txn: &mut TransactionMut, is_local: bool) {
+    |                   ^^^^^^^^^^^^^^^^^
+
+warning: method `integrate` is never used
+    --> src/block.rs:1416:19
+     |
+1355 | impl BlockRange {
+     | --------------- method in this implementation
+...
+1416 |     pub(crate) fn integrate(&mut self, pivot: u32) -> bool {
+     |                   ^^^^^^^^^
+
+warning: method `contains` is never used
+   --> src/block_store.rs:300:12
+    |
+289 | impl BlockStore {
+    | --------------- method in this implementation
+...
+300 |     pub fn contains(&self, id: &ID) -> bool {
+    |            ^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_QUOTE` is never used
+   --> src/types/mod.rs:230:7
+    |
+230 | const WEAK_REF_FLAGS_QUOTE: u8 = 0b0000_0001;
+    |       ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_START_ASSOC` is never used
+   --> src/types/mod.rs:232:7
+    |
+232 | const WEAK_REF_FLAGS_START_ASSOC: u8 = 0b0000_0010;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_END_ASSOC` is never used
+   --> src/types/mod.rs:234:7
+    |
+234 | const WEAK_REF_FLAGS_END_ASSOC: u8 = 0b0000_0100;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_START_UNBOUNDED` is never used
+   --> src/types/mod.rs:236:7
+    |
+236 | const WEAK_REF_FLAGS_START_UNBOUNDED: u8 = 0b0000_1000;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_END_UNBOUNDED` is never used
+   --> src/types/mod.rs:238:7
+    |
+238 | const WEAK_REF_FLAGS_END_UNBOUNDED: u8 = 0b0001_0000;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_PARENT_ROOT` is never used
+   --> src/types/mod.rs:240:7
+    |
+240 | const WEAK_REF_FLAGS_PARENT_ROOT: u8 = 0b0010_0000;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `txn` is never read
+   --> src/types/mod.rs:538:5
+    |
+536 | pub(crate) struct Entries<'a, B, T> {
+    |                   ------- field in this struct
+537 |     iter: std::collections::hash_map::Iter<'a, Arc<str>, ItemPtr>,
+538 |     txn: B,
+    |     ^^^
+    |
+    = note: `Entries` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: method `as_id_set` is never used
+  --> src/update.rs:48:12
+   |
+28 | impl BlockSet {
+   | ------------- method in this implementation
+...
+48 |     pub fn as_id_set(&self) -> IdSet {
+   |            ^^^^^^^^^
+
+warning: associated functions `next_target` and `return_stack` are never used
+   --> src/update.rs:503:8
+    |
+169 | impl Update {
+    | ----------- associated functions in this implementation
+...
+503 |     fn next_target<'a, 'b>(
+    |        ^^^^^^^^^^^
+...
+526 |     fn return_stack(stack: Vec<Block>, refs: &mut BlockSet, remaining: &mut BlockSet) {
+    |        ^^^^^^^^^^^^
+
+warning: methods `forward`, `backward`, and `values` are never used
+   --> src/block_iter.rs:76:12
+    |
+ 18 | impl BlockIter {
+    | -------------- methods in this implementation
+...
+ 76 |     pub fn forward<T: ReadTxn>(&mut self, txn: &T, len: u32) {
+    |            ^^^^^^^
+...
+130 |     pub fn backward<T: ReadTxn>(&mut self, txn: &mut T, mut len: u32) {
+    |            ^^^^^^^^
+...
+369 |     pub fn values<'a, 'txn, T: ReadTxn>(
+    |            ^^^^^^
+
+warning: struct `Values` is never constructed
+   --> src/block_iter.rs:377:12
+    |
+377 | pub struct Values<'a, 'txn> {
+    |            ^^^^^^
+
+warning: associated function `new` is never used
+   --> src/block_iter.rs:383:8
+    |
+382 | impl<'a, 'txn> Values<'a, 'txn> {
+    | ------------------------------- associated function in this implementation
+383 |     fn new(iter: &'a mut BlockIter, txn: &'txn mut TransactionMut<'txn>) -> Self {
+    |        ^^^
+
+warning: method `remove_at` is never used
+   --> src/branch.rs:398:19
+    |
+222 | impl Branch {
+    | ----------- method in this implementation
+...
+398 |     pub(crate) fn remove_at(&self, txn: &mut TransactionMut, index: u32, len: u32) -> u32 {
+    |                   ^^^^^^^^^
+
+warning: method `inner_mut` is never used
+   --> src/ids.rs:548:19
+    |
+ 58 | impl<T: Merge> IdRanges<T> {
+    | -------------------------- method in this implementation
+...
+548 |     pub(crate) fn inner_mut(&mut self) -> &mut SmallVec<[(Range<u32>, T); 1]> {
+    |                   ^^^^^^^^^
+
+warning: field `txn` is never read
+   --> src/iter.rs:287:5
+    |
+286 | pub struct AsIter<'a, T, I> {
+    |            ------ field in this struct
+287 |     txn: &'a T,
+    |     ^^^
+    |
+    = note: `AsIter` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: methods `adjacent`, `contains_id`, `right`, and `left` are never used
+   --> src/slice.rs:164:12
+    |
+105 | impl ItemSlice {
+    | -------------- methods in this implementation
+...
+164 |     pub fn adjacent(&self) -> bool {
+    |            ^^^^^^^^
+...
+179 |     pub fn contains_id(&self, id: &ID) -> bool {
+    |            ^^^^^^^^^^^
+...
+249 |     pub fn right(&self) -> Option<ItemSlice> {
+    |            ^^^^^
+...
+269 |     pub fn left(&self) -> Option<ItemSlice> {
+    |            ^^^^
+
+warning: methods `within_range` and `get_item` are never used
+   --> src/sticky_index.rs:272:19
+    |
+ 51 | impl StickyIndex {
+    | ---------------- methods in this implementation
+...
+272 |     pub(crate) fn within_range(&self, ptr: Option<ItemPtr>) -> bool {
+    |                   ^^^^^^^^^^^^
+...
+287 |     pub(crate) fn get_item<T: ReadTxn>(&self, txn: &T) -> Option<ItemPtr> {
+    |                   ^^^^^^^^
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/event.rs:63:18
+   |
+63 |     pub fn added(&self) -> SubdocsEventIter {
+   |                  ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                  |
+   |                  the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+   |
+63 |     pub fn added(&self) -> SubdocsEventIter<'_> {
+   |                                            ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/event.rs:69:20
+   |
+69 |     pub fn removed(&self) -> SubdocsEventIter {
+   |                    ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                    |
+   |                    the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+69 |     pub fn removed(&self) -> SubdocsEventIter<'_> {
+   |                                              ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/event.rs:75:19
+   |
+75 |     pub fn loaded(&self) -> SubdocsEventIter {
+   |                   ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                   |
+   |                   the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+75 |     pub fn loaded(&self) -> SubdocsEventIter<'_> {
+   |                                             ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:358:20
+    |
+358 |     pub fn subdocs(&self) -> SubdocsIter {
+    |                    ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                    |
+    |                    the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+358 |     pub fn subdocs(&self) -> SubdocsIter<'_> {
+    |                                         ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:364:25
+    |
+364 |     pub fn subdoc_guids(&self) -> SubdocGuids {
+    |                         ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                         |
+    |                         the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+364 |     pub fn subdoc_guids(&self) -> SubdocGuids<'_> {
+    |                                              ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:444:28
+    |
+444 |     pub(crate) fn try_read(&self) -> Option<RwLockReadGuard<Store>> {
+    |                            ^^^^^            ^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                            |
+    |                            the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+444 |     pub(crate) fn try_read(&self) -> Option<RwLockReadGuard<'_, Store>> {
+    |                                                             +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:449:33
+    |
+449 |     pub(crate) fn read_blocking(&self) -> RwLockReadGuard<Store> {
+    |                                 ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                                 |
+    |                                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+449 |     pub(crate) fn read_blocking(&self) -> RwLockReadGuard<'_, Store> {
+    |                                                           +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:458:30
+    |
+458 |     pub(crate) fn read_async(&self) -> Read<Store> {
+    |                              ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                              |
+    |                              the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+458 |     pub(crate) fn read_async(&self) -> Read<'_, Store> {
+    |                                             +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:462:29
+    |
+462 |     pub(crate) fn try_write(&self) -> Option<RwLockWriteGuard<Store>> {
+    |                             ^^^^^            ^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                             |
+    |                             the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+462 |     pub(crate) fn try_write(&self) -> Option<RwLockWriteGuard<'_, Store>> {
+    |                                                               +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:467:34
+    |
+467 |     pub(crate) fn write_blocking(&self) -> RwLockWriteGuard<Store> {
+    |                                  ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                                  |
+    |                                  the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+467 |     pub(crate) fn write_blocking(&self) -> RwLockWriteGuard<'_, Store> {
+    |                                                             +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/store.rs:476:31
+    |
+476 |     pub(crate) fn write_async(&self) -> Write<Store> {
+    |                               ^^^^^     ^^^^^^^^^^^^ the same lifetime is hidden here
+    |                               |
+    |                               the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+476 |     pub(crate) fn write_async(&self) -> Write<'_, Store> {
+    |                                               +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/transaction.rs:168:18
+    |
+168 |     fn root_refs(&self) -> RootRefs {
+    |                  ^^^^^     ^^^^^^^^ the same lifetime is hidden here
+    |                  |
+    |                  the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+168 |     fn root_refs(&self) -> RootRefs<'_> {
+    |                                    ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/transaction.rs:175:21
+    |
+175 |     fn subdoc_guids(&self) -> SubdocGuids {
+    |                     ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                     |
+    |                     the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+175 |     fn subdoc_guids(&self) -> SubdocGuids<'_> {
+    |                                          ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/transaction.rs:181:16
+    |
+181 |     fn subdocs(&self) -> SubdocsIter {
+    |                ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                |
+    |                the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+181 |     fn subdocs(&self) -> SubdocsIter<'_> {
+    |                                     ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/types/mod.rs:911:17
+    |
+911 |     pub fn iter(&self) -> EventsIter {
+    |                 ^^^^^     ^^^^^^^^^^ the same lifetime is hidden here
+    |                 |
+    |                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+911 |     pub fn iter(&self) -> EventsIter<'_> {
+    |                                     ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> src/state_vector.rs:93:17
+   |
+93 |     pub fn iter(&self) -> std::collections::hash_map::Iter<ClientID, u32> {
+   |                 ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                 |
+   |                 the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+93 |     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, ClientID, u32> {
+   |                                                            +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/sync/awareness.rs:141:17
+    |
+141 |     pub fn iter(&self) -> AwarenessIter {
+    |                 ^^^^^     ^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                 |
+    |                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+141 |     pub fn iter(&self) -> AwarenessIter<'_> {
+    |                                        ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/test_utils.rs:472:18
+    |
+472 |     pub fn peers(&self) -> Peers {
+    |                  ^^^^^     ^^^^^ the same lifetime is hidden here
+    |                  |
+    |                  the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+472 |     pub fn peers(&self) -> Peers<'_> {
+    |                                 ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/test_utils.rs:528:14
+    |
+528 |     fn state(&self) -> MutexGuard<TestPeerState> {
+    |              ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |              |
+    |              the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+528 |     fn state(&self) -> MutexGuard<'_, TestPeerState> {
+    |                                   +++
+
+warning: `yrs` (lib test) generated 75 warnings (run `cargo fix --lib -p yrs --tests` to apply 45 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running unittests src/lib.rs (vendor/yrs/target/debug/deps/yrs-2b58778fe0cfe227)
+
+running 379 tests
+test alt::test::diff_updates_compatibility_v1 ... ok
+test alt::test::encode_state_vector_compatibility_v1 ... ok
+test alt::test::merge_updates_compatibility_v1 ... ok
+test alt::test::merge_updates_compatibility_v1_2 ... ok
+test any::test::decode_array_rejects_length_amplification ... ok
+test any::test::decode_map_rejects_length_amplification ... ok
+test any::test::number_encoding_yjs_compat ... ok
+test atomic::test::init_get ... ok
+test atomic::test::update ... ok
+test block::test::cached_item_lengths_survive_unicode_splits_and_squashes ... ok
+test block::test::splittable_string_len ... ok
+test block::test::splittable_string_push_str ... ok
+test block::test::splittable_string_split_str ... ok
+test doc::test::apply_snapshot_updates ... ok
+test doc::test::apply_update_basic_v1 ... ok
+test doc::test::apply_update_basic_v2 ... ok
+test doc::test::encode_basic ... ok
+test doc::test::encoding_buffer_overflow_errors ... ok
+test doc::test::force_gc ... ok
+test doc::test::force_gc_with_delete_set ... ok
+test doc::test::incremental_observe_update ... ok
+test doc::test::integrate ... ok
+test doc::test::integrate_block_with_parent_gc ... ok
+test doc::test::observe_after_transaction ... ok
+test doc::test::observe_transaction_cleanup ... ok
+test doc::test::on_update ... ok
+test doc::test::out_of_order_updates ... ok
+test doc::test::partially_duplicated_update ... ok
+test doc::test::pending_delete_out_of_order ... ok
+test doc::test::root_refs ... ok
+test doc::test::snapshot_non_splitting_text ... ok
+test doc::test::snapshots_splitting_text ... ok
+test doc::test::subdoc ... ok
+test doc::test::subdoc_auto_load_edge_cases ... ok
+test doc::test::subdoc_load_edge_cases ... ok
+test doc::test::to_json ... ok
+test doc::test::unobserve_from_callback ... ok
+test doc::test::uuid_generation ... ok
+test doc::test::ycrdt_issue_174 ... ok
+test doc::test::ypy_issue_32 ... ok
+test doc::test::yrb_issue_45 ... ok
+test encoding::serde::de::test::test_any_deserializer_int_does_not_fit_error ... ok
+test encoding::serde::de::test::test_any_deserializer_many_fields ... ok
+test encoding::serde::de::test::test_any_deserializer_multiple_borrows ... ok
+test encoding::serde::de::test::test_any_deserializer_nested_array ... ok
+test encoding::serde::de::test::test_any_deserializer_type_mismatch_error ... ok
+test encoding::serde::de::test::test_any_deserializer_undefined ... ok
+test encoding::serde::de::test::test_deserialize_any_from_array ... ok
+test encoding::serde::de::test::test_deserialize_any_from_bool ... ok
+test encoding::serde::de::test::test_deserialize_any_from_float ... ok
+test encoding::serde::de::test::test_deserialize_any_from_int ... ok
+test encoding::serde::de::test::test_deserialize_any_from_int_unrepresentable ... ok
+test encoding::serde::de::test::test_deserialize_any_from_map ... ok
+test encoding::serde::de::test::test_deserialize_any_from_nested_map ... ok
+test encoding::serde::de::test::test_deserialize_any_from_null ... ok
+test encoding::serde::de::test::test_deserialize_any_from_string ... ok
+test encoding::serde::de::test::test_deserialize_any_to_any ... ok
+test encoding::serde::ser::test::test_any_serializer_many_fields ... ok
+test encoding::serde::ser::test::test_any_serializer_nested_array ... ok
+test encoding::serde::ser::test::test_any_serializer_newtype_u64_within_bounds ... ok
+test encoding::serde::ser::test::test_any_serializer_non_string_keys_error ... ok
+test encoding::serde::ser::test::test_any_serializer_u64_error ... ok
+test encoding::serde::ser::test::test_serialize_any_to_any ... ok
+test encoding::serde::ser::test::test_serialize_any_to_array ... ok
+test encoding::serde::ser::test::test_serialize_any_to_bool ... ok
+test encoding::serde::ser::test::test_serialize_any_to_buffer ... ok
+test encoding::serde::ser::test::test_serialize_any_to_complex_map ... ok
+test encoding::serde::ser::test::test_serialize_any_to_float ... ok
+test encoding::serde::ser::test::test_serialize_any_to_int ... ok
+test encoding::serde::ser::test::test_serialize_any_to_map ... ok
+test encoding::serde::ser::test::test_serialize_any_to_null ... ok
+test encoding::serde::ser::test::test_serialize_any_to_string ... ok
+test encoding::serde::ser::test::test_serialize_any_to_undefined ... ok
+test encoding::serde::test::any_is_serde_json_convertible ... ok
+test encoding::serde::test::json_any_array ... ok
+test encoding::serde::test::json_any_bool ... ok
+test encoding::serde::test::json_any_map ... ok
+test encoding::serde::test::json_any_null ... ok
+test encoding::serde::test::json_any_number ... ok
+test encoding::serde::test::json_any_string ... ok
+test encoding::serde::test::test_any_to_json_roundtrip ... ok
+test encoding::serde::test::test_enum_untagged_any_roundtrip ... ok
+test encoding::serde::test::test_struct_any_roundtrip ... ok
+test encoding::test::encoding_any_prop ... ok
+test encoding::test::encoding_prop ... ok
+test id_map::test::am_doesnt_merge_overlapping_id_ranges_with_different_attributes ... ok
+test id_map::test::am_merge_construct_without_hole ... ok
+test id_map::test::am_merge_filter_out_empty_items ... ok
+test id_map::test::am_merge_filter_out_empty_items_2 ... ok
+test id_map::test::am_merge_filter_out_empty_items_4_middle ... ok
+test id_map::test::am_merge_filter_out_empty_items_5_start ... ok
+test id_map::test::am_merge_filter_out_empty_items_end ... ok
+test id_map::test::am_merge_merges_overlapping_id_ranges ... ok
+test id_map::test::as_id_set_merges_adjacent_ranges_with_different_values ... ok
+test id_map::test::attribution_encoding ... ignored
+test id_map::test::repeat_merging_mutliple_maps ... ok
+test id_map::test::repeat_random_deletes ... ok
+test id_map::test::repeat_random_diffing ... ok
+test id_map::test::repeat_random_diffing_2 ... ok
+test id_map::test::repeat_random_intersects ... ok
+test id_set::test::decode_rejects_range_length_amplification ... ok
+test id_set::test::deleted_blocks ... ok
+test id_set::test::deleted_blocks2 ... ok
+test id_set::test::id_range_compact ... ok
+test id_set::test::id_range_contains ... ok
+test id_set::test::id_range_encode_decode ... ok
+test id_set::test::id_range_exclude ... ok
+test id_set::test::id_range_intersect ... ok
+test id_set::test::id_range_merge_canonical ... ok
+test id_set::test::id_range_merge_continous ... ok
+test id_set::test::id_range_push ... ok
+test id_set::test::id_range_push_adjacency_merge ... ok
+test id_set::test::id_range_push_chain_absorb ... ok
+test id_set::test::id_range_push_front ... ok
+test id_set::test::id_range_push_out_of_order ... ok
+test id_set::test::id_range_push_skips_empty ... ok
+test id_set::test::id_range_push_subset_of_last ... ok
+test id_set::test::id_range_remove ... ok
+test id_set::test::id_range_subset_of ... ok
+test id_set::test::id_set_encode_decode ... ok
+test id_set::test::id_set_exclude ... ok
+test id_set::test::id_set_intersect ... ok
+test id_set::test::id_set_remove ... ok
+test ids::test::contains_clock_basic ... ok
+test ids::test::exclude_attributed ... ok
+test ids::test::exclude_partial ... ok
+test ids::test::id_map_inner_diff ... ok
+test ids::test::id_map_inner_diff_generic_u ... ok
+test ids::test::id_map_inner_intersect ... ok
+test ids::test::id_map_inner_merge ... ok
+test ids::test::insert_adjacent_coalesces ... ok
+test ids::test::insert_attributed_contained ... ok
+test ids::test::insert_attributed_overlapping_splits ... ok
+test ids::test::insert_attributed_same_attrs_coalesces ... ok
+test ids::test::insert_attributed_spanning_gap ... ok
+test ids::test::insert_contained_coalesces ... ok
+test ids::test::insert_empty_range_noop ... ok
+test ids::test::insert_non_overlapping ... ok
+test ids::test::insert_overlapping_coalesces ... ok
+test ids::test::insert_spanning_multiple_coalesces ... ok
+test ids::test::intersect_attributed ... ok
+test ids::test::intersect_no_overlap ... ok
+test ids::test::intersect_partial ... ok
+test ids::test::iter_blocks_empty_map ... ok
+test ids::test::iter_blocks_exact_range ... ok
+test ids::test::iter_blocks_multiple_clients ... ok
+test ids::test::iter_blocks_multiple_ranges_single_client ... ok
+test ids::test::iter_blocks_partial_overlap_multiple_clients_and_ranges ... ok
+test ids::test::iter_blocks_partial_range_trim_end_only ... ok
+test ids::test::iter_blocks_partial_range_trim_start_only ... ok
+test ids::test::iter_blocks_partial_range_trims_both_ends ... ok
+test ids::test::iter_blocks_range_past_client_blocks ... ok
+test ids::test::iter_blocks_range_spans_multiple_blocks ... ok
+test ids::test::iter_blocks_unknown_client ... ok
+test ids::test::merge_two_ranges ... ok
+test ids::test::remove_attributed_splits ... ok
+test ids::test::remove_beyond ... ok
+test ids::test::remove_entire ... ok
+test ids::test::remove_middle_splits ... ok
+test ids::test::remove_prefix ... ok
+test ids::test::remove_suffix ... ok
+test iter::test::range_bounded ... ok
+test iter::test::range_left_exclusive ... ok
+test iter::test::range_left_exclusive_2 ... ok
+test iter::test::range_left_unbounded ... ok
+test iter::test::range_right_exclusive ... ok
+test iter::test::range_right_exclusive_2 ... ok
+test iter::test::range_right_unbounded ... ok
+test iter::test::range_single_slice ... ok
+test iter::test::range_unbounded ... ok
+test json_path::iter_any::test::eval_descent_flat ... ok
+test json_path::iter_any::test::eval_descent_multi_level ... ok
+test json_path::iter_any::test::eval_index_union ... ok
+test json_path::iter_any::test::eval_member_full ... ok
+test json_path::iter_any::test::eval_member_negative_index ... ok
+test json_path::iter_any::test::eval_member_partial ... ok
+test json_path::iter_any::test::eval_member_slice ... ok
+test json_path::iter_any::test::eval_member_union ... ok
+test json_path::iter_any::test::eval_member_wildcard_array ... ok
+test json_path::iter_txn::test::eval_descent_flat ... ok
+test json_path::iter_txn::test::eval_index_union ... ok
+test json_path::iter_txn::test::eval_member_full ... ok
+test json_path::iter_txn::test::eval_member_negative_index ... ok
+test json_path::iter_txn::test::eval_member_partial ... ok
+test json_path::iter_txn::test::eval_member_slice ... ok
+test json_path::iter_txn::test::eval_member_union ... ok
+test json_path::iter_txn::test::eval_member_wildcard_array ... ok
+test json_path::iter_txn::test::eval_on_fresh_document ... ok
+test json_path::parse::test::parse_complex ... ok
+test json_path::parse::test::parse_current ... ok
+test json_path::parse::test::parse_descend ... ok
+test json_path::parse::test::parse_descend_gradual ... ok
+test json_path::parse::test::parse_dot_member ... ok
+test json_path::parse::test::parse_index ... ok
+test json_path::parse::test::parse_index_union ... ok
+test json_path::parse::test::parse_member_union ... ok
+test json_path::parse::test::parse_negative_index ... ok
+test json_path::parse::test::parse_predicate_error ... ok
+test json_path::parse::test::parse_quote_member ... ok
+test json_path::parse::test::parse_root ... ok
+test json_path::parse::test::parse_slice_bounded ... ok
+test json_path::parse::test::parse_slice_left_unbounded ... ok
+test json_path::parse::test::parse_slice_right_unbounded ... ok
+test json_path::parse::test::parse_slice_with_step ... ok
+test json_path::parse::test::parse_wildcard ... ok
+test json_path::parse::test::parse_wildcard_quoted ... ok
+test observer::test::subscribe_and_unsubscribe ... ok
+test observer::test::subscribe_during_trigger_replaces_callback ... ok
+test observer::test::subscribe_replaces_previous ... ok
+test observer::test::subscribers_predicate ... ok
+test observer::test::unsubscribe ... ok
+test observer::test::unsubscribe2 ... ok
+test observer::test::unsubscribe_during_trigger ... ok
+test state_vector::test::decode_rejects_length_amplification ... ok
+test state_vector::test::ordering ... ok
+test state_vector::test::ordering_missing_fields ... ok
+test state_vector::test::ordering_one_of ... ok
+test sticky_index::test::sticky_index_association_difference ... ok
+test sticky_index::test::sticky_index_case_1 ... ok
+test sticky_index::test::sticky_index_case_2 ... ok
+test sticky_index::test::sticky_index_case_3 ... ok
+test sticky_index::test::sticky_index_case_4 ... ok
+test sticky_index::test::sticky_index_case_5 ... ok
+test sticky_index::test::sticky_index_case_6 ... ok
+test sticky_index::test::sticky_index_is_yjs_compatible ... ok
+test sticky_index::test::sticky_index_nested_type_scope_resolves_to_type_end_when_right_associated ... ok
+test sync::awareness::test::awareness ... ok
+test sync::awareness::test::awareness_summary ... ok
+test sync::awareness::test::decode_rejects_length_amplification ... ok
+test sync::protocol::test::message_encoding ... ok
+test sync::protocol::test::protocol_awareness_sync ... ok
+test sync::protocol::test::protocol_init ... ok
+test sync::protocol::test::protocol_sync_step_update ... ok
+test sync::protocol::test::protocol_sync_steps ... ok
+test tests::compatibility_tests::array_insert ... ok
+test tests::compatibility_tests::map_set ... ok
+test tests::compatibility_tests::negative_zero_decoding_v2 ... ok
+test tests::compatibility_tests::state_vector ... ok
+test tests::compatibility_tests::text_insert_delete ... ok
+test tests::compatibility_tests::utf32_lib0_v2_decoding ... ok
+test tests::compatibility_tests::xml_fragment_insert ... ok
+test transact::test::multi_thread_transact_mut ... ok
+test types::array::test::basic ... ok
+test types::array::test::concurrent_insert_remove_with_3_conflicts ... ok
+test types::array::test::concurrent_insert_with_3_conflicts ... ok
+test types::array::test::fuzzy_test_300 ... ok
+test types::array::test::fuzzy_test_6 ... ok
+test types::array::test::get_at_removed_index ... ok
+test types::array::test::insert ... ok
+test types::array::test::insert_3_elements_try_re_get ... ok
+test types::array::test::insert_and_remove_event_changes ... ok
+test types::array::test::insert_and_remove_events ... ok
+test types::array::test::insert_empty_range ... ok
+test types::array::test::insert_then_merge_delete_on_sync ... ok
+test types::array::test::insertions_in_late_sync ... ok
+test types::array::test::iter_array_containing_types ... ok
+test types::array::test::len ... ok
+test types::array::test::multi_threading ... ok
+test types::array::test::observe_deep_event_order ... ok
+test types::array::test::push_back ... ok
+test types::array::test::push_front ... ok
+test types::array::test::removals_in_late_sync ... ok
+test types::array::test::remove_insert ... ok
+test types::array::test::target_on_local_and_remote ... ok
+test types::map::test::fuzzy_test_6 ... ok
+test types::map::test::get_as ... ok
+test types::map::test::get_or_init ... ok
+test types::map::test::insert_and_remove_events ... ok
+test types::map::test::map_basic ... ok
+test types::map::test::map_clear ... ok
+test types::map::test::map_clear_sync ... ok
+test types::map::test::map_get_set ... ok
+test types::map::test::map_get_set_remove_with_3_way_conflicts ... ok
+test types::map::test::map_get_set_sync_with_conflicts ... ok
+test types::map::test::map_get_set_with_3_way_conflicts ... ok
+test types::map::test::map_len_remove ... ok
+test types::map::test::multi_threading ... ok
+test types::map::test::observe_deep ... ok
+test types::map::test::test_delete_not_applied_map ... ok
+test types::map::test::try_update ... ok
+test types::text::test::append_concurrent ... ok
+test types::text::test::append_mutli_character_blocks ... ok
+test types::text::test::append_single_character_blocks ... ok
+test types::text::test::apply_update_with_missing_predecessors ... ok
+test types::text::test::basic_format ... ok
+test types::text::test::concurrent_insert_delete ... ok
+test types::text::test::delete_3_byte_character_from_middle_1 ... ok
+test types::text::test::delete_3_byte_character_from_middle_2 ... ok
+test types::text::test::delete_3_byte_character_from_middle_after_insert_and_format ... ok
+test types::text::test::delete_4_byte_character_from_middle ... ok
+test types::text::test::delete_multi_byte_character_from_middle_after_insert_and_format ... ok
+test types::text::test::delete_multiple_blocks_with_slicing ... ok
+test types::text::test::delete_multiple_whole_blocks ... ok
+test types::text::test::delete_single_block_end ... ok
+test types::text::test::delete_single_block_start ... ok
+test types::text::test::delete_slice_of_block ... ok
+test types::text::test::delta_snapshots ... ok
+test types::text::test::delta_with_embeds ... ok
+test types::text::test::delta_with_shared_ref ... ok
+test types::text::test::diff_range_with_snapshot_ahead_many_blocks ... ok
+test types::text::test::diff_range_with_snapshot_ahead_single_block ... ok
+test types::text::test::diff_with_embedded_items ... ok
+test types::text::test::embed_with_attributes ... ok
+test types::text::test::empty_delta_chunks ... ok
+test types::text::test::fuzzy_test_3 ... ok
+test types::text::test::insert_after_block ... ok
+test types::text::test::insert_after_delete ... ok
+test types::text::test::insert_and_remove_event_changes ... ok
+test types::text::test::insert_concurrent_in_the_middle ... ok
+test types::text::test::insert_concurrent_root ... ok
+test types::text::test::insert_empty_string ... ok
+test types::text::test::insert_empty_string_with_attributes ... ok
+test types::text::test::insert_inside_of_block ... ok
+test types::text::test::insert_string_with_no_attribute ... ok
+test types::text::test::issue_101 ... ok
+test types::text::test::multi_threading ... ok
+test types::text::test::multiline_format ... ok
+test types::text::test::observer ... ok
+test types::text::test::prepend_mutli_character_blocks ... ok
+test types::text::test::prepend_single_character_blocks ... ok
+test types::text::test::snapshot_delete_after ... ok
+test types::text::test::snapshots ... ok
+test types::text::test::text_diff_adjacent ... ok
+test types::text::test::text_remove_3_byte_range ... ok
+test types::text::test::text_remove_4_byte_range ... ok
+test types::text::test::yrs_delete ... ok
+test types::xml::test::event_observers ... ok
+test types::xml::test::format_attributes_decode_compatibility_v1 ... ok
+test types::xml::test::format_attributes_decode_compatibility_v2 ... ok
+test types::xml::test::insert_attribute ... ok
+test types::xml::test::issue_607 ... ok
+test types::xml::test::serialization ... ok
+test types::xml::test::serialization_compatibility ... ok
+test types::xml::test::siblings ... ok
+test types::xml::test::text_attributes ... ok
+test types::xml::test::text_attributes_any ... ok
+test types::xml::test::tree_walker ... ok
+test types::xml::test::xml_to_string ... ok
+test types::xml::test::xml_to_string_2 ... ok
+test types::xml::test::yrs_issue_636 ... ok
+test undo::test::consecutive_redo_bug ... ok
+test undo::test::double_undo ... ok
+test undo::test::github_issue_345 ... ok
+test undo::test::github_issue_345_part_2 ... ok
+test undo::test::issue_371 ... ok
+test undo::test::issue_371_2 ... ok
+test undo::test::issue_380 ... ok
+test undo::test::multi_doc_after_destroy ... ok
+test undo::test::multi_doc_undo ... ok
+test undo::test::nested_undo ... ok
+test undo::test::special_deletion_case ... ok
+test undo::test::undo_array ... ok
+test undo::test::undo_block_bug ... ok
+test undo::test::undo_delete_text_format ... ok
+test undo::test::undo_events ... ok
+test undo::test::undo_in_embed ... ok
+test undo::test::undo_map ... ok
+test undo::test::undo_stack_serialization ... ok
+test undo::test::undo_text ... ok
+test undo::test::undo_until_change_performed ... ok
+test undo::test::undo_xml ... ok
+test undo::test::undo_xml_bug ... ok
+test update::test::apply_update_filling_middle_of_skip ... ok
+test update::test::apply_update_filling_partial_skip ... ok
+test update::test::apply_update_pending_delete_set_not_lost ... ok
+test update::test::empty_update_v1 ... ok
+test update::test::empty_update_v2 ... ok
+test update::test::malformed_input::invalid_utf8_in_string_content_returns_error ... ok
+test update::test::malformed_input::no_single_byte_corruption_aborts ... ok
+test update::test::merge_pending_updates ... ok
+test update::test::pending_update_check ... ok
+test update::test::test_duplicate_updates ... ok
+test update::test::test_extends ... ok
+test update::test::test_multiple_clients_in_one_update ... ok
+test update::test::test_v2_encoding_of_fragmented_delete_set ... ok
+test update::test::update_decode ... ok
+test update::test::update_merge ... ok
+test update::test::update_state_vector_with_skips ... ok
+test update::test::update_v2_with_skips ... ok
+
+test result: ok. 378 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 2.00s
+

@@ -2,7 +2,7 @@
 
 Measured locally on 2026-10-22 with Rust 1.95.0, Iced 0.14, macOS/Apple silicon, release optimization, and the bundled Newsreader fonts. This records the current validated editor before organizational refactoring.
 
-The latest stage is [the CRDT foundation and measured integration](crdt-performance.md). Earlier stages remain below for historical comparison.
+The latest stage is [cached Yrs UTF-16 traversal](utf16-performance.md), following [the CRDT foundation and measured integration](crdt-performance.md). Earlier stages remain below for historical comparison.
 
 The later [viewport virtualization report](virtualization.md) records the next implementation and its comparisons against this baseline.
 

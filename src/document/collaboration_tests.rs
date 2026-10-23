@@ -472,3 +472,81 @@ fn replace_all_keeps_thousands_of_disjoint_matches_in_one_undo_group() {
     assert_eq!(document.source(), "term ".repeat(4200));
     oracle(&document);
 }
+
+#[test]
+fn fragmented_unicode_items_keep_byte_anchors_history_and_reopen_compatibility() {
+    let source = RICH.repeat(32);
+    let mut document = Document::new(source.clone());
+    // Split the original large item at disjoint scalar boundaries. Both inserted
+    // and retained spans contain unequal UTF-8/UTF-16 lengths.
+    let edits: Vec<_> = source
+        .match_indices("Last")
+        .map(|(point, _)| SourceEdit {
+            range: point..point + 4,
+            text: "新🦀e\u{301}".into(),
+        })
+        .collect();
+    document
+        .transact(&edits, EditOrigin::Human, None, true)
+        .unwrap();
+    oracle(&document);
+    let changed = document.source().to_owned();
+    let mut peer = Document::from_state(&document.collaboration.state()).unwrap();
+
+    // Force captures and resolutions beyond the small position cache, through
+    // many text items, while preserving both insertion affinities.
+    let anchors: Vec<_> = changed
+        .char_indices()
+        .step_by(7)
+        .flat_map(|(point, _)| {
+            [Assoc::Before, Assoc::After]
+                .map(|assoc| (point, assoc, document.collaboration.position(point, assoc)))
+        })
+        .collect();
+    for (point, _, anchor) in &anchors {
+        assert_eq!(document.collaboration.resolve(anchor), Some(*point));
+    }
+    let start = changed.find("日本").unwrap();
+    let end = changed.rfind("新").unwrap();
+    let reverse = document.collaboration.selection(Selection {
+        anchor: end,
+        head: start,
+    });
+    let composition = document
+        .collaboration
+        .composition_target(Selection::caret(start));
+    edit(&mut peer, 0..0, "peer 🧑‍💻\r\n", EditOrigin::Human);
+    document.receive(&peer.collaboration.state()).unwrap();
+    let prefix = "peer 🧑‍💻\r\n".len();
+    for (point, assoc, anchor) in &anchors {
+        // At the original initial gap, Before remains before the remote insert.
+        let expected = if *point == 0 && *assoc == Assoc::Before {
+            0
+        } else {
+            point + prefix
+        };
+        assert_eq!(document.collaboration.resolve(anchor), Some(expected));
+    }
+    assert_eq!(
+        document.collaboration.resolve_selection(&reverse),
+        Some(Selection {
+            anchor: end + prefix,
+            head: start + prefix
+        })
+    );
+    assert_eq!(
+        document.collaboration.resolve_composition(&composition),
+        Some(Selection::caret(start + prefix))
+    );
+    document.history(EditOrigin::Human, false).unwrap();
+    assert_eq!(document.source(), format!("peer 🧑‍💻\r\n{source}"));
+    document.history(EditOrigin::Human, true).unwrap();
+    assert_eq!(document.source(), format!("peer 🧑‍💻\r\n{changed}"));
+    oracle(&document);
+    peer.receive(&document.collaboration.state()).unwrap();
+    peer.receive(&document.collaboration.state()).unwrap();
+    assert_eq!(peer.source(), document.source());
+    let reopened = Document::from_state(&document.collaboration.state()).unwrap();
+    assert_eq!(reopened.source(), document.source());
+    oracle(&reopened);
+}

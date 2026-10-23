@@ -1,0 +1,625 @@
+[bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
+warning: unused imports: `BlockRange` and `Block`
+ --> vendor/yrs/src/transaction.rs:1:20
+  |
+1 | use crate::block::{Block, BlockRange, Item, ItemContent, ItemPosition, ItemPtr, Prelim, ID};
+  |                    ^^^^^  ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Block`
+ --> vendor/yrs/src/block_iter.rs:1:20
+  |
+1 | use crate::block::{Block, Item, ItemContent, ItemPtr, Prelim};
+  |                    ^^^^^
+
+warning: unused import: `ItemContent`
+ --> vendor/yrs/src/iter.rs:1:20
+  |
+1 | use crate::block::{ItemContent, ItemPtr};
+  |                    ^^^^^^^^^^^
+
+warning: unused imports: `SmallVec` and `smallvec`
+ --> vendor/yrs/src/iter.rs:4:16
+  |
+4 | use smallvec::{smallvec, SmallVec};
+  |                ^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `crate::utils::OptionExt`
+  --> vendor/yrs/src/doc.rs:10:5
+   |
+10 | use crate::utils::OptionExt;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: value assigned to `left` is never read
+   --> vendor/yrs/src/block.rs:494:24
+    |
+494 |         let mut left = None;
+    |                        ^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ptr`
+   --> vendor/yrs/src/block.rs:887:21
+    |
+887 |                 let ptr = BranchPtr::from(branch);
+    |                     ^^^ help: if this is intentional, prefix it with an underscore: `_ptr`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `ptr`
+   --> vendor/yrs/src/transaction.rs:778:13
+    |
+778 |         let ptr = item.clone();
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_ptr`
+
+warning: variable does not need to be mutable
+   --> vendor/yrs/src/transaction.rs:958:13
+    |
+958 |         let mut block = Item::new(
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> vendor/yrs/src/undo.rs:133:13
+    |
+133 |         let mut state = Arc::new(Inner {
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `clear_undo`
+   --> vendor/yrs/src/undo.rs:379:34
+    |
+379 |     fn clear_internal(&mut self, clear_undo: bool, clear_redo: bool) {
+    |                                  ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_clear_undo`
+
+warning: unused variable: `clear_redo`
+   --> vendor/yrs/src/undo.rs:379:52
+    |
+379 |     fn clear_internal(&mut self, clear_undo: bool, clear_redo: bool) {
+    |                                                    ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_clear_redo`
+
+warning: method `as_item` is never used
+   --> vendor/yrs/src/block.rs:198:12
+    |
+183 | impl<'a> BlockRef<'a> {
+    | --------------------- method in this implementation
+...
+198 |     pub fn as_item(&self) -> Option<&'a Item> {
+    |            ^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: methods `last_id`, `is_item`, and `is_gc` are never used
+   --> vendor/yrs/src/block.rs:264:12
+    |
+221 | impl Block {
+    | ---------- methods in this implementation
+...
+264 |     pub fn last_id(&self) -> ID {
+    |            ^^^^^^^
+...
+281 |     pub fn is_item(&self) -> bool {
+    |            ^^^^^^^
+...
+291 |     pub fn is_gc(&self) -> bool {
+    |            ^^^^^
+
+warning: method `delete_as_cleanup` is never used
+   --> vendor/yrs/src/block.rs:632:19
+    |
+444 | impl ItemPtr {
+    | ------------ method in this implementation
+...
+632 |     pub(crate) fn delete_as_cleanup(&self, txn: &mut TransactionMut, is_local: bool) {
+    |                   ^^^^^^^^^^^^^^^^^
+
+warning: method `integrate` is never used
+    --> vendor/yrs/src/block.rs:1416:19
+     |
+1355 | impl BlockRange {
+     | --------------- method in this implementation
+...
+1416 |     pub(crate) fn integrate(&mut self, pivot: u32) -> bool {
+     |                   ^^^^^^^^^
+
+warning: method `contains` is never used
+   --> vendor/yrs/src/block_store.rs:300:12
+    |
+289 | impl BlockStore {
+    | --------------- method in this implementation
+...
+300 |     pub fn contains(&self, id: &ID) -> bool {
+    |            ^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_QUOTE` is never used
+   --> vendor/yrs/src/types/mod.rs:230:7
+    |
+230 | const WEAK_REF_FLAGS_QUOTE: u8 = 0b0000_0001;
+    |       ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_START_ASSOC` is never used
+   --> vendor/yrs/src/types/mod.rs:232:7
+    |
+232 | const WEAK_REF_FLAGS_START_ASSOC: u8 = 0b0000_0010;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_END_ASSOC` is never used
+   --> vendor/yrs/src/types/mod.rs:234:7
+    |
+234 | const WEAK_REF_FLAGS_END_ASSOC: u8 = 0b0000_0100;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_START_UNBOUNDED` is never used
+   --> vendor/yrs/src/types/mod.rs:236:7
+    |
+236 | const WEAK_REF_FLAGS_START_UNBOUNDED: u8 = 0b0000_1000;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_END_UNBOUNDED` is never used
+   --> vendor/yrs/src/types/mod.rs:238:7
+    |
+238 | const WEAK_REF_FLAGS_END_UNBOUNDED: u8 = 0b0001_0000;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `WEAK_REF_FLAGS_PARENT_ROOT` is never used
+   --> vendor/yrs/src/types/mod.rs:240:7
+    |
+240 | const WEAK_REF_FLAGS_PARENT_ROOT: u8 = 0b0010_0000;
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `txn` is never read
+   --> vendor/yrs/src/types/mod.rs:538:5
+    |
+536 | pub(crate) struct Entries<'a, B, T> {
+    |                   ------- field in this struct
+537 |     iter: std::collections::hash_map::Iter<'a, Arc<str>, ItemPtr>,
+538 |     txn: B,
+    |     ^^^
+    |
+    = note: `Entries` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: method `as_id_set` is never used
+  --> vendor/yrs/src/update.rs:48:12
+   |
+28 | impl BlockSet {
+   | ------------- method in this implementation
+...
+48 |     pub fn as_id_set(&self) -> IdSet {
+   |            ^^^^^^^^^
+
+warning: associated functions `next_target` and `return_stack` are never used
+   --> vendor/yrs/src/update.rs:503:8
+    |
+169 | impl Update {
+    | ----------- associated functions in this implementation
+...
+503 |     fn next_target<'a, 'b>(
+    |        ^^^^^^^^^^^
+...
+526 |     fn return_stack(stack: Vec<Block>, refs: &mut BlockSet, remaining: &mut BlockSet) {
+    |        ^^^^^^^^^^^^
+
+warning: methods `forward`, `backward`, and `values` are never used
+   --> vendor/yrs/src/block_iter.rs:76:12
+    |
+ 18 | impl BlockIter {
+    | -------------- methods in this implementation
+...
+ 76 |     pub fn forward<T: ReadTxn>(&mut self, txn: &T, len: u32) {
+    |            ^^^^^^^
+...
+130 |     pub fn backward<T: ReadTxn>(&mut self, txn: &mut T, mut len: u32) {
+    |            ^^^^^^^^
+...
+369 |     pub fn values<'a, 'txn, T: ReadTxn>(
+    |            ^^^^^^
+
+warning: struct `Values` is never constructed
+   --> vendor/yrs/src/block_iter.rs:377:12
+    |
+377 | pub struct Values<'a, 'txn> {
+    |            ^^^^^^
+
+warning: associated function `new` is never used
+   --> vendor/yrs/src/block_iter.rs:383:8
+    |
+382 | impl<'a, 'txn> Values<'a, 'txn> {
+    | ------------------------------- associated function in this implementation
+383 |     fn new(iter: &'a mut BlockIter, txn: &'txn mut TransactionMut<'txn>) -> Self {
+    |        ^^^
+
+warning: method `remove_at` is never used
+   --> vendor/yrs/src/branch.rs:398:19
+    |
+222 | impl Branch {
+    | ----------- method in this implementation
+...
+398 |     pub(crate) fn remove_at(&self, txn: &mut TransactionMut, index: u32, len: u32) -> u32 {
+    |                   ^^^^^^^^^
+
+warning: method `inner_mut` is never used
+   --> vendor/yrs/src/ids.rs:548:19
+    |
+ 58 | impl<T: Merge> IdRanges<T> {
+    | -------------------------- method in this implementation
+...
+548 |     pub(crate) fn inner_mut(&mut self) -> &mut SmallVec<[(Range<u32>, T); 1]> {
+    |                   ^^^^^^^^^
+
+warning: trait `BlockIterator` is never used
+ --> vendor/yrs/src/iter.rs:7:18
+  |
+7 | pub(crate) trait BlockIterator: Iterator<Item = ItemPtr> + Sized {
+  |                  ^^^^^^^^^^^^^
+
+warning: trait `BlockSliceIterator` is never used
+  --> vendor/yrs/src/iter.rs:16:18
+   |
+16 | pub(crate) trait BlockSliceIterator: Iterator<Item = ItemSlice> + Sized {
+   |                  ^^^^^^^^^^^^^^^^^^
+
+warning: struct `RangeIter` is never constructed
+   --> vendor/yrs/src/iter.rs:106:19
+    |
+106 | pub(crate) struct RangeIter<I> {
+    |                   ^^^^^^^^^
+
+warning: associated items `new` and `begin` are never used
+   --> vendor/yrs/src/iter.rs:117:8
+    |
+113 | / impl<I> RangeIter<I>
+114 | | where
+115 | |     I: Iterator<Item = ItemPtr>,
+    | |________________________________- associated items in this implementation
+116 |   {
+117 |       fn new(iter: I, start: StickyIndex, end: StickyIndex) -> Self {
+    |          ^^^
+...
+126 |       fn begin(&mut self, start_offset: &mut u32) -> Option<ItemPtr> {
+    |          ^^^^^
+
+warning: enum `RangeIterState` is never used
+   --> vendor/yrs/src/iter.rs:234:6
+    |
+234 | enum RangeIterState {
+    |      ^^^^^^^^^^^^^^
+
+warning: struct `Values` is never constructed
+   --> vendor/yrs/src/iter.rs:245:19
+    |
+245 | pub(crate) struct Values<I> {
+    |                   ^^^^^^
+
+warning: associated function `new` is never used
+   --> vendor/yrs/src/iter.rs:251:8
+    |
+250 | impl<I> Values<I> {
+    | ----------------- associated function in this implementation
+251 |     fn new(iter: I) -> Self {
+    |        ^^^
+
+warning: field `txn` is never read
+   --> vendor/yrs/src/iter.rs:287:5
+    |
+286 | pub struct AsIter<'a, T, I> {
+    |            ------ field in this struct
+287 |     txn: &'a T,
+    |     ^^^
+    |
+    = note: `AsIter` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: methods `adjacent`, `contains_id`, `right`, and `left` are never used
+   --> vendor/yrs/src/slice.rs:164:12
+    |
+105 | impl ItemSlice {
+    | -------------- methods in this implementation
+...
+164 |     pub fn adjacent(&self) -> bool {
+    |            ^^^^^^^^
+...
+179 |     pub fn contains_id(&self, id: &ID) -> bool {
+    |            ^^^^^^^^^^^
+...
+249 |     pub fn right(&self) -> Option<ItemSlice> {
+    |            ^^^^^
+...
+269 |     pub fn left(&self) -> Option<ItemSlice> {
+    |            ^^^^
+
+warning: methods `within_range` and `get_item` are never used
+   --> vendor/yrs/src/sticky_index.rs:272:19
+    |
+ 51 | impl StickyIndex {
+    | ---------------- methods in this implementation
+...
+272 |     pub(crate) fn within_range(&self, ptr: Option<ItemPtr>) -> bool {
+    |                   ^^^^^^^^^^^^
+...
+287 |     pub(crate) fn get_item<T: ReadTxn>(&self, txn: &T) -> Option<ItemPtr> {
+    |                   ^^^^^^^^
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> vendor/yrs/src/event.rs:63:18
+   |
+63 |     pub fn added(&self) -> SubdocsEventIter {
+   |                  ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                  |
+   |                  the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+   |
+63 |     pub fn added(&self) -> SubdocsEventIter<'_> {
+   |                                            ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> vendor/yrs/src/event.rs:69:20
+   |
+69 |     pub fn removed(&self) -> SubdocsEventIter {
+   |                    ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                    |
+   |                    the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+69 |     pub fn removed(&self) -> SubdocsEventIter<'_> {
+   |                                              ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> vendor/yrs/src/event.rs:75:19
+   |
+75 |     pub fn loaded(&self) -> SubdocsEventIter {
+   |                   ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                   |
+   |                   the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+75 |     pub fn loaded(&self) -> SubdocsEventIter<'_> {
+   |                                             ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:358:20
+    |
+358 |     pub fn subdocs(&self) -> SubdocsIter {
+    |                    ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                    |
+    |                    the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+358 |     pub fn subdocs(&self) -> SubdocsIter<'_> {
+    |                                         ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:364:25
+    |
+364 |     pub fn subdoc_guids(&self) -> SubdocGuids {
+    |                         ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                         |
+    |                         the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+364 |     pub fn subdoc_guids(&self) -> SubdocGuids<'_> {
+    |                                              ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:444:28
+    |
+444 |     pub(crate) fn try_read(&self) -> Option<RwLockReadGuard<Store>> {
+    |                            ^^^^^            ^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                            |
+    |                            the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+444 |     pub(crate) fn try_read(&self) -> Option<RwLockReadGuard<'_, Store>> {
+    |                                                             +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:449:33
+    |
+449 |     pub(crate) fn read_blocking(&self) -> RwLockReadGuard<Store> {
+    |                                 ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                                 |
+    |                                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+449 |     pub(crate) fn read_blocking(&self) -> RwLockReadGuard<'_, Store> {
+    |                                                           +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:458:30
+    |
+458 |     pub(crate) fn read_async(&self) -> Read<Store> {
+    |                              ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                              |
+    |                              the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+458 |     pub(crate) fn read_async(&self) -> Read<'_, Store> {
+    |                                             +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:462:29
+    |
+462 |     pub(crate) fn try_write(&self) -> Option<RwLockWriteGuard<Store>> {
+    |                             ^^^^^            ^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                             |
+    |                             the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+462 |     pub(crate) fn try_write(&self) -> Option<RwLockWriteGuard<'_, Store>> {
+    |                                                               +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:467:34
+    |
+467 |     pub(crate) fn write_blocking(&self) -> RwLockWriteGuard<Store> {
+    |                                  ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                                  |
+    |                                  the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+467 |     pub(crate) fn write_blocking(&self) -> RwLockWriteGuard<'_, Store> {
+    |                                                             +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/store.rs:476:31
+    |
+476 |     pub(crate) fn write_async(&self) -> Write<Store> {
+    |                               ^^^^^     ^^^^^^^^^^^^ the same lifetime is hidden here
+    |                               |
+    |                               the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+476 |     pub(crate) fn write_async(&self) -> Write<'_, Store> {
+    |                                               +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/transaction.rs:168:18
+    |
+168 |     fn root_refs(&self) -> RootRefs {
+    |                  ^^^^^     ^^^^^^^^ the same lifetime is hidden here
+    |                  |
+    |                  the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+168 |     fn root_refs(&self) -> RootRefs<'_> {
+    |                                    ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/transaction.rs:175:21
+    |
+175 |     fn subdoc_guids(&self) -> SubdocGuids {
+    |                     ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                     |
+    |                     the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+175 |     fn subdoc_guids(&self) -> SubdocGuids<'_> {
+    |                                          ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/transaction.rs:181:16
+    |
+181 |     fn subdocs(&self) -> SubdocsIter {
+    |                ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                |
+    |                the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+181 |     fn subdocs(&self) -> SubdocsIter<'_> {
+    |                                     ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/types/mod.rs:911:17
+    |
+911 |     pub fn iter(&self) -> EventsIter {
+    |                 ^^^^^     ^^^^^^^^^^ the same lifetime is hidden here
+    |                 |
+    |                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+911 |     pub fn iter(&self) -> EventsIter<'_> {
+    |                                     ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+  --> vendor/yrs/src/state_vector.rs:93:17
+   |
+93 |     pub fn iter(&self) -> std::collections::hash_map::Iter<ClientID, u32> {
+   |                 ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+   |                 |
+   |                 the lifetime is elided here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+   |
+93 |     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, ClientID, u32> {
+   |                                                            +++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/yrs/src/sync/awareness.rs:141:17
+    |
+141 |     pub fn iter(&self) -> AwarenessIter {
+    |                 ^^^^^     ^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                 |
+    |                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+141 |     pub fn iter(&self) -> AwarenessIter<'_> {
+    |                                        ++++
+
+warning: `yrs` (lib) generated 58 warnings (run `cargo fix --lib -p yrs` to apply 27 suggestions)
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 26.82s
+     Running unittests src/lib.rs (target/release/deps/still-508656e959175f01)
+
+running 7 tests
+test app::application::performance::performance_crdt_churn ... crdt/churn blocks=10000 transactions=2000 locations=1000 cold=164.142458ms total=260.7535ms crdt=210.827932ms source_cache=49.711758ms initial_state_bytes=910476 churn_state_bytes=989430 source_bytes=910450
+crdt/reopen blocks=10000 total=113.92225ms checkpoint_bytes=989494
+crdt/churn blocks=50000 transactions=2000 locations=1000 cold=553.886958ms total=479.524958ms crdt=239.143662ms source_cache=240.177569ms initial_state_bytes=4574477 churn_state_bytes=4655078 source_bytes=4574450
+crdt/reopen blocks=50000 total=562.8085ms checkpoint_bytes=4655142
+ok
+test app::application::performance::performance_incremental_block_parsing ... blocks=10000 local_source_edits=100 elapsed=3.690375ms boundary_scan_bytes=37300 full_scan_equivalent_bytes=91065200
+blocks=50000 local_source_edits=100 elapsed=14.199041ms boundary_scan_bytes=37400 full_scan_equivalent_bytes=457465200
+ok
+test app::application::performance::performance_source_projection_updates ... blocks=10000 kind=word edits=100 source_including_crdt=4.341748ms crdt=1.207789ms source_cache=3.117836ms projection=43.61637ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91050050
+blocks=10000 kind=unicode-syntax edits=100 source_including_crdt=4.373578ms crdt=1.243078ms source_cache=3.118544ms projection=42.463754ms source_mirror_splice_bytes=37300 full_source_equivalent_bytes=91065200
+blocks=10000 kind=equal-length edits=100 source_including_crdt=1.516496ms crdt=1.013839ms source_cache=490.289µs projection=21.044704ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91045000
+blocks=50000 kind=word edits=100 source_including_crdt=25.37191ms crdt=5.103915ms source_cache=20.220956ms projection=260.314249ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457450050
+blocks=50000 kind=unicode-syntax edits=100 source_including_crdt=17.339621ms crdt=4.880876ms source_cache=12.431869ms projection=222.279629ms source_mirror_splice_bytes=37400 full_source_equivalent_bytes=457465200
+blocks=50000 kind=equal-length edits=100 source_including_crdt=5.808119ms crdt=4.857753ms source_cache=929.125µs projection=105.321748ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457445000
+ok
+test app::application::tests::performance_continuous_edit_projection ... Continuous 2000 blocks: load=125.403167ms, 100 native-buffer/source/projection edits=7.727958ms, mean=77.279µs
+ok
+test document::source::tests::performance_large_document_source_edits ... 6000 blocks: parse=8.758417ms, 1000 source edits=4.854625ms, per edit=4.854µs
+ok
+test editor::native_buffer::tests::performance_native_snapshots ... blocks=10000 bytes=400000 native_edits=100 full_snapshot=52.045708ms retained_snapshot=582.083µs full_snapshot_bytes=40015150 local_snapshot_bytes=19250
+blocks=50000 bytes=2000000 native_edits=100 full_snapshot=269.090042ms retained_snapshot=3.317417ms full_snapshot_bytes=200015150 local_snapshot_bytes=19250
+ok
+test editor::rich_layout::tests::performance_rich_layout_cache ... Rich 2000 blocks: 100 syntax disclosure + cached layouts=29.96725ms, mean=299.672µs
+Rich 2000 blocks: initial layout=18.000875ms, 100 projection + cached layouts=196.347375ms, mean=1.963475ms
+ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 131 filtered out; finished in 7.96s
+
+     Running unittests src/main.rs (target/release/deps/still-f9dfd1ad2f5b2dee)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
