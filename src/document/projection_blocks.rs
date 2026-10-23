@@ -458,7 +458,7 @@ mod tests {
         let old_offsets = (0..=source.len())
             .map(|offset| old_mapping.to_display(offset))
             .collect::<Vec<_>>();
-        document.replace(point..point, "x");
+        document.replace(point..point, "x").unwrap();
         assert!(projection.update_words(document.source(), Some(point + 1)));
         assert_full(&projection, document.source(), Some(point + 1));
         assert_eq!(source_storage, projection.source.as_ptr());
@@ -472,7 +472,7 @@ mod tests {
             &projection.change.as_ref().unwrap().previous
         ));
 
-        document.replace(point + 1..point + 1, "日本_");
+        document.replace(point + 1..point + 1, "日本_").unwrap();
         let id = Arc::clone(&projection.source_id);
         assert!(!projection.update_words(document.source(), Some(point + 8)));
         assert!(Arc::ptr_eq(&id, &projection.source_id));
@@ -538,7 +538,7 @@ mod tests {
                     ] {
                         let mut document = Document::new(source.clone());
                         let mut next = Projection::with_context(&source, Some(point));
-                        document.replace(point..point, inserted);
+                        document.replace(point..point, inserted).unwrap();
                         let Some(change) = &document.block_change else {
                             continue;
                         };
@@ -578,7 +578,7 @@ mod tests {
         ] {
             let start = document.source().find("\n\n").unwrap() + 2;
             let end = document.source().rfind("\n\nTail").unwrap();
-            document.replace(start..end, replacement);
+            document.replace(start..end, replacement).unwrap();
             let head = Some(start + replacement.len());
             if document
                 .block_change
@@ -607,7 +607,7 @@ mod tests {
         let mut document = Document::new(source.into());
         let mut old = Projection::with_context(source, Some(4));
         let point = source.find("words").unwrap();
-        document.replace(point..point, "日本");
+        document.replace(point..point, "日本").unwrap();
         let change = document.block_change.as_ref().unwrap();
         assert!(!old.update_blocks(document.source(), change, Some(point)));
         let mut stale = Projection::new(&format!("Other {source}"));

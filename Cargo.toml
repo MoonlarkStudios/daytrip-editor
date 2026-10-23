@@ -24,6 +24,12 @@ thiserror = "2"
 open = "5"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+yrs = { version = "=0.28.0", features = ["sync"] }
+blake3 = "1"
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+ropey = "=1.6.1"
+base64 = "=0.22.1"
 
 [dev-dependencies]
 iced_tiny_skia = "0.14"

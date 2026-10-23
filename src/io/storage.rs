@@ -16,6 +16,18 @@ pub enum FileError {
     Io(String),
     #[error("This file changed outside Still. Use Save As to keep both versions.")]
     Conflict,
+    #[error(
+        "Markdown differs from its collaboration checkpoint. Preserve both files; open a copy without metadata to import it as a new document."
+    )]
+    MetadataConflict,
+    #[error(
+        "The collaboration checkpoint is missing. Restore it, or import a separate Markdown copy to explicitly start a new history."
+    )]
+    MissingCheckpoint,
+    #[error(
+        "An interrupted save conflicts with external changes. Preserve the Markdown, .still, and .still-journal files for recovery."
+    )]
+    RecoveryConflict,
     #[error("This file exceeds Still's current 16 MiB document limit.")]
     TooLarge,
 }
@@ -30,6 +42,7 @@ impl From<std::io::Error> for FileError {
 pub struct LoadedFile {
     pub path: PathBuf,
     pub source: String,
+    pub collaboration: Option<crate::document::collaboration::ReplicaState>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -73,17 +86,12 @@ pub async fn save_preferences(preferences: Preferences) -> Result<(), FileError>
 
 pub async fn load(path: PathBuf) -> Result<LoadedFile, FileError> {
     tokio::task::spawn_blocking(move || {
-        // Read from one handle with a hard cap, even if the file grows after metadata.
-        use std::io::Read as _;
-        let file = fs::File::open(&path)?;
-        let mut bytes = Vec::new();
-        file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes)?;
-        if bytes.len() as u64 > MAX_FILE_BYTES {
-            return Err(FileError::TooLarge);
-        }
-        let source = String::from_utf8(bytes)
-            .map_err(|_| FileError::Io("This is not a UTF-8 text file.".into()))?;
-        Ok(LoadedFile { path, source })
+        let (source, collaboration) = crate::io::collaboration_store::load(&path)?;
+        Ok(LoadedFile {
+            path,
+            source,
+            collaboration,
+        })
     })
     .await
     .map_err(|error| FileError::Io(error.to_string()))?
@@ -108,7 +116,7 @@ pub async fn save(
     .map_err(|error| FileError::Io(error.to_string()))?
 }
 
-fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), FileError> {
+pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), FileError> {
     // Resolve symlinks so a save updates the target, rather than replacing the link.
     let target = if path.is_symlink() {
         fs::canonicalize(path)?

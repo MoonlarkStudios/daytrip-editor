@@ -14,13 +14,16 @@ use iced::{Alignment, Color, Element, Event, Fill, Font, Subscription, Task, The
 
 use crate::app::icon::{self, Icon};
 use crate::document::Document;
+use crate::document::collaboration::{AgentProposal, CompositionTarget, EditOrigin, ReplicaState};
 use crate::document::projection::{self, Projection};
 use crate::document::selection::Selection;
 use crate::document::table_edit;
 use crate::editor::markdown_view::MarkdownView;
 use crate::editor::native_buffer;
 use crate::editor::rich_editor::RichEditor;
+use crate::editor::source_editor::SourceEditor;
 use crate::editor::viewport;
+use crate::io::collaboration_store;
 use crate::io::image_store::{ImageStore, LoadedImage};
 use crate::io::storage::{self, FileError, LoadedFile, Preferences};
 use crate::theme::styles::{self, Button};
@@ -38,6 +41,9 @@ pub struct App {
     document: Document,
     editor: native_buffer::Buffer,
     native_edited: bool,
+    edit_error: Option<String>,
+    edit_rollback: Option<Selection>,
+    preserve_viewport_generation: Option<u64>,
     editor_source: bool,
     active: Option<usize>,
     mode: EditorMode,
@@ -49,6 +55,8 @@ pub struct App {
     path: Option<PathBuf>,
     display_name: String,
     saved_source: String,
+    saved_version: Option<String>,
+    saved_generation: u64,
     dirty: bool,
     busy: bool,
     loading: bool,
@@ -75,6 +83,23 @@ pub struct App {
 #[derive(Debug, Clone)]
 pub enum Message {
     Edit(text_editor::Action),
+    CommitComposition {
+        target: CompositionTarget,
+        text: String,
+    },
+    ShowCollaboration,
+    ExportReplica,
+    OpenReplica,
+    ReplicaChosen(Option<PathBuf>),
+    ReplicaOpened(Result<ReplicaState, FileError>),
+    ExportAgentSnapshot,
+    ImportReplica,
+    ImportProposal,
+    ReplicaLoaded(Result<ReplicaState, FileError>),
+    ProposalLoaded(Result<AgentProposal, FileError>),
+    CollaborationFinished(Result<(), FileError>),
+    AgentUndo,
+    AgentRedo,
     Select(Selection),
     SelectSource(Selection),
     EditorFocused(bool),
@@ -106,6 +131,8 @@ pub enum Message {
     Saved {
         result: Result<PathBuf, FileError>,
         source: Arc<String>,
+        version: String,
+        generation: u64,
     },
     Export,
     Exported(Result<Option<PathBuf>, FileError>),
@@ -167,6 +194,7 @@ pub enum SidebarTab {
 #[derive(Debug, Clone, Copy)]
 enum Overlay {
     Settings,
+    Collaboration,
     Unsaved,
 }
 
@@ -174,6 +202,7 @@ enum Overlay {
 enum Pending {
     New,
     Open(Option<PathBuf>),
+    Replica,
     Guide,
     Welcome,
     Close(window::Id),
@@ -198,6 +227,9 @@ impl App {
             document: Document::new(source.clone()),
             editor: native_buffer::Buffer::new(&projection.text),
             native_edited: false,
+            edit_error: None,
+            edit_rollback: None,
+            preserve_viewport_generation: None,
             editor_source: false,
             active: None,
             mode: EditorMode::Live,
@@ -209,6 +241,8 @@ impl App {
             path: None,
             display_name: "Welcome.md".into(),
             saved_source: source,
+            saved_version: None,
+            saved_generation: 0,
             dirty: false,
             busy: false,
             loading: false,
@@ -287,6 +321,10 @@ impl App {
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
+        #[cfg(test)]
+        {
+            self.document.costs = Default::default();
+        }
         let task = self.update_message(message);
         Task::batch([task, self.image_tasks()])
     }
@@ -302,7 +340,21 @@ impl App {
         if self.loading
             && matches!(
                 message,
+                Message::ReplicaLoaded(_)
+                    | Message::ProposalLoaded(_)
+                    | Message::AgentUndo
+                    | Message::AgentRedo
+            )
+        {
+            self.notification =
+                Some("Finish opening the document before importing changes.".into());
+            return Task::none();
+        }
+        if self.loading
+            && matches!(
+                message,
                 Message::Edit(_)
+                    | Message::CommitComposition { .. }
                     | Message::Select(_)
                     | Message::SelectSource(_)
                     | Message::EditorFocused(_)
@@ -319,6 +371,7 @@ impl App {
             && matches!(
                 message,
                 Message::Edit(_)
+                    | Message::CommitComposition { .. }
                     | Message::Select(_)
                     | Message::SelectSource(_)
                     | Message::EditorFocused(_)
@@ -346,6 +399,182 @@ impl App {
             return Task::none();
         }
         match message {
+            Message::CommitComposition { target, text } => {
+                if let Some(selection) = self.document.collaboration.resolve_composition(&target) {
+                    self.selection = selection.clamp(self.document.source());
+                    self.sync_editor();
+                    self.document.break_history_group();
+                    let task = self.edit(text_editor::Action::Edit(text_editor::Edit::Paste(
+                        Arc::new(text),
+                    )));
+                    self.document.break_history_group();
+                    return task;
+                }
+                self.notification =
+                    Some("The composition belongs to an earlier document session.".into());
+            }
+            Message::OpenReplica => {
+                self.overlay = None;
+                return self.request(Pending::Replica);
+            }
+            Message::ReplicaChosen(path) => {
+                if let Some(path) = path {
+                    return Task::perform(
+                        collaboration_store::read_replica(path),
+                        Message::ReplicaOpened,
+                    );
+                }
+                self.busy = false;
+                self.loading = false;
+            }
+            Message::ReplicaOpened(result) => {
+                self.busy = false;
+                self.loading = false;
+                match result.and_then(|state| {
+                    Document::from_state(&state).map_err(|error| FileError::Io(error.to_string()))
+                }) {
+                    Ok(document) => {
+                        self.install_document(document, None, "Offline copy.md".into());
+                        self.dirty = true;
+                        self.notification = Some("Compatible offline replica opened. Save a Markdown copy to keep its state.".into());
+                    }
+                    Err(error) => self.notification = Some(error.to_string()),
+                }
+            }
+            Message::ShowCollaboration => self.overlay = Some(Overlay::Collaboration),
+            Message::ExportReplica | Message::ExportAgentSnapshot => {
+                let snapshot = self.document.collaboration.snapshot(self.document.source());
+                let agent = matches!(message, Message::ExportAgentSnapshot);
+                return Task::perform(
+                    async move {
+                        let Some(file) = rfd::AsyncFileDialog::new()
+                            .set_file_name(if agent {
+                                "agent-snapshot.json"
+                            } else {
+                                "document.stillreplica"
+                            })
+                            .save_file()
+                            .await
+                        else {
+                            return Ok(());
+                        };
+                        if agent {
+                            collaboration_store::write_snapshot(file.path().to_owned(), snapshot)
+                                .await
+                        } else {
+                            collaboration_store::write_replica(
+                                file.path().to_owned(),
+                                snapshot.state,
+                            )
+                            .await
+                        }
+                    },
+                    Message::CollaborationFinished,
+                );
+            }
+            Message::ImportReplica => {
+                return Task::perform(
+                    async {
+                        let file = rfd::AsyncFileDialog::new()
+                            .add_filter("Still replica", &["stillreplica"])
+                            .pick_file()
+                            .await
+                            .ok_or_else(|| FileError::Io("Import cancelled".into()))?;
+                        collaboration_store::read_replica(file.path().to_owned()).await
+                    },
+                    Message::ReplicaLoaded,
+                );
+            }
+            Message::ImportProposal => {
+                return Task::perform(
+                    async {
+                        let file = rfd::AsyncFileDialog::new()
+                            .add_filter("Agent proposal", &["json"])
+                            .pick_file()
+                            .await
+                            .ok_or_else(|| FileError::Io("Import cancelled".into()))?;
+                        collaboration_store::read_proposal(file.path().to_owned()).await
+                    },
+                    Message::ProposalLoaded,
+                );
+            }
+            Message::ReplicaLoaded(result) => {
+                let selection = self.document.collaboration.selection(self.selection);
+                match result {
+                    Ok(state) => match self.document.receive(&state) {
+                        Ok(()) => {
+                            self.preserve_viewport_generation =
+                                Some(self.document.collaboration.generation());
+                            self.selection = self
+                                .document
+                                .collaboration
+                                .resolve_selection(&selection)
+                                .unwrap_or_default();
+                            self.sync_editor();
+                            self.changed();
+                            self.notification = Some("Approved replica merged".into());
+                        }
+                        Err(error) => self.notification = Some(error.to_string()),
+                    },
+                    Err(error) => self.notification = Some(error.to_string()),
+                }
+            }
+            Message::ProposalLoaded(result) => {
+                let selection = self.document.collaboration.selection(self.selection);
+                match result {
+                    Ok(proposal) => match self.document.accept(&proposal) {
+                        Ok(()) => {
+                            self.preserve_viewport_generation =
+                                Some(self.document.collaboration.generation());
+                            self.selection = self
+                                .document
+                                .collaboration
+                                .resolve_selection(&selection)
+                                .unwrap_or_default();
+                            self.sync_editor();
+                            self.changed();
+                            self.notification = Some(format!(
+                                "Accepted proposal from {}",
+                                self.document
+                                    .collaboration
+                                    .last_agent_author()
+                                    .unwrap_or(&proposal.author)
+                            ));
+                        }
+                        Err(error) => self.notification = Some(error.to_string()),
+                    },
+                    Err(error) => self.notification = Some(error.to_string()),
+                }
+            }
+            Message::AgentUndo | Message::AgentRedo => {
+                let selection = self.document.collaboration.selection(self.selection);
+                if self
+                    .document
+                    .history(EditOrigin::Agent, matches!(message, Message::AgentRedo))
+                    .unwrap_or_else(|error| {
+                        self.notification = Some(error.to_string());
+                        None
+                    })
+                    .is_some()
+                {
+                    self.preserve_viewport_generation =
+                        Some(self.document.collaboration.generation());
+                    self.selection = self
+                        .document
+                        .collaboration
+                        .resolve_selection(&selection)
+                        .unwrap_or_default();
+                    self.sync_editor();
+                    self.changed();
+                }
+            }
+            Message::CollaborationFinished(result) => {
+                self.notification = Some(match result {
+                    Ok(()) => "Collaboration file exported".into(),
+                    Err(error) => error.to_string(),
+                })
+            }
+
             Message::Edit(action) => return self.edit(action),
             Message::Select(selection) => {
                 if self.mode == EditorMode::Live {
@@ -400,10 +629,12 @@ impl App {
                 .nth(task);
                 if let Some((done, range)) = marker {
                     self.document.break_history_group();
-                    self.document.replace(
-                        start + range.start..start + range.end,
-                        if done { "[ ]" } else { "[x]" },
-                    );
+                    self.document
+                        .replace(
+                            start + range.start..start + range.end,
+                            if done { "[ ]" } else { "[x]" },
+                        )
+                        .unwrap_or_else(|error| self.edit_error = Some(error.to_string()));
                     self.sync_editor();
                     self.changed();
                 }
@@ -419,9 +650,16 @@ impl App {
             Message::Format(format) => return self.format(format),
             Message::Undo | Message::Redo => {
                 let selection = if matches!(message, Message::Undo) {
-                    self.document.undo()
+                    self.document.history(EditOrigin::Human, false)
                 } else {
-                    self.document.redo()
+                    self.document.history(EditOrigin::Human, true)
+                };
+                let selection = match selection {
+                    Ok(selection) => selection,
+                    Err(error) => {
+                        self.notification = Some(error.to_string());
+                        return Task::none();
+                    }
                 };
                 if let Some(selection) = selection {
                     if self.mode == EditorMode::Read {
@@ -456,11 +694,31 @@ impl App {
                 self.loading = false;
                 match result {
                     Ok(file) => {
-                        self.set_document(
-                            file.source,
+                        let version = file
+                            .collaboration
+                            .as_ref()
+                            .map(collaboration_store::version);
+                        let document = match file.collaboration {
+                            Some(state) => match Document::from_state(&state) {
+                                Ok(document) if document.source() == file.source => document,
+                                Ok(_) => {
+                                    self.notification =
+                                        Some(FileError::MetadataConflict.to_string());
+                                    return Task::none();
+                                }
+                                Err(error) => {
+                                    self.notification = Some(error.to_string());
+                                    return Task::none();
+                                }
+                            },
+                            None => Document::new(file.source),
+                        };
+                        self.install_document(
+                            document,
                             Some(file.path.clone()),
                             filename(&file.path),
                         );
+                        self.saved_version = version;
                         self.remember(file.path);
                         return Task::batch([
                             self.persist_preferences(),
@@ -470,14 +728,22 @@ impl App {
                     Err(error) => self.notification = Some(error.to_string()),
                 }
             }
-            Message::Saved { result, source } => {
+            Message::Saved {
+                result,
+                source,
+                version,
+                generation,
+            } => {
                 self.busy = false;
                 match result {
                     Ok(path) => {
                         self.path = Some(path.clone());
                         self.display_name = filename(&path);
                         self.saved_source = (*source).clone();
-                        self.dirty = self.document.source() != self.saved_source;
+                        self.saved_version = Some(version);
+                        self.saved_generation = generation;
+                        self.dirty = self.document.source() != self.saved_source
+                            || self.document.collaboration.generation() != self.saved_generation;
                         self.remember(path);
                         self.notification = Some("Document saved".into());
                         if !self.dirty
@@ -662,7 +928,9 @@ impl App {
                         return Task::none();
                     }
                     self.document.break_history_group();
-                    self.document.replace(range, &self.replacement);
+                    self.document
+                        .replace(range, &self.replacement)
+                        .unwrap_or_else(|error| self.edit_error = Some(error.to_string()));
                     self.sync_editor();
                     self.changed();
                     self.sync_editor();
@@ -682,10 +950,27 @@ impl App {
                         Some("Replacement would exceed the 16 MiB document limit.".into());
                     return Task::none();
                 }
-                let count = self.document.replace_all(&self.query, &self.replacement);
+                let selection = self.document.collaboration.selection(self.selection);
+                let count = self
+                    .document
+                    .replace_all(&self.query, &self.replacement)
+                    .unwrap_or_else(|error| {
+                        self.edit_error = Some(error.to_string());
+                        0
+                    });
+                self.selection = self
+                    .document
+                    .collaboration
+                    .resolve_selection(&selection)
+                    .unwrap_or_default();
+                self.preserve_viewport_generation = Some(self.document.collaboration.generation());
                 self.active = None;
+                let failed = self.edit_error.is_some();
                 self.changed();
                 self.sync_editor();
+                if failed {
+                    return Task::none();
+                }
                 self.notification = Some(format!(
                     "Replaced {count} occurrence{}",
                     if count == 1 { "" } else { "s" }
@@ -724,9 +1009,23 @@ impl App {
         Task::none()
     }
 
+    fn commit_local(
+        &mut self,
+        range: Range<usize>,
+        text: &str,
+        before: Selection,
+        after: Selection,
+    ) {
+        if let Err(error) = self.document.replace_edit(range, text, before, after) {
+            self.edit_error = Some(error.to_string());
+            self.edit_rollback = Some(before);
+        }
+    }
+
     fn changed(&mut self) {
-        self.dirty = self.document.source() != self.saved_source;
-        self.notification = None;
+        self.dirty = self.document.source() != self.saved_source
+            || self.document.collaboration.generation() != self.saved_generation;
+        self.notification = self.edit_error.take();
         self.refresh_matches();
     }
 
@@ -843,7 +1142,7 @@ impl App {
                 {
                     self.document.break_history_group();
                     self.selection = Selection::caret(line_start);
-                    self.document.replace_edit(
+                    self.commit_local(
                         line_start..line_start + prefix.length,
                         "",
                         before,
@@ -871,8 +1170,7 @@ impl App {
                         format!("\n{}", prefix.continuation)
                     };
                     self.selection = Selection::caret(range.start + replacement.len());
-                    self.document
-                        .replace_edit(range, &replacement, before, self.selection);
+                    self.commit_local(range, &replacement, before, self.selection);
                     self.sync_editor();
                     self.changed();
                     self.document.break_history_group();
@@ -942,8 +1240,7 @@ impl App {
             self.sync_editor();
             return Task::none();
         }
-        self.document
-            .replace_edit(edit.range, &edit.text, before, edit.selection);
+        self.commit_local(edit.range, &edit.text, before, edit.selection);
         self.selection = edit.selection;
         self.sync_editor();
         self.changed();
@@ -956,6 +1253,9 @@ impl App {
     /// Updates the existing native buffer with a minimal splice, keeping its
     /// widget state (including drag selection and IME preedit) alive.
     fn sync_editor(&mut self) {
+        if let Some(selection) = self.edit_rollback.take() {
+            self.selection = selection;
+        }
         self.selection = self.selection.clamp(self.document.source());
         let caret =
             (self.mode == EditorMode::Live && self.editor_focused).then_some(self.selection.head);
@@ -1006,7 +1306,7 @@ impl App {
                     && Arc::ptr_eq(&previous_highlights, &change.previous)
             });
             let changes = regions.map_or_else(
-                || vec![projection::difference(current, target)],
+                || native_buffer::synchronization_changes(current, target),
                 |change| {
                     change
                         .regions
@@ -1052,8 +1352,7 @@ impl App {
         self.document.break_history_group();
         let before = self.selection;
         self.selection = edit.selection;
-        self.document
-            .replace_edit(edit.range, &edit.text, before, self.selection);
+        self.commit_local(edit.range, &edit.text, before, self.selection);
         self.sync_editor();
         self.changed();
         self.document.break_history_group();
@@ -1170,8 +1469,7 @@ impl App {
                     return Task::none();
                 }
                 self.document.break_history_group();
-                self.document
-                    .replace_edit(edit.range, &edit.text, self.selection, edit.selection);
+                self.commit_local(edit.range, &edit.text, self.selection, edit.selection);
                 self.selection = edit.selection;
                 self.sync_editor();
                 self.changed();
@@ -1235,7 +1533,7 @@ impl App {
                     Some("Formatting would exceed the 16 MiB document limit.".into());
                 return Task::none();
             }
-            self.document.replace_edit(
+            self.commit_local(
                 line_start..line_start,
                 &replacement,
                 before,
@@ -1322,13 +1620,31 @@ impl App {
                     )
                 };
             }
+            Pending::Replica => {
+                self.busy = true;
+                self.loading = true;
+                return Task::perform(
+                    async {
+                        rfd::AsyncFileDialog::new()
+                            .add_filter("Still replica", &["stillreplica"])
+                            .pick_file()
+                            .await
+                            .map(|file| file.path().to_owned())
+                    },
+                    Message::ReplicaChosen,
+                );
+            }
             Pending::Close(id) => return window::close(id),
         }
         operation::snap_to(SCROLL, scrollable::RelativeOffset::START)
     }
 
     fn set_document(&mut self, source: String, path: Option<PathBuf>, name: String) {
-        self.document = Document::new(source.clone());
+        self.install_document(Document::new(source), path, name);
+    }
+
+    fn install_document(&mut self, document: Document, path: Option<PathBuf>, name: String) {
+        self.document = document;
         self.projection = Projection::new(self.document.source());
         self.projection_revision = Some(self.document.revision);
         self.editor_source = self.mode == EditorMode::Source;
@@ -1338,8 +1654,13 @@ impl App {
             &self.projection.text
         });
         self.native_edited = false;
+        self.edit_error = None;
+        self.edit_rollback = None;
+        self.preserve_viewport_generation = None;
         self.editor_focused = false;
-        self.saved_source = source;
+        self.saved_source = self.document.source().to_owned();
+        self.saved_version = None;
+        self.saved_generation = 0;
         self.path = path;
         self.display_name = name;
         self.dirty = false;
@@ -1360,6 +1681,14 @@ impl App {
         let expected = path.as_ref().map(|_| self.saved_source.clone());
         let source = Arc::new(self.document.source().to_owned());
         let result_source = Arc::clone(&source);
+        let state = self.document.collaboration.state();
+        let version = collaboration_store::version(&state);
+        let generation = self.document.collaboration.generation();
+        let expected_version = if save_as {
+            None
+        } else {
+            self.saved_version.clone()
+        };
         let name = self.display_name.clone();
         Task::perform(
             async move {
@@ -1375,11 +1704,20 @@ impl App {
                         .path()
                         .to_path_buf()
                 };
-                storage::save(path, (*source).clone(), expected).await
+                collaboration_store::save_document(
+                    path,
+                    (*source).clone(),
+                    state,
+                    expected,
+                    expected_version,
+                )
+                .await
             },
             move |result| Message::Saved {
                 result,
                 source: Arc::clone(&result_source),
+                version: version.clone(),
+                generation,
             },
         )
     }
@@ -1432,6 +1770,7 @@ impl App {
             .on_press(Message::CloseOverlay);
             let modal = match overlay {
                 Overlay::Settings => self.settings_view(),
+                Overlay::Collaboration => self.collaboration_view(),
                 Overlay::Unsaved => self.unsaved_view(),
             };
             layers = layers
@@ -1703,6 +2042,10 @@ impl App {
                 &self.images,
                 editor_binding,
             )
+            .collaboration(&self.document.collaboration)
+            .preserve_viewport(
+                self.preserve_viewport_generation == Some(self.document.collaboration.generation()),
+            )
             .base(self.path.as_deref().and_then(std::path::Path::parent))
             .zoom(self.zoom)
             .selection(self.selection)
@@ -1725,15 +2068,15 @@ impl App {
             .style(styles::editor(tokens))
             .placeholder("Begin anywhere…")
             .key_binding(editor_binding);
-        base.highlight(
+        let base = base.highlight(
             "md",
             if tokens.canvas.r < 0.5 {
                 iced::highlighter::Theme::Base16Ocean
             } else {
                 iced::highlighter::Theme::InspiredGitHub
             },
-        )
-        .into()
+        );
+        SourceEditor::new(base.into(), &self.document.collaboration, self.selection).into()
     }
 
     fn format_bar(&self) -> Element<'_, Message> {
@@ -1890,6 +2233,22 @@ impl App {
         .into()
     }
 
+    fn collaboration_view(&self) -> Element<'_, Message> {
+        let tokens = self.resolved_theme.tokens;
+        container(column![
+            text("Offline collaboration").size(23),
+            text("Export a shared replica for offline writing, or a versioned source snapshot for an agent. Importing applies approved changes to this document.").size(13).color(tokens.muted),
+            self.small_button("Open replica as offline copy…", Message::OpenReplica, false),
+            self.small_button("Export replica…", Message::ExportReplica, false),
+            self.small_button("Export agent snapshot…", Message::ExportAgentSnapshot, false),
+            self.small_button("Merge approved replica…", Message::ImportReplica, false),
+            self.small_button("Accept agent proposal…", Message::ImportProposal, false),
+            row![self.small_button("Undo agent", Message::AgentUndo, false), self.small_button("Redo agent", Message::AgentRedo, false)].spacing(12),
+            text(format!("Document {} · Writer {}", self.document.collaboration.id(), self.document.collaboration.replica_id())).size(10).color(tokens.faint),
+            self.small_button("Done", Message::CloseOverlay, true),
+        ].spacing(16)).padding(30).width(540).style(styles::card(tokens)).into()
+    }
+
     fn settings_view(&self) -> Element<'_, Message> {
         let tokens = self.resolved_theme.tokens;
         let heading = row![
@@ -1979,9 +2338,7 @@ impl App {
                 shortcuts,
                 space().height(4),
                 row![
-                    text("Still 0.1 · Built with Iced & Rust")
-                        .size(11)
-                        .color(tokens.faint),
+                    self.small_button("Collaboration…", Message::ShowCollaboration, false),
                     space::horizontal(),
                     self.small_button("Done", Message::CloseOverlay, true)
                 ]
@@ -2661,6 +3018,8 @@ mod tests {
             Message::Saved {
                 result: Ok("/tmp/test.md".into()),
                 source: Arc::new("Before".into()),
+                version: "test".into(),
+                generation: 0,
             },
         );
         assert!(app.dirty);

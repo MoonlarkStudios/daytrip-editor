@@ -1,0 +1,70 @@
+
+running 1 test
+test app::application::performance::large_document_interactions ... memory/source-load rss_kib=110880
+
+blocks=10000 bytes=910450 load=164.075625ms layout_counts=(44, 52)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=10.324/10.324/10.324ms draw=0.021/0.021/0.021ms raster=4.181/4.181/4.181ms total=14.526/14.526/14.526ms (p50/p95/max)
+memory/cold rss_kib=119856
+jump/distant n=10 input=0.000/0.000/0.000ms update=2.084/2.435/2.435ms layout=1.008/1.204/1.204ms draw=0.002/0.005/0.005ms raster=1.204/1.685/1.685ms total=4.241/4.978/4.978ms (p50/p95/max)
+memory/distant-jumps rss_kib=126144
+typing/start n=30 input=0.002/0.008/0.010ms update=0.873/1.590/2.011ms layout=0.187/0.294/0.354ms draw=0.002/0.004/0.004ms raster=1.008/1.250/1.253ms total=2.129/2.786/3.225ms (p50/p95/max)
+typing/middle n=30 input=0.002/0.006/0.013ms update=0.773/1.279/1.425ms layout=0.155/0.227/0.373ms draw=0.002/0.006/0.007ms raster=0.906/1.505/1.621ms total=1.863/2.611/2.958ms (p50/p95/max)
+typing/end n=30 input=0.001/0.016/0.020ms update=0.738/0.979/17.770ms layout=0.037/0.110/2.604ms draw=0.002/0.004/0.005ms raster=0.793/0.980/1.080ms total=1.587/1.894/21.471ms (p50/p95/max)
+disclosure n=30 input=0.000/0.000/0.000ms update=1.818/2.159/2.381ms layout=0.176/0.340/0.359ms draw=0.002/0.004/0.008ms raster=0.889/1.015/1.086ms total=3.003/3.421/3.553ms (p50/p95/max)
+selection/local n=30 input=0.000/0.000/0.000ms update=0.235/0.292/0.307ms layout=0.001/0.004/0.005ms draw=0.001/0.008/0.011ms raster=0.850/1.046/1.128ms total=1.085/1.287/1.378ms (p50/p95/max)
+selection/half-document n=30 input=0.000/0.000/0.000ms update=0.232/0.276/0.281ms layout=0.001/0.003/0.003ms draw=0.002/0.008/0.011ms raster=1.074/1.236/1.264ms total=1.303/1.480/1.492ms (p50/p95/max)
+scroll n=30 input=0.030/0.234/0.292ms update=0.000/0.000/0.000ms layout=0.000/0.001/0.003ms draw=0.002/0.014/0.015ms raster=1.311/1.721/1.797ms total=1.351/1.774/1.833ms (p50/p95/max)
+selection/keyboard n=30 input=0.002/0.008/0.023ms update=0.235/1.961/2.188ms layout=0.001/2.349/2.582ms draw=0.002/0.006/0.008ms raster=0.952/1.359/1.365ms total=1.250/5.264/5.864ms (p50/p95/max)
+selection/drag n=30 input=0.003/0.007/0.012ms update=0.254/2.352/2.460ms layout=0.001/0.356/0.386ms draw=0.002/0.005/0.008ms raster=1.186/1.425/1.668ms total=1.493/3.961/4.191ms (p50/p95/max)
+typing/syntax-fallback n=30 input=0.000/0.000/0.000ms update=0.748/1.702/1.779ms layout=0.152/0.265/0.310ms draw=0.002/0.004/0.007ms raster=0.885/1.070/1.081ms total=1.928/2.964/2.976ms (p50/p95/max)
+ime/preedit n=1 input=0.002/0.002/0.002ms update=0.000/0.000/0.000ms layout=0.000/0.000/0.000ms draw=0.003/0.003/0.003ms raster=0.852/0.852/0.852ms total=0.857/0.857/0.857ms (p50/p95/max)
+ime/commit n=1 input=0.001/0.001/0.001ms update=1.119/1.119/1.119ms layout=0.901/0.901/0.901ms draw=0.002/0.002/0.002ms raster=1.251/1.251/1.251ms total=3.275/3.275/3.275ms (p50/p95/max)
+undo/ime n=1 input=0.000/0.000/0.000ms update=1.164/1.164/1.164ms layout=0.221/0.221/0.221ms draw=0.002/0.002/0.002ms raster=0.929/0.929/0.929ms total=2.315/2.315/2.315ms (p50/p95/max)
+redo/ime n=1 input=0.000/0.000/0.000ms update=0.712/0.712/0.712ms layout=0.253/0.253/0.253ms draw=0.002/0.002/0.002ms raster=0.988/0.988/0.988ms total=1.954/1.954/1.954ms (p50/p95/max)
+final_layout_counts=(65, 78)
+memory/final rss_kib=150688
+memory/source-load rss_kib=457568
+
+blocks=50000 bytes=4574450 load=725.126458ms layout_counts=(44, 52)
+cold n=1 input=0.000/0.000/0.000ms update=0.000/0.000/0.000ms layout=13.857/13.857/13.857ms draw=0.006/0.006/0.006ms raster=1.618/1.618/1.618ms total=15.481/15.481/15.481ms (p50/p95/max)
+memory/cold rss_kib=462304
+jump/distant n=10 input=0.000/0.000/0.000ms update=13.283/15.339/15.339ms layout=1.246/1.532/1.532ms draw=0.003/0.004/0.004ms raster=1.260/1.523/1.523ms total=15.902/17.865/17.865ms (p50/p95/max)
+memory/distant-jumps rss_kib=578624
+typing/start n=30 input=0.003/0.008/0.008ms update=4.463/7.660/8.346ms layout=0.379/0.481/0.488ms draw=0.002/0.004/0.004ms raster=0.985/1.188/1.289ms total=5.905/8.971/9.688ms (p50/p95/max)
+typing/middle n=30 input=0.002/0.008/0.009ms update=4.389/6.195/6.220ms layout=0.278/0.390/0.400ms draw=0.003/0.008/0.018ms raster=0.897/1.022/1.057ms total=5.511/7.325/7.345ms (p50/p95/max)
+typing/end n=30 input=0.003/0.008/0.018ms update=3.936/4.988/102.289ms layout=0.060/0.119/13.668ms draw=0.003/0.007/0.008ms raster=0.812/0.953/0.987ms total=4.835/5.825/116.790ms (p50/p95/max)
+disclosure n=30 input=0.000/0.000/0.000ms update=14.251/15.800/16.240ms layout=0.292/0.405/0.586ms draw=0.003/0.008/0.010ms raster=0.900/1.082/1.169ms total=15.527/16.985/17.493ms (p50/p95/max)
+selection/local n=30 input=0.000/0.000/0.000ms update=1.205/1.350/1.553ms layout=0.002/0.005/0.006ms draw=0.003/0.005/0.005ms raster=0.900/1.104/1.119ms total=2.147/2.329/2.443ms (p50/p95/max)
+selection/half-document n=30 input=0.000/0.000/0.000ms update=1.185/1.369/1.601ms layout=0.002/0.006/0.006ms draw=0.004/0.009/0.010ms raster=1.097/1.257/1.312ms total=2.262/2.618/2.693ms (p50/p95/max)
+scroll n=30 input=0.035/0.214/0.238ms update=0.000/0.000/0.000ms layout=0.000/0.001/0.001ms draw=0.002/0.007/0.008ms raster=1.233/1.648/1.768ms total=1.422/1.701/1.799ms (p50/p95/max)
+selection/keyboard n=30 input=0.004/0.012/0.015ms update=1.266/14.688/14.704ms layout=0.001/12.541/13.358ms draw=0.004/0.008/0.015ms raster=1.001/1.235/1.469ms total=2.292/28.319/29.223ms (p50/p95/max)
+selection/drag n=30 input=0.006/0.011/0.012ms update=1.352/14.112/14.113ms layout=0.002/0.429/0.584ms draw=0.004/0.010/0.010ms raster=1.217/1.495/1.546ms total=2.791/15.706/15.708ms (p50/p95/max)
+typing/syntax-fallback n=30 input=0.000/0.000/0.000ms update=3.955/8.519/8.739ms layout=0.296/0.418/0.430ms draw=0.003/0.008/0.008ms raster=0.894/1.088/1.104ms total=5.226/9.686/10.158ms (p50/p95/max)
+ime/preedit n=1 input=0.002/0.002/0.002ms update=0.000/0.000/0.000ms layout=0.000/0.000/0.000ms draw=0.002/0.002/0.002ms raster=0.886/0.886/0.886ms total=0.889/0.889/0.889ms (p50/p95/max)
+ime/commit n=1 input=0.008/0.008/0.008ms update=5.260/5.260/5.260ms layout=0.385/0.385/0.385ms draw=0.003/0.003/0.003ms raster=1.153/1.153/1.153ms total=6.809/6.809/6.809ms (p50/p95/max)
+undo/ime n=1 input=0.000/0.000/0.000ms update=3.280/3.280/3.280ms layout=0.331/0.331/0.331ms draw=0.003/0.003/0.003ms raster=0.911/0.911/0.911ms total=4.524/4.524/4.524ms (p50/p95/max)
+redo/ime n=1 input=0.000/0.000/0.000ms update=3.429/3.429/3.429ms layout=0.425/0.425/0.425ms draw=0.005/0.005/0.005ms raster=0.928/0.928/0.928ms total=4.786/4.786/4.786ms (p50/p95/max)
+final_layout_counts=(65, 78)
+memory/final rss_kib=613856
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 103 filtered out; finished in 3.96s
+
+        4.00 real         3.30 user         0.44 sys
+           693403648  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              129731  page reclaims
+                 484  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                 652  voluntary context switches
+                3365  involuntary context switches
+         45306148585  instructions retired
+         12391526480  cycles elapsed
+           641549656  peak memory footprint

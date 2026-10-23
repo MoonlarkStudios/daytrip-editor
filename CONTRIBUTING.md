@@ -67,7 +67,7 @@ Record additional guide exceptions here when they become necessary, with their r
 
 ## Editing and theme invariants
 
-`Document` owns the authoritative Markdown. Selections use UTF-8 byte offsets with distinct anchor and head positions. Source/display mappings must preserve selection direction, hidden delimiters, atomic images, table structure, and undo history.
+`Document` owns the authoritative Yrs Markdown text and its derived source cache. All source edits enter its validated transaction path. See [collaboration](docs/collaboration.md) for byte/UTF-16 conversion, stable positions, scoped history and persistence. Selections use UTF-8 byte offsets with distinct anchor and head positions. Source/display mappings must preserve selection direction, hidden delimiters, atomic images, table structure, and undo history.
 
 Contextual disclosure reveals the active heading prefix and the inline span being edited. Concealed syntax occupies no reserved space. Local reflow is allowed; source caret position, selection, wrap affinity, and the viewport anchor must survive it. Drawing uses measured layout and must not parse Markdown.
 

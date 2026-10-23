@@ -590,7 +590,7 @@ mod tests {
         let block_edit =
             |source: &mut String, projection: &mut Projection, head: &mut usize, inserted: &str| {
                 let mut document = crate::document::Document::new(source.clone());
-                document.replace(*head..*head, inserted);
+                document.replace(*head..*head, inserted).unwrap();
                 *source = document.source().to_owned();
                 *head += inserted.len();
                 assert!(projection.update_blocks(
@@ -617,7 +617,7 @@ mod tests {
             match step % 7 {
                 0 => {
                     let mut document = crate::document::Document::new(source.clone());
-                    document.replace(head..head, "x");
+                    document.replace(head..head, "x").unwrap();
                     source.insert(head, 'x');
                     head += 1;
                     assert!(

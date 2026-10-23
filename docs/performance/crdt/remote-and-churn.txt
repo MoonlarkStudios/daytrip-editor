@@ -1,0 +1,34 @@
+
+running 1 test
+test app::application::performance::large_document_collaboration ... remote/batch-8/10000 n=30 input=0.000/0.000/0.000ms update=24.749/30.482/33.660ms crdt=8.125/9.647/16.797ms source=4.571/5.315/5.903ms adapters=12.005/14.677/14.932ms layout=2.365/2.639/2.663ms draw=0.002/0.003/0.005ms raster=0.930/1.032/1.195ms total=28.011/34.095/37.003ms (p50/p95/max)
+memory/remote/10000/final rss_kib=398336
+app/churn-400/10000 n=400 input=0.000/0.000/0.000ms update=1.924/2.056/4.065ms crdt=1.294/1.374/1.975ms source=0.022/0.033/0.109ms adapters=0.616/0.703/2.714ms layout=0.788/0.866/1.060ms draw=0.001/0.003/0.007ms raster=0.842/0.913/1.296ms total=3.078/3.281/5.191ms (p50/p95/max)
+memory/app/10000/after-churn rss_kib=312064
+app/persistence blocks=10000 before_churn_bytes=916791 after_churn_bytes=921029
+remote/batch-8/50000 n=30 input=0.000/0.000/0.000ms update=144.431/151.311/175.796ms crdt=40.827/44.550/83.010ms source=28.138/31.232/31.302ms adapters=74.791/78.510/82.524ms layout=13.352/13.928/14.098ms draw=0.003/0.006/0.006ms raster=0.957/1.049/1.066ms total=158.730/165.543/190.413ms (p50/p95/max)
+memory/remote/50000/final rss_kib=597808
+app/churn-400/50000 n=400 input=0.000/0.000/0.000ms update=9.787/10.535/14.154ms crdt=6.500/6.750/7.288ms source=0.096/0.132/1.966ms adapters=3.205/4.195/7.282ms layout=2.988/3.182/3.486ms draw=0.002/0.005/0.010ms raster=0.877/0.980/1.144ms total=11.227/12.423/15.597ms (p50/p95/max)
+memory/app/50000/after-churn rss_kib=485104
+app/persistence blocks=50000 before_churn_bytes=4580919 after_churn_bytes=4585159
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 136 filtered out; finished in 13.17s
+
+       13.19 real        12.07 user         0.99 sys
+           713621504  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              441990  page reclaims
+                  88  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   4  voluntary context switches
+                2510  involuntary context switches
+        197754585192  instructions retired
+         44965417784  cycles elapsed
+           634045760  peak memory footprint

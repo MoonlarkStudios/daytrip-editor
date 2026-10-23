@@ -1,0 +1,3 @@
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 32.30s
+  Executable unittests src/lib.rs (target/release/deps/still-0360e0d741012cb4)

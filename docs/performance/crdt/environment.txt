@@ -1,0 +1,17 @@
+Baseline date: 2026-10-22; final validation/measurements: 2026-10-23 (America/Chicago)
+Baseline commit: 26dceda perf(document): update source and projection buffers in place
+Baseline worktree: clean main, no overlapping active editor implementation task
+CPU: Apple M2 Max
+Physical memory: 34359738368 bytes (32 GiB)
+OS: macOS 26.7.1, build 25G241
+Toolchain: mise Rust 1.95.0 (59807616e 2026-04-14), aarch64-apple-darwin, LLVM 22.1.2
+Cargo profile: release, thin LTO, codegen-units=1, strip=debuginfo
+Renderer: iced_tiny_skia secondary software renderer, 720x800, bundled Newsreader fonts
+Fixtures: 10000 blocks / 910450 bytes; 50000 blocks / 4574450 bytes
+Core samples: 30 warm samples per case; cold and IME/undo/redo are single observations; 10 distant jumps
+Remote samples: 30 eight-edit transactions per fixture; explicit remote export outside the interaction timer
+Model churn: 1000 insert/delete pairs (2000 transactions) across 1000 deterministic dispersed paragraph positions per fixture
+App churn: 200 paste/undo pairs (400 transactions + layout/raster) per fixture
+Memory: /usr/bin/time -l direct release test executable; ps RSS snapshots inside process
+Final measurement runs are serial, without competing builds. Machine timing observations are not regression assertions.
+Existing native windows and unsaved documents were not opened, closed, or restarted.

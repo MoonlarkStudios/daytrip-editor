@@ -10,7 +10,9 @@ Still is one Cargo package with a thin `main.rs` calling `still::run()`. The lib
 | `app/application.rs` | Application state, messages, commands, native buffer, file guards, views |
 | `app/icon.rs` | Canvas icons consuming the resolved tokens |
 | `app/performance.rs` | Private ignored large-document event/layout/software-render profiles |
-| `document/source.rs` | Authoritative Markdown, cached blocks, reversible patches and selection history |
+| `document/source.rs` | CRDT transaction boundary, incremental source cache and cached blocks |
+| `document/collaboration.rs` | Yrs ownership, coordinate bridge, stable intent, scoped undo and proposals |
+| `document/collaboration_wire.rs` | Bounded admission of plain-text Yjs update V1 |
 | `document/block_parser.rs` | Top-level ranges, independent block candidates, conservative reparse windows |
 | `document/selection.rs` | UTF-8 byte selections and line/column conversion |
 | `document/projection.rs` | Markdown-to-display projection, source mapping, caret affinity, edit translation |
@@ -23,12 +25,14 @@ Still is one Cargo package with a thin `main.rs` calling `still::run()`. The lib
 | `editor/virtual_layout.rs` | Lightweight height index, viewport materialization, geometry eviction, source jumps |
 | `editor/native_buffer.rs` | Standard Iced buffer ownership, deferred loading, physical line index and reusable text snapshot |
 | `editor/rich_editor.rs` | One live widget: focus, clipboard, mouse/keyboard selection, scrolling, IME |
+| `editor/source_editor.rs` | Native Source widget delegation with stable IME commit targets |
 | `editor/markdown_view.rs` | Full Markdown layout in optional Read view |
 | `editor/viewport.rs` | Measured block navigation in Read view |
 | `theme/definition.rs` | Strict theme schema, validation, semantic tokens, resolved Iced theme |
 | `theme/styles.rs` | Central widget styles and typography |
 | `io/image_store.rs` | Asynchronous bounded image IO, decoding, and document-scoped cache |
-| `io/storage.rs` | Bounded UTF-8 reads, atomic writes, conflict checks, preferences, HTML export |
+| `io/storage.rs` | Bounded reads, atomic writes, preferences and HTML export |
+| `io/collaboration_store.rs` | Checkpoints, recovery journal, file locks and offline interchange |
 
 Tests live beside private implementations. Shared Markdown inputs belong in `tests/fixtures/`; integration tests belong in `tests/` when they exercise a deliberate public API. Profiling remains a private application test so it can exercise the real event path without exporting editor internals.
 
@@ -58,7 +62,7 @@ A source `Selection` has separate anchor/head offsets, preserving reverse select
 
 Bold, italic, and inline-code formatting operate separately on selected lines and preserve heading/list prefixes. Commands use a concealed projection so active syntax does not change their selection semantics. Exact selected marks can be toggled off. Enter continues ordered/unordered/task lists and blockquotes; Enter in an empty item exits it. Disclosed heading prefixes support ordinary caret movement, selection, and literal deletion.
 
-Undo patches store source splices plus before/after source selections. Consecutive edits within one inserted region coalesce for 650 ms. Movements and explicit commands end the group. New edits after undo clear redo. The history budget is 16 MiB, retaining the last operation even if it alone exceeds the budget.
+Yrs owns the authoritative text and scoped human/agent undo. Source ranges are UTF-8 bytes translated through an incremental UTF-16 index. Local source edits, rich repair, accepted proposals and imported operations enter one document transaction path. Source/projection/native/layout caches remain derived; local generations are distinct from document identity and causal versions. Stable positions preserve intent through intervening edits. See [collaboration](collaboration.md) for transaction, undo, IME and proposal contracts.
 
 ## Parsing and performance
 
@@ -90,6 +94,8 @@ Images project to an atomic object replacement character. Their complete Markdow
 
 File reads/writes run in Tokio blocking tasks. Reads are capped at 16 MiB even if a file grows. Opening locks document edits until completion. Saving captures a snapshot; edits made while it saves remain dirty.
 
-Existing-file saves compare disk contents with the loaded/saved baseline, write a temporary file beside the destination, preserve permissions, sync, atomically persist, and sync the directory on Unix. Symlinks resolve to their target. Conflict detection is best effort: another process can write between comparison and replacement. Recovery and interprocess locking remain future work.
+Collaborative saves compare both Markdown and checkpoint baselines under an advisory interprocess lock. A synced journal makes publication of Markdown and CRDT metadata recoverable across both renames. Permissions, physical symlink targets and atomic writes retain their existing behavior. External Markdown/metadata mismatches are explicit conflicts. Full encoded state retains pending updates and uses a fresh active replica identity on every reopen. See [persistence and recovery](collaboration.md#persistence-and-recovery).
 
 HTML export escapes raw Markdown HTML and includes a restrictive content security policy. Live images resolve relative to the saved document; remote URLs are fetched automatically. The optional older Read renderer still uses local image handles and remote placeholders. Preferences contain appearance and recent paths, and writes are serialized.
+
+The current collaboration measurements follow in [CRDT performance](crdt-performance.md).

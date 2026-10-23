@@ -32,6 +32,8 @@ fn fixture(blocks: usize) -> String {
 #[derive(Default, Clone, Copy)]
 struct Sample {
     input: Duration,
+    crdt: Duration,
+    source: Duration,
     update: Duration,
     layout: Duration,
     draw: Duration,
@@ -85,6 +87,10 @@ impl Harness {
             &app.resolved_theme,
             &app.images,
             Binding::from_key_press,
+        )
+        .collaboration(&app.document.collaboration)
+        .preserve_viewport(
+            app.preserve_viewport_generation == Some(app.document.collaboration.generation()),
         )
         .selection(app.selection)
         .focused(true)
@@ -151,6 +157,8 @@ impl Harness {
         let start = Instant::now();
         for message in messages {
             drop(self.app.update(message));
+            sample.crdt += self.app.document.costs.crdt;
+            sample.source += self.app.document.costs.source;
         }
         sample.update = start.elapsed();
         self.frame(&mut sample);
@@ -161,6 +169,8 @@ impl Harness {
         drop(self.app.update(message));
         let mut sample = Sample {
             update: start.elapsed(),
+            crdt: self.app.document.costs.crdt,
+            source: self.app.document.costs.source,
             ..Sample::default()
         };
         self.frame(&mut sample);
@@ -170,9 +180,12 @@ impl Harness {
 
 fn report(name: &str, samples: &[Sample]) {
     type Phase = (&'static str, fn(Sample) -> Duration);
-    let fields: [Phase; 6] = [
+    let fields: [Phase; 9] = [
         ("input", |s| s.input),
         ("update", |s| s.update),
+        ("crdt", |s| s.crdt),
+        ("source", |s| s.source),
+        ("adapters", |s| s.update.saturating_sub(s.crdt + s.source)),
         ("layout", |s| s.layout),
         ("draw", |s| s.draw),
         ("raster", |s| s.raster),
@@ -224,9 +237,7 @@ fn report_memory(label: &str) {
     let _ = label;
 }
 
-#[test]
-#[ignore = "run with mise run profile; large documents and software rasterization"]
-fn large_document_interactions() {
+fn load_profile_fonts() {
     let mut fonts = iced_tiny_skia::graphics::text::font_system()
         .write()
         .unwrap();
@@ -239,6 +250,12 @@ fn large_document_interactions() {
         fonts.load_font(Cow::Borrowed(font));
     }
     drop(fonts);
+}
+
+#[test]
+#[ignore = "run with mise run profile; large documents and software rasterization"]
+fn large_document_interactions() {
+    load_profile_fonts();
     let counts = std::env::var("STILL_PROFILE_BLOCKS").unwrap_or_else(|_| "10000,50000".into());
     let samples = std::env::var("STILL_PROFILE_SAMPLES")
         .ok()
@@ -475,7 +492,7 @@ fn performance_incremental_block_parsing() {
         let start = Instant::now();
         for _ in 0..100 {
             let point = document.blocks[count / 2 + 1].range.start + 12;
-            document.replace(point..point, "日_");
+            document.replace(point..point, "日_").unwrap();
             let change = document.block_change.as_ref().expect("isolated paragraph");
             assert_eq!(change.previous_revision + 1, document.revision);
             parsed += change.new.len();
@@ -528,7 +545,7 @@ fn performance_source_projection_updates() {
                     _ => (1, if step % 2 == 0 { "q" } else { "r" }),
                 };
                 let start = Instant::now();
-                document.replace(head..head + removed, inserted);
+                document.replace(head..head + removed, inserted).unwrap();
                 source_time += start.elapsed();
                 if removed == 0 {
                     head += inserted.len();
@@ -551,7 +568,8 @@ fn performance_source_projection_updates() {
                 full_equivalent += document.source().len();
             }
             println!(
-                "blocks={blocks} kind={kind} edits=100 source={source_time:?} projection={projection_time:?} source_mirror_splice_bytes={mirror_bytes} full_source_equivalent_bytes={full_equivalent}"
+                "blocks={blocks} kind={kind} edits=100 source_including_crdt={source_time:?} crdt={:?} source_cache={:?} projection={projection_time:?} source_mirror_splice_bytes={mirror_bytes} full_source_equivalent_bytes={full_equivalent}",
+                document.costs.crdt, document.costs.source
             );
             assert_eq!(projection.source, document.source());
             let full = Projection::with_context(document.source(), Some(head));
@@ -569,4 +587,496 @@ fn performance_source_projection_updates() {
             );
         }
     }
+}
+
+#[test]
+fn crdt_incoming_changes_preserve_composition_selection_and_derived_editor_state() {
+    use crate::document::Document;
+    use iced::widget::text_editor::{Action, Edit};
+    let source = "# 日本語\r\n\r\n| A | B |\n|---|---|\n| first | last |\n\n![alt](image.png)\n\nFinal paragraph.";
+    let mut harness = Harness::new(source.into());
+    harness.frame(&mut Sample::default());
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+        Point::new(80.0, 40.0),
+    );
+    let mut remote = Document::from_state(&harness.app.document.collaboration.state()).unwrap();
+    let anchor = source.find("Final").unwrap();
+    let head = source.find("first").unwrap();
+    harness.message(Message::SelectSource(Selection { anchor, head }));
+    remote.replace(0..0, "Prefix\n\n").unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(remote.collaboration.state())));
+    assert_eq!(
+        harness.app.selection,
+        Selection {
+            anchor: anchor + 8,
+            head: head + 8
+        }
+    );
+    assert_eq!(harness.app.editor.snapshot(), harness.app.projection.text);
+    // Use a caret while composing; concurrent insertion before it rebases target.
+    harness.message(Message::SelectSource(Selection::caret(head + 8)));
+    let unchanged = harness.app.document.source().to_owned();
+    harness.event(
+        Event::InputMethod(input_method::Event::Opened),
+        Point::ORIGIN,
+    );
+    harness.event(
+        Event::InputMethod(input_method::Event::Preedit("にほん".into(), Some(0..9))),
+        Point::ORIGIN,
+    );
+    assert_eq!(harness.app.document.source(), unchanged);
+    assert!(RichEditor::intent_stats(&harness.tree).1);
+    remote.replace(0..0, "λ").unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(remote.collaboration.state())));
+    assert!(RichEditor::intent_stats(&harness.tree).1);
+    harness.event(
+        Event::InputMethod(input_method::Event::Commit("日本語 🧑‍💻".into())),
+        Point::ORIGIN,
+    );
+    assert_eq!(
+        harness.app.document.source().matches("日本語 🧑‍💻").count(),
+        1
+    );
+    assert!(harness.app.document.source().contains("日本語 🧑‍💻first"));
+    assert_eq!(harness.app.editor.snapshot(), harness.app.projection.text);
+    harness.message(Message::Undo);
+    assert_eq!(harness.app.document.source(), remote.source());
+    harness.message(Message::Redo);
+    assert_eq!(
+        harness.app.document.source().matches("日本語 🧑‍💻").count(),
+        1
+    );
+    harness.message(Message::Edit(Action::Edit(Edit::Insert('!'))));
+    assert_eq!(
+        harness.app.document.source(),
+        harness.app.document.collaboration.materialize()
+    );
+}
+
+#[test]
+fn crdt_composition_replacement_preserves_remote_content_when_target_is_deleted() {
+    use crate::document::Document;
+    let mut harness = Harness::new("Before **selected** after".into());
+    harness.frame(&mut Sample::default());
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+        Point::new(80.0, 40.0),
+    );
+    let mut remote = Document::from_state(&harness.app.document.collaboration.state()).unwrap();
+    harness.message(Message::SelectSource(Selection {
+        anchor: 9,
+        head: 17,
+    }));
+    harness.event(
+        Event::InputMethod(input_method::Event::Opened),
+        Point::ORIGIN,
+    );
+    harness.event(
+        Event::InputMethod(input_method::Event::Preedit("に".into(), None)),
+        Point::ORIGIN,
+    );
+    remote.replace(9..17, "remote").unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(remote.collaboration.state())));
+    harness.event(
+        Event::InputMethod(input_method::Event::Commit("日本".into())),
+        Point::ORIGIN,
+    );
+    assert!(harness.app.document.source().contains("remote"));
+    assert_eq!(harness.app.document.source().matches("日本").count(), 1);
+    assert_eq!(
+        harness.app.document.source(),
+        harness.app.document.collaboration.materialize()
+    );
+}
+
+#[test]
+fn crdt_proposal_uses_real_app_transaction_projection_and_independent_agent_undo() {
+    use crate::document::collaboration::{AgentProposal, ProposedEdit};
+    let mut harness = Harness::new("# Title\n\nFirst paragraph.\n\nLast paragraph.".into());
+    harness.frame(&mut Sample::default());
+    let base = harness
+        .app
+        .document
+        .collaboration
+        .snapshot(harness.app.document.source());
+    let first = base.source.find("First").unwrap();
+    let last = base.source.find("Last").unwrap();
+    let proposal = AgentProposal {
+        base,
+        author: "Writer".into(),
+        edits: vec![
+            ProposedEdit {
+                start: first,
+                end: first + 5,
+                expected: "First".into(),
+                replacement: "Better".into(),
+            },
+            ProposedEdit {
+                start: last,
+                end: last + 4,
+                expected: "Last".into(),
+                replacement: "Final".into(),
+            },
+        ],
+    };
+    harness.message(Message::ProposalLoaded(Ok(proposal.clone())));
+    assert!(harness.app.document.source().contains("Better paragraph"));
+    assert!(harness.app.document.source().contains("Final paragraph"));
+    assert_eq!(harness.app.editor.snapshot(), harness.app.projection.text);
+    assert!(!harness.app.document.can_undo());
+    harness.message(Message::AgentUndo);
+    assert_eq!(harness.app.document.source(), proposal.base.source);
+    harness.message(Message::AgentRedo);
+    assert!(harness.app.document.source().contains("Final paragraph"));
+    let before = harness.app.document.source().to_owned();
+    harness.message(Message::ProposalLoaded(Ok(proposal)));
+    assert_eq!(harness.app.document.source(), before);
+    assert!(
+        harness
+            .app
+            .notification
+            .as_ref()
+            .unwrap()
+            .contains("conflict")
+    );
+}
+
+#[test]
+fn crdt_drag_and_viewport_anchors_survive_remote_edits_before_the_viewport() {
+    use crate::document::Document;
+    let mut harness = Harness::new(fixture(1000));
+    harness.frame(&mut Sample::default());
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+        Point::new(110.0, 100.0),
+    );
+    let drag = RichEditor::intent_stats(&harness.tree).2.unwrap();
+    let mut remote = Document::from_state(&harness.app.document.collaboration.state()).unwrap();
+    remote.replace(0..0, "Prefix\n\n").unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(remote.collaboration.state())));
+    assert_eq!(RichEditor::intent_stats(&harness.tree).2, Some(drag + 8));
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+        Point::new(110.0, 100.0),
+    );
+    harness.message(Message::SelectSource(Selection::caret(0)));
+    harness.event(
+        Event::Mouse(mouse::Event::WheelScrolled {
+            delta: mouse::ScrollDelta::Pixels { x: 0.0, y: -1200.0 },
+        }),
+        Point::new(200.0, 200.0),
+    );
+    // The caret remains offscreen while the first visible row anchors reflow.
+    let visible = RichEditor::visible_anchor(&harness.tree).unwrap();
+    let y = RichEditor::screen_y(&harness.tree, visible);
+    let old_scroll = RichEditor::intent_stats(&harness.tree).0;
+    remote.replace(0..0, "Another prefix\n\n").unwrap();
+    harness.message(Message::ReplicaLoaded(Ok(remote.collaboration.state())));
+    let new_y = RichEditor::screen_y(&harness.tree, visible + 16);
+    assert!(
+        (y - new_y).abs() < 1.0,
+        "screen anchor moved: {y} -> {new_y}, scroll {old_scroll} -> {}",
+        RichEditor::intent_stats(&harness.tree).0
+    );
+    assert_eq!(RichEditor::intent_stats(&harness.tree).2, None);
+}
+
+#[test]
+#[ignore = "run with mise run bench; CRDT retention, memory, and persistent growth"]
+fn performance_crdt_churn() {
+    use crate::document::Document;
+    for blocks in [10_000, 50_000] {
+        let source = fixture(blocks);
+        let start = Instant::now();
+        let mut document = Document::new(source.clone());
+        let cold = start.elapsed();
+        let initial = document.collaboration.state().update.len();
+        report_memory(&format!("crdt/{blocks}/initial"));
+        let start = Instant::now();
+        document.costs = Default::default();
+        for iteration in 0..1000 {
+            let chapter = iteration * 997 % (blocks / 10);
+            let point = document.blocks[chapter * 10 + 1].range.start + 12;
+            document.break_history_group();
+            document
+                .replace(point..point, "Churn é 🧑‍💻 material 0123456789")
+                .unwrap();
+            document
+                .replace(point..point + "Churn é 🧑‍💻 material 0123456789".len(), "")
+                .unwrap();
+        }
+        let elapsed = start.elapsed();
+        report_memory(&format!("crdt/{blocks}/churn"));
+        let state = document.collaboration.state();
+        println!(
+            "crdt/churn blocks={blocks} transactions=2000 locations=1000 cold={cold:?} total={elapsed:?} crdt={:?} source_cache={:?} initial_state_bytes={initial} churn_state_bytes={} source_bytes={}",
+            document.costs.crdt,
+            document.costs.source,
+            state.update.len(),
+            document.source().len()
+        );
+        assert_eq!(document.source(), source);
+        assert_eq!(document.collaboration.materialize(), source);
+        let start = Instant::now();
+        let reopened = Document::from_state(&state).unwrap();
+        let reopen = start.elapsed();
+        println!(
+            "crdt/reopen blocks={blocks} total={reopen:?} checkpoint_bytes={}",
+            crate::io::collaboration_store::encode(&state)
+                .unwrap()
+                .len()
+        );
+        assert_eq!(reopened.source(), source);
+    }
+}
+
+#[test]
+#[ignore = "offline remote batches through the real application, layout, and rasterizer"]
+fn large_document_collaboration() {
+    load_profile_fonts();
+    use crate::document::collaboration::{Collaboration, EditOrigin, SourceEdit};
+    let samples = std::env::var("STILL_PROFILE_SAMPLES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(30_usize)
+        .max(1);
+    for blocks in [10_000, 50_000] {
+        let mut harness = Harness::new(fixture(blocks));
+        harness.frame(&mut Sample::default());
+        let (mut remote, mut source) =
+            Collaboration::from_state(&harness.app.document.collaboration.state()).unwrap();
+        let mut timings = Vec::new();
+        for _ in 0..samples {
+            let edits: Vec<_> = (1..=8)
+                .map(|step| {
+                    let point = harness.app.document.blocks[step * blocks / 10 + 1]
+                        .range
+                        .start
+                        + 12;
+                    SourceEdit {
+                        range: point..point,
+                        text: "日".into(),
+                    }
+                })
+                .collect();
+            let committed = remote
+                .commit(&source, &edits, EditOrigin::Human, None, true)
+                .unwrap();
+            for edit in committed.into_iter().rev() {
+                source.replace_range(edit.range, &edit.text);
+            }
+            let update = remote.state(); // explicit offline export outside the interaction timer
+            timings.push(harness.message(Message::ReplicaLoaded(Ok(update))));
+            assert_eq!(harness.app.document.source(), source);
+        }
+        report(&format!("remote/batch-8/{blocks}"), &timings);
+        report_memory(&format!("remote/{blocks}/final"));
+        let before = harness.app.document.source().to_owned();
+        let initial_state = harness.app.document.collaboration.state().update.len() + 64;
+        let point = harness.app.document.blocks[blocks / 2 + 1].range.start + 12;
+        harness.event(
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+            Point::new(80.0, 40.0),
+        );
+        harness.event(
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+            Point::new(80.0, 40.0),
+        );
+        harness.message(Message::SelectSource(Selection::caret(point)));
+        let mut churn = Vec::new();
+        for _ in 0..200 {
+            churn.push(
+                harness.message(Message::Edit(iced::widget::text_editor::Action::Edit(
+                    iced::widget::text_editor::Edit::Paste(std::sync::Arc::new(
+                        "churn é 🧑‍💻".into(),
+                    )),
+                ))),
+            );
+            churn.push(harness.message(Message::Undo));
+        }
+        report(&format!("app/churn-400/{blocks}"), &churn);
+        report_memory(&format!("app/{blocks}/after-churn"));
+        println!(
+            "app/persistence blocks={blocks} before_churn_bytes={initial_state} after_churn_bytes={}",
+            harness.app.document.collaboration.state().update.len() + 64
+        );
+        assert_eq!(harness.app.document.source(), before);
+
+        assert_eq!(
+            harness.app.document.source(),
+            harness.app.document.collaboration.materialize()
+        );
+        assert_eq!(harness.app.editor.snapshot(), harness.app.projection.text);
+    }
+}
+
+#[test]
+fn crdt_duplicate_update_keeps_saved_generation_and_projection_oracle() {
+    use crate::document::projection::Projection;
+    let mut harness = Harness::new("# Title\n\n**bold** and 🧑‍💻\n\n![alt](a.png)".into());
+    let state = harness.app.document.collaboration.state();
+    harness.message(Message::ReplicaLoaded(Ok(state.clone())));
+    harness.message(Message::ReplicaLoaded(Ok(state)));
+    assert!(!harness.app.dirty);
+    let fresh = Projection::with_context(
+        harness.app.document.source(),
+        Some(harness.app.selection.head),
+    );
+    assert_eq!(fresh.text, harness.app.projection.text);
+    for (offset, _) in harness.app.document.source().char_indices() {
+        assert_eq!(
+            fresh.to_display(offset),
+            harness.app.projection.to_display(offset)
+        );
+    }
+    assert_eq!(harness.app.editor.snapshot(), fresh.text);
+}
+
+#[test]
+fn crdt_reopening_the_same_identity_clears_old_composition_session() {
+    use crate::document::Document;
+    let mut harness = Harness::new("# Title\n\ntext".into());
+    harness.frame(&mut Sample::default());
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+        Point::new(80.0, 40.0),
+    );
+    harness.event(
+        Event::InputMethod(input_method::Event::Opened),
+        Point::ORIGIN,
+    );
+    let target = harness
+        .app
+        .document
+        .collaboration
+        .composition_target(harness.app.selection);
+    assert!(RichEditor::intent_stats(&harness.tree).1);
+    let document = Document::from_state(&harness.app.document.collaboration.state()).unwrap();
+    harness
+        .app
+        .install_document(document, None, "Reopened.md".into());
+    harness.frame(&mut Sample::default());
+    assert!(!RichEditor::intent_stats(&harness.tree).1);
+    let before = harness.app.document.source().to_owned();
+    harness.message(Message::CommitComposition {
+        target,
+        text: "stale".into(),
+    });
+    assert_eq!(harness.app.document.source(), before);
+}
+
+#[test]
+fn crdt_replace_all_rebases_reverse_selection_through_earlier_changes() {
+    let source =
+        "one one\n\n# Title\n\n| A | B |\n|---|---|\n| left | right |\n\n![alt](a.png)\n\nTail";
+    let mut harness = Harness::new(source.into());
+    let head = source.find("Title").unwrap();
+    harness.message(Message::SelectSource(Selection {
+        anchor: source.len(),
+        head,
+    }));
+    harness.app.query = "one".into();
+    harness.app.replacement = "expanded".into();
+    harness.message(Message::ReplaceAll);
+    assert_eq!(
+        harness.app.selection,
+        Selection {
+            anchor: source.len() + 10,
+            head: head + 10
+        }
+    );
+    assert_eq!(harness.app.editor.snapshot(), harness.app.projection.text);
+    assert_eq!(
+        harness.app.document.source(),
+        harness.app.document.collaboration.materialize()
+    );
+}
+
+#[test]
+fn crdt_source_widget_composition_uses_the_same_stable_exactly_once_commit() {
+    use crate::document::Document;
+    fn event(app: &mut App, tree: &mut widget::Tree, renderer: &Renderer, event: Event) {
+        let size = Size::new(720.0, 800.0);
+        let mut messages = Vec::new();
+        {
+            let mut editor = app.editor_view(true);
+            let node = editor.as_widget_mut().layout(
+                tree,
+                renderer,
+                &layout::Limits::new(Size::ZERO, size),
+            );
+            editor.as_widget_mut().update(
+                tree,
+                &event,
+                Layout::new(&node),
+                mouse::Cursor::Available(Point::new(70.0, 20.0)),
+                renderer,
+                &mut clipboard::Null,
+                &mut Shell::new(&mut messages),
+                &Rectangle::with_size(size),
+            );
+        }
+        for message in messages {
+            drop(app.update(message));
+        }
+    }
+    let (mut app, task) = App::new();
+    drop(task);
+    app.set_document(
+        "Before selected after".into(),
+        None,
+        "Composition.md".into(),
+    );
+    drop(app.update(Message::ToggleSource));
+    let mut tree = widget::Tree::new(app.editor_view(true).as_widget());
+    let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+        iced::Font::MONOSPACE,
+        14.5.into(),
+    ));
+    event(
+        &mut app,
+        &mut tree,
+        &renderer,
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+    );
+    event(
+        &mut app,
+        &mut tree,
+        &renderer,
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+    );
+    drop(app.update(Message::SelectSource(Selection {
+        anchor: 7,
+        head: 15,
+    })));
+    event(
+        &mut app,
+        &mut tree,
+        &renderer,
+        Event::InputMethod(input_method::Event::Opened),
+    );
+    event(
+        &mut app,
+        &mut tree,
+        &renderer,
+        Event::InputMethod(input_method::Event::Preedit("にほん".into(), Some(0..9))),
+    );
+    assert_eq!(app.document.source(), "Before selected after");
+    let mut remote = Document::from_state(&app.document.collaboration.state()).unwrap();
+    remote.replace(9..12, "remote").unwrap(); // partial change inside the composition replacement
+    drop(app.update(Message::ReplicaLoaded(Ok(remote.collaboration.state()))));
+    event(
+        &mut app,
+        &mut tree,
+        &renderer,
+        Event::InputMethod(input_method::Event::Commit("日本".into())),
+    );
+    assert_eq!(app.document.source().matches("日本").count(), 1);
+    assert!(app.document.source().contains("remote"));
+    assert_eq!(app.editor.snapshot(), app.document.source());
+    drop(app.update(Message::Undo));
+    assert_eq!(app.document.source(), remote.source());
+    drop(app.update(Message::Redo));
+    assert_eq!(app.document.source().matches("日本").count(), 1);
 }

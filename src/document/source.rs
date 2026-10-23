@@ -1,17 +1,16 @@
-//! Lossless Markdown storage with cached block rendering and bounded patch history.
+//! CRDT-authoritative Markdown with an incrementally maintained parsing cache.
 
+use crate::document::collaboration::{
+    AgentProposal, Collaboration, CollaborationError, EditOrigin, ReplicaState, SourceEdit,
+};
 use std::collections::VecDeque;
 use std::ops::Range;
-use std::time::{Duration, Instant};
 
 use iced::widget::markdown;
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
 use crate::document::block_parser::{self, BlockChange};
 use crate::document::selection::Selection;
-
-const HISTORY_BUDGET: usize = 16 * 1024 * 1024;
-const COALESCE_INTERVAL: Duration = Duration::from_millis(650);
 
 #[derive(Debug)]
 pub struct Block {
@@ -23,42 +22,38 @@ pub struct Block {
     independent: bool,
 }
 
+#[cfg(test)]
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct ModelCosts {
+    pub crdt: std::time::Duration,
+    pub source: std::time::Duration,
+}
+
 #[derive(Debug)]
 pub struct Document {
     source: String,
+    #[cfg(test)]
+    pub(crate) costs: ModelCosts,
     pub blocks: Vec<Block>,
     pub words: usize,
     pub characters: usize,
     pub revision: u64,
-    undo: Vec<Patch>,
-    redo: Vec<Patch>,
-    history_bytes: usize,
-    last_edit: Option<Instant>,
+    pub(crate) collaboration: Collaboration,
     global_dependencies: bool,
     pub(crate) block_change: Option<BlockChange>,
-}
-
-#[derive(Debug)]
-struct Patch {
-    start: usize,
-    removed: String,
-    inserted: String,
-    before: Option<Selection>,
-    after: Option<Selection>,
 }
 
 impl Document {
     pub fn new(source: String) -> Self {
         let mut document = Self {
+            collaboration: Collaboration::new(&source),
             source,
+            #[cfg(test)]
+            costs: ModelCosts::default(),
             blocks: Vec::new(),
             words: 0,
             characters: 0,
             revision: 0,
-            undo: Vec::new(),
-            redo: Vec::new(),
-            history_bytes: 0,
-            last_edit: None,
             global_dependencies: false,
             block_change: None,
         };
@@ -74,73 +69,194 @@ impl Document {
         &self.source[self.blocks[index].range.clone()]
     }
 
-    pub fn replace(&mut self, range: Range<usize>, replacement: &str) {
-        if self.source[range.clone()] == *replacement {
-            return;
-        }
-        self.record(range.clone(), replacement);
-        self.apply_change(range, replacement);
-        self.revision += 1;
+    pub fn from_state(state: &ReplicaState) -> Result<Self, CollaborationError> {
+        let (collaboration, source) = Collaboration::from_state(state)?;
+        let mut document = Self {
+            collaboration,
+            source,
+            #[cfg(test)]
+            costs: ModelCosts::default(),
+            blocks: Vec::new(),
+            words: 0,
+            characters: 0,
+            revision: 0,
+            global_dependencies: false,
+            block_change: None,
+        };
+        document.reparse();
+        Ok(document)
     }
 
+    /// Original-state UTF-8 offsets; edits must be sorted and disjoint.
+    pub fn transact(
+        &mut self,
+        edits: &[SourceEdit],
+        origin: EditOrigin,
+        selection: Option<(Selection, Selection)>,
+        separate: bool,
+    ) -> Result<(), CollaborationError> {
+        #[cfg(test)]
+        let start = std::time::Instant::now();
+        let changes =
+            self.collaboration
+                .commit(&self.source, edits, origin, selection, separate)?;
+        #[cfg(test)]
+        {
+            self.costs.crdt += start.elapsed();
+        }
+        self.consume(changes);
+        Ok(())
+    }
+    pub fn receive(&mut self, state: &ReplicaState) -> Result<(), CollaborationError> {
+        #[cfg(test)]
+        let start = std::time::Instant::now();
+        let changes = self.collaboration.receive(&self.source, state)?;
+        #[cfg(test)]
+        {
+            self.costs.crdt += start.elapsed();
+        }
+        self.consume(changes);
+        Ok(())
+    }
+    pub fn accept(&mut self, proposal: &AgentProposal) -> Result<(), CollaborationError> {
+        let edits = self
+            .collaboration
+            .resolve_proposal(&self.source, proposal)?;
+        self.collaboration.attribute_agent(&proposal.author);
+        self.transact(&edits, EditOrigin::Agent, None, true)
+    }
+    fn consume(&mut self, changes: Vec<SourceEdit>) {
+        #[cfg(test)]
+        let start = std::time::Instant::now();
+        if changes.is_empty() {
+            return;
+        }
+        let batch = changes.len() > 1;
+        if batch {
+            let mut shifts = vec![0isize];
+            for change in &changes {
+                shifts.push(
+                    shifts.last().expect("initial shift") + change.text.len() as isize
+                        - change.range.len() as isize,
+                );
+            }
+            let cache = std::mem::take(&mut self.blocks)
+                .into_iter()
+                .filter_map(|mut block| {
+                    let first =
+                        changes.partition_point(|change| change.range.end <= block.range.start);
+                    if changes
+                        .get(first)
+                        .is_some_and(|change| change.range.start < block.range.end)
+                    {
+                        return None;
+                    }
+                    block.range.start = block
+                        .range
+                        .start
+                        .checked_add_signed(shifts[first])
+                        .expect("validated source size");
+                    block.range.end = block
+                        .range
+                        .end
+                        .checked_add_signed(shifts[first])
+                        .expect("validated source size");
+                    Some(block)
+                })
+                .collect();
+            for change in changes.into_iter().rev() {
+                self.source.replace_range(change.range, &change.text);
+            }
+            self.reparse_cached(cache);
+        } else {
+            for change in changes {
+                self.apply_change(change.range, &change.text);
+            }
+        }
+        // A single certified window has one predecessor. Disjoint batches use
+        // conservative projection invalidation; CRDT operations stay granular.
+        if batch {
+            self.block_change = None;
+        }
+        self.revision += 1;
+        #[cfg(test)]
+        {
+            self.costs.source += start.elapsed();
+        }
+    }
+    pub fn replace(
+        &mut self,
+        range: Range<usize>,
+        replacement: &str,
+    ) -> Result<(), CollaborationError> {
+        let before = Selection::caret(range.start);
+        let after = Selection::caret(
+            range
+                .start
+                .checked_add(replacement.len())
+                .ok_or(CollaborationError::InvalidRange)?,
+        );
+        self.replace_edit(range, replacement, before, after)
+    }
     pub fn replace_edit(
         &mut self,
         range: Range<usize>,
         replacement: &str,
         before: Selection,
         after: Selection,
-    ) {
-        let revision = self.revision;
-        self.replace(range, replacement);
-        if revision != self.revision
-            && let Some(patch) = self.undo.last_mut()
-        {
-            patch.before.get_or_insert(before);
-            patch.after = Some(after);
+    ) -> Result<(), CollaborationError> {
+        if self.source.get(range.clone()) == Some(replacement) {
+            return Ok(());
         }
+        self.transact(
+            &[SourceEdit {
+                range,
+                text: replacement.to_owned(),
+            }],
+            EditOrigin::Human,
+            Some((before, after)),
+            false,
+        )
     }
-
     pub fn break_history_group(&mut self) {
-        self.last_edit = None;
+        self.collaboration.reset_group();
     }
-
     pub fn can_undo(&self) -> bool {
-        !self.undo.is_empty()
+        self.collaboration.can_undo(EditOrigin::Human)
     }
     pub fn can_redo(&self) -> bool {
-        !self.redo.is_empty()
+        self.collaboration.can_redo(EditOrigin::Human)
     }
-
+    pub fn history(
+        &mut self,
+        origin: EditOrigin,
+        redo: bool,
+    ) -> Result<Option<Selection>, CollaborationError> {
+        #[cfg(test)]
+        let start = std::time::Instant::now();
+        let result = self.collaboration.history(origin, redo)?;
+        #[cfg(test)]
+        {
+            self.costs.crdt += start.elapsed();
+        }
+        let Some((changes, selection)) = result else {
+            return Ok(None);
+        };
+        let fallback = changes.first().map_or(0, |edit| edit.range.start);
+        self.consume(changes);
+        Ok(Some(
+            selection
+                .unwrap_or_else(|| Selection::caret(fallback))
+                .clamp(&self.source),
+        ))
+    }
+    #[cfg(test)]
     pub fn undo(&mut self) -> Option<Selection> {
-        let patch = self.undo.pop()?;
-        self.history_bytes -= patch.removed.len() + patch.inserted.len();
-        self.apply_change(
-            patch.start..patch.start + patch.inserted.len(),
-            &patch.removed,
-        );
-        let selection = patch
-            .before
-            .unwrap_or_else(|| Selection::caret(patch.start));
-        self.redo.push(patch);
-        self.revision += 1;
-        self.break_history_group();
-        Some(selection)
+        self.history(EditOrigin::Human, false).unwrap()
     }
-
+    #[cfg(test)]
     pub fn redo(&mut self) -> Option<Selection> {
-        let patch = self.redo.pop()?;
-        self.apply_change(
-            patch.start..patch.start + patch.removed.len(),
-            &patch.inserted,
-        );
-        let selection = patch
-            .after
-            .unwrap_or_else(|| Selection::caret(patch.start + patch.inserted.len()));
-        self.history_bytes += patch.removed.len() + patch.inserted.len();
-        self.undo.push(patch);
-        self.revision += 1;
-        self.break_history_group();
-        Some(selection)
+        self.history(EditOrigin::Human, true).unwrap()
     }
 
     pub fn block_at(&self, offset: usize) -> usize {
@@ -161,54 +277,28 @@ impl Document {
             .collect()
     }
 
-    pub fn replace_all(&mut self, query: &str, replacement: &str) -> usize {
+    pub fn replace_all(
+        &mut self,
+        query: &str,
+        replacement: &str,
+    ) -> Result<usize, CollaborationError> {
         if query.is_empty() {
-            return 0;
+            return Ok(0);
         }
-        let count = self.source.matches(query).count();
+        let edits: Vec<_> = self
+            .source
+            .match_indices(query)
+            .take(crate::document::collaboration::MAX_TRANSACTION_EDITS + 1)
+            .map(|(start, matched)| SourceEdit {
+                range: start..start + matched.len(),
+                text: replacement.to_owned(),
+            })
+            .collect();
+        let count = edits.len();
         if count > 0 {
-            let new_source = self.source.replace(query, replacement);
-            self.break_history_group();
-            self.replace(0..self.source.len(), &new_source);
-            self.break_history_group();
+            self.transact(&edits, EditOrigin::Human, None, true)?;
         }
-        count
-    }
-
-    fn record(&mut self, range: Range<usize>, replacement: &str) {
-        self.redo.clear();
-        let now = Instant::now();
-        let coalesce = self
-            .last_edit
-            .is_some_and(|last| now.duration_since(last) < COALESCE_INTERVAL);
-        if let Some(previous) = self.undo.last_mut()
-            && coalesce
-            && range.start >= previous.start
-            && range.end <= previous.start + previous.inserted.len()
-        {
-            self.history_bytes -= previous.inserted.len();
-            previous.inserted.replace_range(
-                range.start - previous.start..range.end - previous.start,
-                replacement,
-            );
-            self.history_bytes += previous.inserted.len();
-        } else {
-            let removed = self.source[range.clone()].to_owned();
-            self.history_bytes += removed.len() + replacement.len();
-            self.undo.push(Patch {
-                start: range.start,
-                removed,
-                inserted: replacement.to_owned(),
-                before: None,
-                after: None,
-            });
-        }
-        // Keep at least the last operation, including a paste larger than the budget.
-        while self.history_bytes > HISTORY_BUDGET && self.undo.len() > 1 {
-            let oldest = self.undo.remove(0);
-            self.history_bytes -= oldest.removed.len() + oldest.inserted.len();
-        }
-        self.last_edit = Some(now);
+        Ok(count)
     }
 
     fn reparse(&mut self) {
@@ -277,7 +367,9 @@ impl Document {
             return false;
         }
         let index = self.block_at(edit.start);
-        let block = &self.blocks[index];
+        let Some(block) = self.blocks.get(index) else {
+            return false;
+        };
         // Container continuations and definition lists can cross blank lines.
         // Keep their neighboring blocks on the general path as well. A literal
         // colon paragraph is not certified by the scanner: changing an earlier
@@ -442,7 +534,7 @@ mod tests {
                     ] {
                         for end in [point, *boundaries.get(index + 1).unwrap_or(&point)] {
                             let mut document = Document::new(source.clone());
-                            document.replace(point..end, replacement);
+                            document.replace(point..end, replacement).unwrap();
                             if point == end && replacement.is_empty() {
                                 continue;
                             }
@@ -482,7 +574,7 @@ mod tests {
                 .source()
                 .rfind("\n\nTail")
                 .unwrap_or(document.source().len());
-            document.replace(start..end, replacement);
+            document.replace(start..end, replacement).unwrap();
             assert_full(&document);
         }
         while document.can_undo() {
@@ -496,7 +588,7 @@ mod tests {
     }
     fn replace_block(document: &mut Document, index: usize, replacement: &str) {
         let range = document.blocks[index].range.clone();
-        document.replace(range, replacement);
+        document.replace(range, replacement).unwrap();
     }
 
     #[test]
@@ -530,7 +622,7 @@ mod tests {
     fn replacement_and_redo_branching_are_unicode_safe() {
         let mut document = Document::new("İstanbul 🦀 İstanbul".to_owned());
         assert_eq!(document.matches("İstanbul"), vec![0..9, 15..24]);
-        assert_eq!(document.replace_all("İstanbul", "東京"), 2);
+        assert_eq!(document.replace_all("İstanbul", "東京").unwrap(), 2);
         assert_eq!(document.source(), "東京 🦀 東京");
         document.undo();
         replace_block(&mut document, 0, "New branch");
@@ -572,3 +664,7 @@ mod tests {
         assert_eq!(document.blocks.len(), 6000);
     }
 }
+
+#[cfg(test)]
+#[path = "collaboration_tests.rs"]
+mod collaboration_tests;

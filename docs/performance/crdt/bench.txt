@@ -1,0 +1,43 @@
+[bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 22.33s
+     Running unittests src/lib.rs (target/release/deps/still-0360e0d741012cb4)
+
+running 7 tests
+test app::application::performance::performance_crdt_churn ... memory/crdt/10000/initial rss_kib=77792
+memory/crdt/10000/churn rss_kib=83888
+crdt/churn blocks=10000 transactions=2000 locations=1000 cold=138.986083ms total=2.624065875s crdt=2.577419202s source_cache=46.429381ms initial_state_bytes=910476 churn_state_bytes=989430 source_bytes=910450
+crdt/reopen blocks=10000 total=110.689125ms checkpoint_bytes=989494
+memory/crdt/50000/initial rss_kib=308416
+memory/crdt/50000/churn rss_kib=285088
+crdt/churn blocks=50000 transactions=2000 locations=1000 cold=537.60425ms total=12.49211425s crdt=12.273355816s source_cache=218.475758ms initial_state_bytes=4574477 churn_state_bytes=4655078 source_bytes=4574450
+crdt/reopen blocks=50000 total=540.648375ms checkpoint_bytes=4655142
+ok
+test app::application::performance::performance_incremental_block_parsing ... blocks=10000 local_source_edits=100 elapsed=109.472334ms boundary_scan_bytes=37300 full_scan_equivalent_bytes=91065200
+blocks=50000 local_source_edits=100 elapsed=548.503916ms boundary_scan_bytes=37400 full_scan_equivalent_bytes=457465200
+ok
+test app::application::performance::performance_source_projection_updates ... blocks=10000 kind=word edits=100 source_including_crdt=110.683084ms crdt=108.176662ms source_cache=2.491421ms projection=40.463082ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91050050
+blocks=10000 kind=unicode-syntax edits=100 source_including_crdt=113.073957ms crdt=109.739213ms source_cache=3.319753ms projection=41.374122ms source_mirror_splice_bytes=37300 full_source_equivalent_bytes=91065200
+blocks=10000 kind=equal-length edits=100 source_including_crdt=136.036286ms crdt=135.494206ms source_cache=531.171µs projection=19.252499ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91045000
+blocks=50000 kind=word edits=100 source_including_crdt=553.157754ms crdt=542.739995ms source_cache=10.381381ms projection=235.663792ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457450050
+blocks=50000 kind=unicode-syntax edits=100 source_including_crdt=554.840837ms crdt=544.069332ms source_cache=10.751921ms projection=213.065577ms source_mirror_splice_bytes=37400 full_source_equivalent_bytes=457465200
+blocks=50000 kind=equal-length edits=100 source_including_crdt=682.63359ms crdt=681.340035ms source_cache=1.275129ms projection=104.948838ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457445000
+ok
+test app::application::tests::performance_continuous_edit_projection ... Continuous 2000 blocks: load=95.498958ms, 100 native-buffer/source/projection edits=21.089625ms, mean=210.896µs
+ok
+test document::source::tests::performance_large_document_source_edits ... 6000 blocks: parse=8.520417ms, 1000 source edits=275.680125ms, per edit=275.68µs
+ok
+test editor::native_buffer::tests::performance_native_snapshots ... blocks=10000 bytes=400000 native_edits=100 full_snapshot=48.76475ms retained_snapshot=564.25µs full_snapshot_bytes=40015150 local_snapshot_bytes=19250
+blocks=50000 bytes=2000000 native_edits=100 full_snapshot=249.354583ms retained_snapshot=3.113833ms full_snapshot_bytes=200015150 local_snapshot_bytes=19250
+ok
+test editor::rich_layout::tests::performance_rich_layout_cache ... Rich 2000 blocks: 100 syntax disclosure + cached layouts=30.199041ms, mean=301.99µs
+Rich 2000 blocks: initial layout=12.986042ms, 100 projection + cached layouts=183.318167ms, mean=1.833182ms
+ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 130 filtered out; finished in 25.05s
+
+     Running unittests src/main.rs (target/release/deps/still-dae1ebd7aab53681)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

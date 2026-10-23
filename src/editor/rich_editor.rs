@@ -17,15 +17,18 @@ use iced::{Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vect
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::app::Message;
+use crate::document::collaboration::{Collaboration, CompositionTarget, StablePosition};
 use crate::document::projection::{HighlightLines, Projection};
 use crate::document::selection::Selection;
 use crate::editor::rich_layout::{Decoration, FragmentKind, LayoutInput};
 use crate::editor::virtual_layout::VirtualLayout;
 use crate::io::image_store::ImageStore;
 use crate::theme::{ResolvedTheme, Tokens, Typography};
+use yrs::Assoc;
 
 pub struct RichEditor<'a> {
     content: &'a Content,
+    collaboration: Option<&'a Collaboration>,
     projection: &'a Projection,
     source: &'a str,
     theme: &'a ResolvedTheme,
@@ -34,6 +37,7 @@ pub struct RichEditor<'a> {
     zoom: f32,
     source_selection: Selection,
     app_focused: bool,
+    preserve_viewport: bool,
     key_binding: fn(KeyPress) -> Option<Binding<Message>>,
 }
 
@@ -47,6 +51,25 @@ impl<'a> RichEditor<'a> {
         )
     }
 
+    #[cfg(test)]
+    pub(crate) fn intent_stats(tree: &widget::Tree) -> (f32, bool, Option<usize>) {
+        let state = tree.state.downcast_ref::<State>();
+        (state.scroll, state.preedit.is_some(), state.drag_anchor)
+    }
+    #[cfg(test)]
+    pub(crate) fn visible_anchor(tree: &widget::Tree) -> Option<usize> {
+        let state = tree.state.downcast_ref::<State>();
+        state
+            .rich
+            .resident()
+            .viewport_anchor(state.scroll)
+            .map(|(offset, _)| offset)
+    }
+    #[cfg(test)]
+    pub(crate) fn screen_y(tree: &widget::Tree, source: usize) -> f32 {
+        let state = tree.state.downcast_ref::<State>();
+        state.caret(source).y - state.scroll
+    }
     pub fn new(
         content: &'a Content,
         projection: &'a Projection,
@@ -57,6 +80,7 @@ impl<'a> RichEditor<'a> {
     ) -> Self {
         Self {
             content,
+            collaboration: None,
             projection,
             source,
             theme,
@@ -65,10 +89,19 @@ impl<'a> RichEditor<'a> {
             zoom: 1.0,
             source_selection: Selection::default(),
             app_focused: false,
+            preserve_viewport: false,
             key_binding,
         }
     }
 
+    pub fn preserve_viewport(mut self, preserve: bool) -> Self {
+        self.preserve_viewport = preserve;
+        self
+    }
+    pub fn collaboration(mut self, collaboration: &'a Collaboration) -> Self {
+        self.collaboration = Some(collaboration);
+        self
+    }
     pub fn base(mut self, base: Option<&'a Path>) -> Self {
         self.base = base;
         self
@@ -281,6 +314,11 @@ struct State {
     preedit: Option<input_method::Preedit>,
     last_click: Option<mouse::Click>,
     drag_anchor: Option<usize>,
+    stable_drag: Option<StablePosition>,
+    stable_viewport: Option<(StablePosition, f32)>,
+    stable_wrap: Option<(StablePosition, bool)>,
+    composition_target: Option<CompositionTarget>,
+    causal_generation: Option<(uuid::Uuid, u64, u64)>,
     drag_position: Option<Point>,
     modifiers: keyboard::Modifiers,
     preferred_x: Option<f32>,
@@ -330,7 +368,9 @@ impl State {
     fn unfocus(&mut self) {
         self.focused = false;
         self.drag_anchor = None;
+        self.stable_drag = None;
         self.preedit = None;
+        self.composition_target = None;
     }
     fn clamp_scroll(&mut self) {
         self.scroll = self
@@ -400,6 +440,32 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
     ) -> layout::Node {
         let state = tree.state.downcast_mut::<State>();
         let bounds = limits.width(Length::Fill).height(Length::Fill).max();
+        let causal = self
+            .collaboration
+            .map(|document| (document.id(), document.replica_id(), document.generation()));
+        let causal_changed = state.causal_generation != causal;
+        if causal_changed && let Some(document) = self.collaboration {
+            if state
+                .causal_generation
+                .is_some_and(|(id, owner, _)| id != document.id() || owner != document.replica_id())
+            {
+                state.stable_drag = None;
+                state.stable_viewport = None;
+                state.stable_wrap = None;
+                state.composition_target = None;
+                state.preedit = None;
+            }
+            if let Some(anchor) = state
+                .stable_drag
+                .as_ref()
+                .and_then(|anchor| document.resolve(anchor))
+            {
+                state.drag_anchor = Some(anchor);
+            }
+            if let Some((position, upstream)) = &state.stable_wrap {
+                state.visual_cursor = document.resolve(position).map(|offset| (offset, *upstream));
+            }
+        }
         let source_changed = state
             .layout_key
             .as_ref()
@@ -419,12 +485,17 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 .as_ref()
                 .is_none_or(|key| !Arc::ptr_eq(&key.lines, &self.projection.highlights));
         let input = self.layout_input(bounds.width);
-        let selection_changed = state.last_selection != Some(self.source_selection);
-        let previous_caret = state.caret(self.source_selection.head);
+        let selection_changed = state.last_selection != Some(self.source_selection)
+            && !(self.preserve_viewport && causal_changed);
+        let previous_caret = state.caret(if self.preserve_viewport && causal_changed {
+            state.last_selection.unwrap_or(self.source_selection).head
+        } else {
+            self.source_selection.head
+        });
         let was_visible = previous_caret.y >= state.scroll
             && previous_caret.y + previous_caret.height <= state.scroll + state.viewport_height;
         let disclosure_only = changed && !content_changed;
-        let viewport_anchor = changed
+        let mut viewport_anchor = changed
             .then(|| {
                 if was_visible {
                     Some((self.source_selection.head, previous_caret.y))
@@ -433,6 +504,14 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 }
             })
             .flatten();
+        if causal_changed
+            && changed
+            && let Some(document) = self.collaboration
+            && let Some((position, screen_y)) = &state.stable_viewport
+            && let Some(offset) = document.resolve(position)
+        {
+            viewport_anchor = Some((offset, state.scroll + *screen_y));
+        }
         let affinity = state.visual_cursor;
         if changed {
             state.visual_cursor = None;
@@ -450,7 +529,9 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         }
         state.viewport_height = bounds.height;
         // A source jump measures its destination, never the intervening blocks.
-        let jump = (selection_changed || source_changed) && !was_visible;
+        let jump = (selection_changed || source_changed)
+            && !was_visible
+            && !(causal_changed && state.stable_viewport.is_some());
         let anchored_screen_y = viewport_anchor.map(|(_, y)| y - state.scroll);
         state.scroll = if jump {
             state
@@ -469,7 +550,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             }
         }
         if selection_changed && !(disclosure_only && was_visible)
-            || source_changed
+            || source_changed && (!self.preserve_viewport || was_visible)
             || content_changed && state.focused && was_visible
         {
             let caret = state.caret(self.source_selection.head);
@@ -483,6 +564,30 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         self.refresh_viewport(state, bounds);
         state.last_selection = Some(self.source_selection);
         state.clamp_scroll();
+        state.causal_generation = causal;
+        // Wrap affinity belongs to this caret. A programmatic jump must not
+        // retain (or repeatedly anchor) an unrelated old visual position.
+        if state
+            .visual_cursor
+            .is_some_and(|(head, _)| head != self.source_selection.head)
+        {
+            state.visual_cursor = None;
+        }
+        if let Some(document) = self.collaboration {
+            let caret = state.caret(self.source_selection.head);
+            let anchor = if caret.y >= state.scroll
+                && caret.y + caret.height <= state.scroll + bounds.height
+            {
+                Some((self.source_selection.head, caret.y))
+            } else {
+                state.rich.resident().viewport_anchor(state.scroll)
+            };
+            state.stable_viewport = anchor
+                .map(|(offset, y)| (document.position(offset, Assoc::After), y - state.scroll));
+            state.stable_wrap = state
+                .visual_cursor
+                .map(|(offset, side)| (document.position(offset, Assoc::After), side));
+        }
         layout::Node::new(bounds)
     }
 
@@ -512,6 +617,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         _viewport: &Rectangle,
     ) {
         let state = tree.state.downcast_mut::<State>();
+        let previous_scroll = state.scroll;
         let bounds = layout.bounds();
         if matches!(event, Event::Window(window::Event::RedrawRequested(_)))
             && state.focused != self.app_focused
@@ -562,6 +668,10 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     state.last_click = Some(click);
                     state.drag_anchor = (click.kind() == mouse::click::Kind::Single)
                         .then_some(source_selection.anchor);
+                    state.stable_drag = state.drag_anchor.and_then(|anchor| {
+                        self.collaboration
+                            .map(|document| document.position(anchor, Assoc::After))
+                    });
                     state.drag_position = Some(position);
                     state.preferred_x = None;
                     state.reset_blink();
@@ -591,6 +701,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 state.drag_anchor = None;
+                state.stable_drag = None;
                 state.drag_position = None;
                 state.scroll_drag = None;
             }
@@ -647,10 +758,19 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             Event::InputMethod(event) if state.focused => {
                 match event {
                     input_method::Event::Opened => {
-                        state.preedit = Some(input_method::Preedit::new())
+                        state.preedit = Some(input_method::Preedit::new());
+                        state.composition_target = None;
                     }
-                    input_method::Event::Closed => state.preedit = None,
+                    input_method::Event::Closed => {
+                        state.preedit = None;
+                        state.composition_target = None;
+                    }
                     input_method::Event::Preedit(content, selection) => {
+                        if !content.is_empty() && state.composition_target.is_none() {
+                            state.composition_target = self
+                                .collaboration
+                                .map(|document| document.composition_target(self.source_selection));
+                        }
                         state.preedit = Some(input_method::Preedit {
                             content: content.clone(),
                             selection: selection.clone(),
@@ -661,9 +781,19 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         state.preferred_x = None;
                         state.preedit =
                             state.preedit.as_ref().map(|_| input_method::Preedit::new());
-                        shell.publish(Message::Edit(Action::Edit(Edit::Paste(Arc::new(
-                            text.clone(),
-                        )))));
+                        if let Some(target) = state.composition_target.take().or_else(|| {
+                            self.collaboration
+                                .map(|document| document.composition_target(self.source_selection))
+                        }) {
+                            shell.publish(Message::CommitComposition {
+                                target,
+                                text: text.clone(),
+                            });
+                        } else {
+                            shell.publish(Message::Edit(Action::Edit(Edit::Paste(Arc::new(
+                                text.clone(),
+                            )))));
+                        }
                     }
                 }
                 shell.capture_event();
@@ -672,6 +802,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             Event::Window(window::Event::Unfocused) => {
                 state.window_focused = false;
                 state.drag_anchor = None;
+                state.stable_drag = None;
                 state.scroll_drag = None;
                 shell.request_redraw();
             }
@@ -714,6 +845,15 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 });
             }
             _ => {}
+        }
+        if state.scroll != previous_scroll
+            && let Some(document) = self.collaboration
+        {
+            state.stable_viewport = state
+                .rich
+                .resident()
+                .viewport_anchor(state.scroll)
+                .map(|(offset, y)| (document.position(offset, Assoc::After), y - state.scroll));
         }
     }
 

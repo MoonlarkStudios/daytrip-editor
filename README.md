@@ -70,3 +70,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for source boundaries, validation command
 Current support includes headings, inline styles, links, nested lists, tasks, blockquotes, rules, GFM tables, code fences, and PNG/JPEG/GIF/WebP images. Reference-style links resolve across blocks in the live projection. Image objects use block layout even when written inline; GIFs show their first frame. Strikethrough lines and clickable task controls remain in Read view. LaTeX math, Mermaid, footnote popovers, image property/resize controls, column/row manipulation controls, typewriter scrolling, PDF/office exports, tabs, and folder watching remain unfinished.
 
 MIT licensed. The bundled font has its own [license](assets/fonts/OFL.txt).
+
+Offline replicas and versioned agent proposals are available under **Appearance → Collaboration…**. Markdown stays an ordinary `.md` file; keep its hidden `.still` checkpoint alongside it to retain shared history. See [collaboration and recovery](docs/collaboration.md) and [CRDT measurements](docs/crdt-performance.md).

@@ -8,6 +8,78 @@ use iced::widget::text_editor::{Action, Content, Cursor, Edit, LineEnding, Motio
 
 use crate::document::selection::Selection;
 
+/// Sparse display synchronization after a conservative full Markdown projection.
+/// This diff is local derived state; it never creates replicated operations.
+/// Match nearby physical lines so disjoint edits do not delete the unchanged
+/// document between them in cosmic-text's quadratic multi-line replacement.
+pub(crate) fn synchronization_changes(
+    old: &str,
+    new: &str,
+) -> Vec<crate::document::projection::TextChange> {
+    use crate::document::projection::{TextChange, difference};
+    let envelope = difference(old, new);
+    if envelope.old.len().max(envelope.new.len()) < 64 * 1024 {
+        return vec![envelope];
+    }
+    let lines = |text: &str, range: Range<usize>| {
+        let mut start = range.start;
+        text[range]
+            .split_inclusive('\n')
+            .map(|line| {
+                let range = start..start + line.len();
+                start = range.end;
+                range
+            })
+            .collect::<Vec<_>>()
+    };
+    let a = lines(old, envelope.old.clone());
+    let b = lines(new, envelope.new.clone());
+    let (mut i, mut j) = (0, 0);
+    let (mut old_start, mut new_start) = (envelope.old.start, envelope.new.start);
+    let mut changes = Vec::new();
+    while i < a.len() && j < b.len() {
+        if old[a[i].clone()] == new[b[j].clone()] {
+            if old_start != a[i].start || new_start != b[j].start {
+                let diff = difference(&old[old_start..a[i].start], &new[new_start..b[j].start]);
+                changes.push(TextChange {
+                    old: old_start + diff.old.start..old_start + diff.old.end,
+                    new: new_start + diff.new.start..new_start + diff.new.end,
+                });
+            }
+            old_start = a[i].end;
+            new_start = b[j].end;
+            i += 1;
+            j += 1;
+        } else {
+            let next_b = (j + 1..(j + 33).min(b.len()))
+                .find(|&next| old[a[i].clone()] == new[b[next].clone()]);
+            let next_a = (i + 1..(i + 33).min(a.len()))
+                .find(|&next| old[a[next].clone()] == new[b[j].clone()]);
+            match (next_a, next_b) {
+                (Some(next), None) => i = next,
+                (None, Some(next)) => j = next,
+                (Some(ai), Some(bj)) if ai - i < bj - j => i = ai,
+                (Some(_), Some(bj)) => j = bj,
+                (None, None) => {
+                    i += 1;
+                    j += 1;
+                }
+            }
+        }
+    }
+    if old_start != envelope.old.end || new_start != envelope.new.end {
+        let diff = difference(
+            &old[old_start..envelope.old.end],
+            &new[new_start..envelope.new.end],
+        );
+        changes.push(TextChange {
+            old: old_start + diff.old.start..old_start + diff.old.end,
+            new: new_start + diff.new.start..new_start + diff.new.end,
+        });
+    }
+    changes
+}
+
 /// Owns the native buffer and its text mirror so mutations cannot bypass tracking.
 ///
 /// Iced's `Content::text` clones every physical line into a new String. Instead,
@@ -60,6 +132,19 @@ impl Buffer {
 
     /// Applies a display/source synchronization splice to the native buffer.
     pub(crate) fn replace(&mut self, range: Range<usize>, text: &str) {
+        if self
+            .position(range.end)
+            .line
+            .saturating_sub(self.position(range.start).line)
+            > 256
+        {
+            // Large structural replacement: deferred loading is linear, unlike
+            // cosmic-text deletion of thousands of lines. Widget state lives in
+            // RichEditor, and App restores its anchored source selection.
+            self.snapshot.replace_range(range, text);
+            *self = Self::new(&self.snapshot);
+            return;
+        }
         let start = self.offset(self.position(range.start));
         let end_position = self.position(range.end);
         let end = self.offset(end_position);
@@ -525,5 +610,32 @@ mod tests {
                 assert_same(&actual, &expected);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod collaboration_tests {
+    use super::*;
+    #[test]
+    fn sparse_batch_sync_round_trips_unicode_and_mixed_endings_without_large_envelopes() {
+        let old: String = (0..1200).map(|i| format!("Paragraph {i}: 日本 é 🧑‍💻 and enough text to exceed the sparse diff threshold.\r\n\n")).collect();
+        for (a, b) in [(10, 1000), (0, 1199), (200, 201)] {
+            let mut new = old.clone();
+            let b = new.find(&format!("Paragraph {b}:")).unwrap();
+            new.replace_range(b..b + 9, "Heading\n\nnew ");
+            let a = new.find(&format!("Paragraph {a}:")).unwrap();
+            new.insert_str(a, "λ\r\n");
+            let edits = synchronization_changes(&old, &new);
+            let mut buffer = Buffer::new(&old);
+            for edit in edits.into_iter().rev() {
+                buffer.replace(edit.old, &new[edit.new]);
+            }
+            assert_eq!(buffer.snapshot(), new);
+            assert_eq!(buffer.content.text(), new);
+        }
+        let mut buffer = Buffer::new(&old);
+        buffer.replace(0..old.len(), "日本\r\nnew\n");
+        assert_eq!(buffer.snapshot(), "日本\r\nnew\n");
+        assert_eq!(buffer.content.text(), buffer.snapshot());
     }
 }
