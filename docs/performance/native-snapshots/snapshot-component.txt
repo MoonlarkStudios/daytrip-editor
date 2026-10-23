@@ -1,0 +1,7 @@
+
+running 1 test
+test editor::native_buffer::tests::performance_native_snapshots ... blocks=10000 bytes=400000 native_edits=100 full_snapshot=53.256542ms retained_snapshot=581.916µs full_snapshot_bytes=40015150 local_snapshot_bytes=19250
+blocks=50000 bytes=2000000 native_edits=100 full_snapshot=280.626917ms retained_snapshot=2.985917ms full_snapshot_bytes=200015150 local_snapshot_bytes=19250
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 100 filtered out; finished in 0.54s

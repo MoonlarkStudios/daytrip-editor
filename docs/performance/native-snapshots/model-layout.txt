@@ -1,0 +1,27 @@
+[bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 30.06s
+     Running unittests src/lib.rs (target/release/deps/still-1e7d549fdb02224e)
+
+running 5 tests
+6000 blocks: parse=17.46875ms, 1000 source edits=6.371917ms, per edit=6.371µs
+test document::source::tests::performance_large_document_source_edits ... ok
+blocks=10000 local_source_edits=100 elapsed=2.403958ms boundary_scan_bytes=37300 full_scan_equivalent_bytes=91065200
+Continuous 2000 blocks: load=148.503583ms, 100 native-buffer/source/projection edits=24.80475ms, mean=248.047µs
+test app::application::tests::performance_continuous_edit_projection ... ok
+Rich 2000 blocks: 100 syntax disclosure + cached layouts=31.593833ms, mean=315.938µs
+blocks=10000 bytes=400000 native_edits=100 full_snapshot=66.0105ms retained_snapshot=630.5µs full_snapshot_bytes=40015150 local_snapshot_bytes=19250
+Rich 2000 blocks: initial layout=157.07875ms, 100 projection + cached layouts=265.862833ms, mean=2.658629ms
+test editor::rich_layout::tests::performance_rich_layout_cache ... ok
+blocks=50000 bytes=2000000 native_edits=100 full_snapshot=274.721917ms retained_snapshot=2.844209ms full_snapshot_bytes=200015150 local_snapshot_bytes=19250
+test editor::native_buffer::tests::performance_native_snapshots ... ok
+blocks=50000 local_source_edits=100 elapsed=10.172959ms boundary_scan_bytes=37400 full_scan_equivalent_bytes=457465200
+test app::application::performance::performance_incremental_block_parsing ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 1.46s
+
+     Running unittests src/main.rs (target/release/deps/still-8d7c581f591337ea)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

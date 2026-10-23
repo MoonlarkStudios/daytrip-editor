@@ -2,6 +2,8 @@
 
 Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / pulldown-cmark 0.12, release optimization, macOS 26.7.1 / arm64, and bundled Newsreader fonts. The baseline is `bbbeb0f`, after [deferred native initialization](native-buffer.md).
 
+The subsequent [native snapshot report](native-snapshots.md) addresses whole-buffer copying after native edits.
+
 ## Parsing boundaries
 
 Previously, every source edit discovered all top-level Markdown ranges. Unicode input and formatting changes also took the full projection parser, and undo/redo repeated the source parse after applying its patch.

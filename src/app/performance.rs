@@ -79,7 +79,7 @@ impl Harness {
     }
     fn editor(app: &App) -> RichEditor<'_> {
         RichEditor::new(
-            &app.editor,
+            app.editor.content(),
             &app.projection,
             app.document.source(),
             &app.resolved_theme,
@@ -435,6 +435,12 @@ fn large_document_interactions() {
             RichEditor::profile_stats(&harness.tree)
         );
         report_memory("final");
+        // Complete reads are correctness oracles outside the timed event path.
+        assert_eq!(
+            harness.app.editor.snapshot(),
+            harness.app.editor.content().text()
+        );
+        assert_eq!(harness.app.editor.snapshot(), harness.app.projection.text);
     }
 }
 
@@ -449,10 +455,10 @@ fn large_document_load_components() {
     let projection = crate::document::projection::Projection::new(&source);
     println!("load/projection {:?}", start.elapsed());
     let start = Instant::now();
-    let mut content = native_buffer::with_text(&projection.text);
+    let mut content = native_buffer::Buffer::new(&projection.text);
     println!("load/native-init {:?}", start.elapsed());
     let start = Instant::now();
-    Selection::caret(0).restore(&mut content, &projection.text);
+    content.select(Selection::caret(0));
     println!("load/native-caret {:?}", start.elapsed());
     assert_eq!(document.blocks.len(), 50_000);
     std::hint::black_box(content);

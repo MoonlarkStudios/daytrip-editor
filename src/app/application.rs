@@ -36,10 +36,8 @@ mod performance;
 
 pub struct App {
     document: Document,
-    editor: text_editor::Content,
-    // A native edit snapshot is consumed by sync; navigation borrows the old
-    // projection instead of assembling the entire native buffer again.
-    native_after: Option<String>,
+    editor: native_buffer::Buffer,
+    native_edited: bool,
     editor_source: bool,
     active: Option<usize>,
     mode: EditorMode,
@@ -195,15 +193,16 @@ impl App {
             .cloned()
             .unwrap_or_else(|| preset_themes[0].clone());
         let source = include_str!("../../assets/welcome.md").to_owned();
+        let projection = Projection::new(&source);
         let mut app = Self {
             document: Document::new(source.clone()),
-            editor: native_buffer::with_text(&Projection::new(&source).text),
-            native_after: None,
+            editor: native_buffer::Buffer::new(&projection.text),
+            native_edited: false,
             editor_source: false,
             active: None,
             mode: EditorMode::Live,
             images: ImageStore::default(),
-            projection: Projection::new(&source),
+            projection,
             projection_revision: Some(0),
             editor_focused: false,
             selection: Selection::default(),
@@ -901,17 +900,11 @@ impl App {
             _ => None,
         };
         let enter = matches!(action, text_editor::Action::Edit(text_editor::Edit::Enter));
-        let text_before = if self.editor_source {
-            self.document.source()
-        } else {
-            &self.projection.text
-        };
-        self.editor.perform(action);
-        let after_text = edited.then(|| self.editor.text());
-        let after = after_text.as_deref().unwrap_or(text_before);
-        let display_selection = Selection::from_cursor(after, self.editor.cursor());
-        if !edited || (after == text_before && before.is_caret()) {
-            self.native_after = after_text;
+        let changed = self.editor.perform(action);
+        self.native_edited = edited;
+        let after = self.editor.snapshot();
+        let display_selection = self.editor.selection();
+        if !edited || (!changed && before.is_caret()) {
             if select_all {
                 self.selection = Selection {
                     anchor: 0,
@@ -942,7 +935,6 @@ impl App {
             self.projection
                 .edit(self.document.source(), after, before, display_selection)
         };
-        self.native_after = after_text;
         if self.document.source().len() - edit.range.len() + edit.text.len()
             > storage::MAX_FILE_BYTES as usize
         {
@@ -995,14 +987,8 @@ impl App {
         };
         let previous = next.map(|next| std::mem::replace(&mut self.projection, next));
         let old = previous.as_ref().unwrap_or(&self.projection);
-        let native_after = self.native_after.take();
-        let current = native_after.as_deref().unwrap_or_else(|| {
-            if self.editor_source {
-                &old.source
-            } else {
-                &old.text
-            }
-        });
+        let native_edited = std::mem::take(&mut self.native_edited);
+        let current = self.editor.snapshot();
         let target = if self.mode == EditorMode::Source {
             self.document.source()
         } else {
@@ -1019,7 +1005,7 @@ impl App {
             // in cosmic-text's line deletion. Apply proven regions from the end
             // so earlier native line/column positions remain valid.
             let regions = self.projection.change.as_ref().filter(|change| {
-                native_after.is_none()
+                !native_edited
                     && !self.editor_source
                     && self.mode != EditorMode::Source
                     && Arc::ptr_eq(&old.highlights, &change.previous)
@@ -1049,21 +1035,13 @@ impl App {
                 if diff.old.is_empty() && diff.new.is_empty() {
                     continue;
                 }
-                Selection {
-                    anchor: diff.old.start,
-                    head: diff.old.end,
-                }
-                .restore(&mut self.editor, current);
-                self.editor
-                    .perform(text_editor::Action::Edit(text_editor::Edit::Paste(
-                        Arc::new(target[diff.new].to_owned()),
-                    )));
+                self.editor.replace(diff.old, &target[diff.new]);
             }
         }
-        if Selection::from_cursor(target, self.editor.cursor()) != selection
-            || selection.is_caret() && self.editor.cursor().selection.is_some()
+        if self.editor.selection() != selection
+            || selection.is_caret() && self.editor.content().cursor().selection.is_some()
         {
-            selection.restore(&mut self.editor, target);
+            self.editor.select(selection);
         }
         self.editor_source = self.mode == EditorMode::Source;
         self.active = Some(self.document.block_at(self.selection.head));
@@ -1173,7 +1151,7 @@ impl App {
             self.mode = EditorMode::Live;
             self.sync_editor();
         }
-        let selected = self.editor.selection().unwrap_or_default();
+        let selected = self.editor.content().selection().unwrap_or_default();
         if self.mode == EditorMode::Live && !selected.is_empty() {
             let marker = match format {
                 Format::Bold => Some("**"),
@@ -1359,12 +1337,12 @@ impl App {
         self.projection = Projection::new(self.document.source());
         self.projection_revision = Some(self.document.revision);
         self.editor_source = self.mode == EditorMode::Source;
-        self.editor = native_buffer::with_text(if self.editor_source {
+        self.editor = native_buffer::Buffer::new(if self.editor_source {
             self.document.source()
         } else {
             &self.projection.text
         });
-        self.native_after = None;
+        self.native_edited = false;
         self.editor_focused = false;
         self.saved_source = source;
         self.path = path;
@@ -1723,7 +1701,7 @@ impl App {
     fn editor_view(&self, source: bool) -> Element<'_, Message> {
         if !source {
             return RichEditor::new(
-                &self.editor,
+                self.editor.content(),
                 &self.projection,
                 self.document.source(),
                 &self.resolved_theme,
@@ -1738,7 +1716,7 @@ impl App {
         }
         let tokens = self.resolved_theme.tokens;
         let size = 14.5 * self.zoom;
-        let base = text_editor(&self.editor)
+        let base = text_editor(self.editor.content())
             .id(EDITOR)
             .on_action(Message::Edit)
             .font(Font::MONOSPACE)
@@ -2376,13 +2354,13 @@ mod tests {
             };
             send(&mut app, Message::SelectSource(selection));
             assert_eq!(app.selection, selection);
-            assert_eq!(app.editor.text(), app.projection.text);
+            assert_eq!(app.editor.content().text(), app.projection.text);
             assert_eq!(app.document.source(), source);
             assert!(!app.dirty);
             let change = app.projection.change.as_ref().unwrap();
             assert!(change.regions.iter().map(|r| r.old.len()).sum::<usize>() < 100);
             assert_eq!(
-                Selection::from_cursor(&app.projection.text, app.editor.cursor()),
+                Selection::from_cursor(&app.projection.text, app.editor.content().cursor()),
                 app.projection.display_selection(selection)
             );
         }
@@ -2392,6 +2370,15 @@ mod tests {
 
     fn send(app: &mut App, message: Message) {
         drop(app.update(message));
+        assert_eq!(app.editor.snapshot(), app.editor.content().text());
+        assert_eq!(
+            app.editor.snapshot(),
+            if app.mode == EditorMode::Source {
+                app.document.source()
+            } else {
+                &app.projection.text
+            }
+        );
     }
     fn type_text(app: &mut App, text: &str) {
         for character in text.chars() {
@@ -2400,7 +2387,7 @@ mod tests {
     }
     fn select(app: &mut App, selection: Selection) {
         app.selection = app.projection.source_selection(selection, app.selection);
-        app.editor.move_to(selection.cursor(&app.projection.text));
+        app.editor.select(selection);
     }
 
     #[test]
@@ -2408,13 +2395,13 @@ mod tests {
         let mut app = app("");
         type_text(&mut app, "**bold** and *soft* and `code`");
         assert_eq!(app.document.source(), "**bold** and *soft* and `code`");
-        assert_eq!(app.editor.text(), "bold and soft and code");
+        assert_eq!(app.editor.content().text(), "bold and soft and code");
         send(&mut app, Message::SelectSource(Selection::caret(14)));
-        assert_eq!(app.editor.text(), "bold and *soft* and code");
+        assert_eq!(app.editor.content().text(), "bold and *soft* and code");
         send(&mut app, Message::Edit(Action::Move(Motion::DocumentEnd)));
         send(&mut app, Message::Edit(Action::Edit(Edit::Enter)));
-        assert_eq!(app.editor.text(), "bold and soft and code\n");
-        assert_eq!(app.editor.cursor().position.column, 0);
+        assert_eq!(app.editor.content().text(), "bold and soft and code\n");
+        assert_eq!(app.editor.content().cursor().position.column, 0);
     }
 
     #[test]
@@ -2427,7 +2414,7 @@ mod tests {
         assert_eq!(app.selection, Selection::caret(0));
         type_text(&mut app, "X");
         assert_eq!(app.document.source(), "X**bold**!\n\n**Next**");
-        assert_eq!(app.editor.text(), "X**bold**!\n\nNext");
+        assert_eq!(app.editor.content().text(), "X**bold**!\n\nNext");
     }
 
     #[test]
@@ -2444,15 +2431,15 @@ mod tests {
             &mut app,
             Message::Edit(Action::Edit(Edit::Paste(Arc::new("X".into())))),
         );
-        assert_eq!(app.editor.text(), "# FirXird");
+        assert_eq!(app.editor.content().text(), "# FirXird");
         assert_eq!(app.document.source(), "# FirXird");
         send(&mut app, Message::Undo);
         assert_eq!(
-            app.editor.selection().as_deref(),
+            app.editor.content().selection().as_deref(),
             Some("st\n\nSecond\n\nTh")
         );
         send(&mut app, Message::Redo);
-        assert_eq!(app.editor.text(), "# FirXird");
+        assert_eq!(app.editor.content().text(), "# FirXird");
     }
 
     #[test]
@@ -2464,7 +2451,7 @@ mod tests {
             Message::Edit(Action::Edit(Edit::Paste(Arc::new("Same title".into())))),
         );
         assert_eq!(app.document.source(), "Same title");
-        assert_eq!(app.editor.text(), "Same title");
+        assert_eq!(app.editor.content().text(), "Same title");
     }
 
     #[test]
@@ -2479,7 +2466,7 @@ mod tests {
         send(&mut app, Message::Redo);
         assert_eq!(app.selection, Selection::caret(4));
         assert_eq!(
-            app.editor.cursor().position.column,
+            app.editor.content().cursor().position.column,
             app.projection.to_display(4)
         );
     }
@@ -2487,7 +2474,7 @@ mod tests {
     #[test]
     fn source_toggle_preserves_reverse_unicode_selection() {
         let mut app = app("# 日本語\n\n**café 🦀**");
-        let text = app.editor.text();
+        let text = app.editor.content().text();
         select(
             &mut app,
             Selection {
@@ -2495,14 +2482,14 @@ mod tests {
                 head: 0,
             },
         );
-        let original = app.editor.selection();
+        let original = app.editor.content().selection();
         send(&mut app, Message::ToggleSource);
         assert_eq!(app.mode, EditorMode::Source);
-        assert!(app.editor.cursor().selection.is_some());
+        assert!(app.editor.content().cursor().selection.is_some());
         send(&mut app, Message::ToggleSource);
         assert_eq!(app.mode, EditorMode::Live);
-        assert_eq!(app.editor.selection(), original);
-        assert_eq!(app.editor.cursor().position.column, 0);
+        assert_eq!(app.editor.content().selection(), original);
+        assert_eq!(app.editor.content().cursor().position.column, 0);
     }
 
     #[test]
@@ -2540,7 +2527,7 @@ mod tests {
             app.projection.highlights.last().unwrap()
         ));
         assert_eq!(app.selection, Selection::caret(point + committed.len()));
-        assert_eq!(app.editor.text(), app.projection.text);
+        assert_eq!(app.editor.content().text(), app.projection.text);
         send(&mut app, Message::Undo);
         assert_eq!(app.document.source(), source);
         assert_eq!(app.selection, before);
@@ -2563,12 +2550,12 @@ mod tests {
         assert_eq!(app.document.source(), source);
         assert_eq!(app.selection, selection);
         assert_eq!(
-            Selection::from_cursor(&app.projection.text, app.editor.cursor()),
+            Selection::from_cursor(&app.projection.text, app.editor.content().cursor()),
             app.projection.display_selection(selection)
         );
         send(&mut app, Message::Redo);
         assert_eq!(app.document.source(), after);
-        assert_eq!(app.editor.text(), app.projection.text);
+        assert_eq!(app.editor.content().text(), app.projection.text);
     }
 
     #[test]
@@ -2588,7 +2575,7 @@ mod tests {
             assert_eq!(app.selection, selection);
             send(&mut app, Message::ToggleSource);
             assert_eq!(app.selection, selection);
-            assert_eq!(app.editor.text(), app.projection.text);
+            assert_eq!(app.editor.content().text(), app.projection.text);
         }
         let committed = "日本語 e\u{301} 🧑‍💻\n";
         send(
@@ -2601,7 +2588,7 @@ mod tests {
         assert_eq!(app.document.source(), source);
         assert_eq!(app.selection, selection);
         assert_eq!(
-            Selection::from_cursor(&app.projection.text, app.editor.cursor()),
+            Selection::from_cursor(&app.projection.text, app.editor.content().cursor()),
             app.projection.display_selection(selection)
         );
         send(&mut app, Message::Redo);
@@ -2615,7 +2602,57 @@ mod tests {
         send(&mut app, Message::Query("example.com".into()));
         send(&mut app, Message::FindNext);
         assert_eq!(app.mode, EditorMode::Source);
-        assert_eq!(app.editor.selection().as_deref(), Some("example.com"));
+        assert_eq!(
+            app.editor.content().selection().as_deref(),
+            Some("example.com")
+        );
+    }
+
+    #[test]
+    fn native_snapshot_preserves_crlf_reverse_replacement_and_history_across_modes() {
+        let source = "# Heading **title**\r\n\r\nParagraph *café* 🦀.\r\n\r\nTail";
+        let mut app = app(source);
+        let selection = Selection {
+            anchor: source.len(),
+            head: source.find("Paragraph ").unwrap() + "Paragraph ".len(),
+        };
+        send(&mut app, Message::SelectSource(selection));
+        send(&mut app, Message::ToggleSource);
+        assert_eq!(app.editor.selection(), selection);
+        let commit = "日本語 e\u{301} 🧑‍💻\r\nNext";
+        send(
+            &mut app,
+            Message::Edit(Action::Edit(Edit::Paste(Arc::new(commit.into())))),
+        );
+        let after = format!("{}{commit}", &source[..selection.head]);
+        let caret = Selection::caret(after.len());
+        assert_eq!(app.document.source(), after);
+        assert_eq!(app.selection, caret);
+        send(&mut app, Message::Undo);
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, selection);
+        assert_eq!(app.editor.selection(), selection);
+        send(&mut app, Message::ToggleSource);
+        assert_eq!(app.selection, selection);
+        assert_eq!(
+            app.editor.selection(),
+            app.projection.display_selection(selection)
+        );
+        send(&mut app, Message::Redo);
+        assert_eq!(app.document.source(), after);
+        assert_eq!(app.selection, caret);
+        send(&mut app, Message::Edit(Action::Move(Motion::DocumentStart)));
+        send(&mut app, Message::Edit(Action::Select(Motion::DocumentEnd)));
+        assert_eq!(
+            app.selection,
+            Selection {
+                anchor: 0,
+                head: after.len()
+            }
+        );
+        send(&mut app, Message::Edit(Action::Move(Motion::Left)));
+        assert!(app.selection.is_caret());
+        assert!(app.editor.content().cursor().selection.is_none());
     }
 
     #[test]
@@ -2657,7 +2694,7 @@ mod tests {
         );
         send(&mut app, Message::Edit(Action::Edit(Edit::Delete)));
         assert_eq!(app.document.source(), "Title");
-        assert_eq!(app.editor.text(), "Title");
+        assert_eq!(app.editor.content().text(), "Title");
         send(&mut app, Message::Undo);
         assert_eq!(app.document.source(), "# Title");
     }
@@ -2669,7 +2706,10 @@ mod tests {
             let source = format!("{prefix} Title\n\n## Other");
             let mut app = app(&source);
             send(&mut app, Message::EditorFocused(true));
-            assert_eq!(app.editor.text(), format!("{prefix} Title\n\nOther"));
+            assert_eq!(
+                app.editor.content().text(),
+                format!("{prefix} Title\n\nOther")
+            );
             send(&mut app, Message::Edit(Action::Move(Motion::Home)));
             assert_eq!(app.selection, Selection::caret(0));
             send(&mut app, Message::Edit(Action::Edit(Edit::Delete)));
@@ -2689,11 +2729,11 @@ mod tests {
         send(&mut app, Message::SelectSource(Selection::caret(1)));
         let revision = app.document.revision;
         send(&mut app, Message::EditorFocused(false));
-        assert_eq!(app.editor.text(), "日本語\n\nNext");
+        assert_eq!(app.editor.content().text(), "日本語\n\nNext");
         assert_eq!(app.selection, Selection::caret(1));
         send(&mut app, Message::EditorFocused(true));
-        assert_eq!(app.editor.text(), "### 日本語\n\nNext");
-        assert_eq!(app.editor.cursor().position.column, 1);
+        assert_eq!(app.editor.content().text(), "### 日本語\n\nNext");
+        assert_eq!(app.editor.content().cursor().position.column, 1);
         assert_eq!(app.document.revision, revision);
         assert!(!app.dirty);
         send(&mut app, Message::Undo);
@@ -2708,9 +2748,9 @@ mod tests {
             &mut app,
             Message::SelectSource(Selection { anchor: 2, head: 7 }),
         );
-        assert_eq!(app.editor.selection().as_deref(), Some("Title"));
+        assert_eq!(app.editor.content().selection().as_deref(), Some("Title"));
         send(&mut app, Message::SelectSource(Selection::caret(0)));
-        assert!(app.editor.cursor().selection.is_none());
+        assert!(app.editor.content().cursor().selection.is_none());
         type_text(&mut app, "#");
         assert_eq!(app.document.source(), "## Title\n\nBody");
         send(
@@ -2719,7 +2759,7 @@ mod tests {
         );
         send(&mut app, Message::EditorFocused(false));
         send(&mut app, Message::SelectSource(Selection::caret(0)));
-        assert!(app.editor.cursor().selection.is_none());
+        assert!(app.editor.content().cursor().selection.is_none());
         type_text(&mut app, "#");
         assert_eq!(app.document.source(), "### Title\n\nBody");
     }
@@ -2738,14 +2778,14 @@ mod tests {
             head: 2,
         };
         send(&mut app, Message::SelectSource(selection));
-        assert_eq!(app.editor.text(), "# 日本語\n\nNext");
+        assert_eq!(app.editor.content().text(), "# 日本語\n\nNext");
         assert_eq!(app.selection, selection);
         let selection = Selection {
             anchor: 2,
             head: source.len() - 3,
         };
         send(&mut app, Message::SelectSource(selection));
-        assert_eq!(app.editor.text(), "日本語\n\n**Next**");
+        assert_eq!(app.editor.content().text(), "日本語\n\n**Next**");
         assert_eq!(app.selection, selection);
         assert!(!Arc::ptr_eq(&lines, &app.projection.highlights));
         assert!(Arc::ptr_eq(&snapshot, &app.projection.source));
@@ -2755,7 +2795,7 @@ mod tests {
     fn setext_heading_reveals_its_editable_underline_with_the_title() {
         let mut app = app("Title\n=====\n\nAfter");
         send(&mut app, Message::EditorFocused(true));
-        assert_eq!(app.editor.text(), "Title\n=====\n\nAfter");
+        assert_eq!(app.editor.content().text(), "Title\n=====\n\nAfter");
         send(
             &mut app,
             Message::SelectSource(Selection {
@@ -2766,7 +2806,7 @@ mod tests {
         type_text(&mut app, "-----");
         assert_eq!(app.projection.rich.headings[0].level, 2);
         send(&mut app, Message::SelectSource(Selection::caret(15)));
-        assert_eq!(app.editor.text(), "Title\n\nAfter");
+        assert_eq!(app.editor.content().text(), "Title\n\nAfter");
     }
 
     #[test]
@@ -2785,7 +2825,7 @@ mod tests {
         send(&mut app, Message::Edit(Action::SelectAll));
         send(&mut app, Message::Edit(Action::Move(Motion::DocumentStart)));
         assert!(app.selection.is_caret());
-        assert!(app.editor.selection().is_none());
+        assert!(app.editor.content().selection().is_none());
     }
 
     #[test]
@@ -2799,7 +2839,7 @@ mod tests {
         send(&mut app, Message::Edit(Action::Move(Motion::DocumentEnd)));
         let start = Instant::now();
         for _ in 0..100 {
-            send(&mut app, Message::Edit(Action::Edit(Edit::Insert('x'))));
+            drop(app.update(Message::Edit(Action::Edit(Edit::Insert('x')))));
         }
         let elapsed = start.elapsed();
         println!(
@@ -2807,6 +2847,7 @@ mod tests {
             elapsed / 100
         );
         assert!(app.document.source().ends_with(&"x".repeat(100)));
+        assert_eq!(app.editor.snapshot(), app.editor.content().text());
     }
 
     #[test]
@@ -2868,10 +2909,16 @@ mod tests {
         let image = app.projection.rich.images[0].range.clone();
         send(&mut app, Message::Select(Selection::caret(image.end)));
         send(&mut app, Message::Edit(Action::Select(Motion::Left)));
-        assert_eq!(app.editor.selection().as_deref(), Some("\u{fffc}"));
+        assert_eq!(
+            app.editor.content().selection().as_deref(),
+            Some("\u{fffc}")
+        );
         let selected = app.selection;
         send(&mut app, Message::ToggleSource);
-        assert_eq!(app.editor.selection().as_deref(), Some("![alt](room.png)"));
+        assert_eq!(
+            app.editor.content().selection().as_deref(),
+            Some("![alt](room.png)")
+        );
         send(&mut app, Message::ToggleSource);
         assert_eq!(app.selection, selected);
         send(&mut app, Message::Edit(Action::Edit(Edit::Delete)));
