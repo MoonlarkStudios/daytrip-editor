@@ -33,6 +33,8 @@ base64 = "=0.22.1"
 arboard = { version = "=3.6.1", features = ["wayland-data-control"] }
 
 [dev-dependencies]
+# Drive real asynchronous import tasks in application workflow tests.
+iced_runtime = "0.14"
 iced_tiny_skia = "0.14"
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
 

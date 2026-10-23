@@ -1,0 +1,21 @@
+{
+  "baseline_commit": "20828c3",
+  "platform": "macOS 26.7.1 (25G241), aarch64-apple-darwin",
+  "toolchain": "mise Rust 1.95.0 (59807616e 2026-04-14)",
+  "samples": 30,
+  "profile_note": "Regression observations with other desktop work active; no matched before/after comparison.",
+  "source_sha256": {
+    "Cargo.toml": "b273fc52bbe91540eebf1c3a6c63cc377672a1451d0b01e479db1f8baa11b94d",
+    "Cargo.lock": "11ab484af0612e4b9199b998126502424e6ba64c7b7f65df6f40264c1fd0244f",
+    "src/editor/rich_editor.rs": "e697fb8d48b32662bcbd9da324101c9ff49fc600c7893190802d0ca1f482a695",
+    "src/editor/source_editor.rs": "dc6292e220c56e7257953d68a51d2bb008bf9fb75e7c828fe9105830be57783b",
+    "src/app/performance.rs": "971e281a0c7cb07c485c2ddbffaa7b4ee85cf069a4bb8499ec524f899c469095",
+    "src/app/writing_tests.rs": "ae2e59285f66665f435f466c9c5d80fd4e3e35486e0b64e95abf0919e001b537"
+  },
+  "native_saved_source_sha256": "4d7052935251a3ed198c1d140ba334323df192586807f1dcbe16fdb9f6817b91",
+  "native_cut_paste_byte_identity": true,
+  "executable_sha256": {
+    "target/release/still": "7aefc1b4a9fc70ae4e3ab2b3b855cdd075f9ed857b1defc8ce815866c51af3b5",
+    "target/release/deps/still-ff9e53293a28590a": "9e65807942055e32674c6605a94ea119d390233a3f3054cf7f7bc2c845842541"
+  }
+}

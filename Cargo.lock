@@ -3853,6 +3853,7 @@ dependencies = [
  "blake3",
  "directories",
  "iced",
+ "iced_runtime",
  "iced_tiny_skia",
  "image",
  "open",

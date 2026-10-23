@@ -19,6 +19,7 @@ pub(crate) struct SourceEditor<'a> {
 struct State {
     owner: (uuid::Uuid, u64),
     target: Option<CompositionTarget>,
+    preediting: bool,
 }
 
 impl<'a> SourceEditor<'a> {
@@ -38,6 +39,7 @@ impl<'a> SourceEditor<'a> {
         if state.owner != (self.collaboration.id(), self.collaboration.replica_id()) {
             state.owner = (self.collaboration.id(), self.collaboration.replica_id());
             state.target = None;
+            state.preediting = false;
             tree.children = vec![Tree::new(self.child.as_widget())];
         }
     }
@@ -50,6 +52,7 @@ impl Widget<Message, Theme, Renderer> for SourceEditor<'_> {
         widget::tree::State::new(State {
             owner: (self.collaboration.id(), self.collaboration.replica_id()),
             target: None,
+            preediting: false,
         })
     }
     fn children(&self) -> Vec<Tree> {
@@ -99,16 +102,27 @@ impl Widget<Message, Theme, Renderer> for SourceEditor<'_> {
         let state = tree.state.downcast_mut::<State>();
         match event {
             Event::InputMethod(input_method::Event::Opened | input_method::Event::Closed) => {
-                state.target = None
+                state.target = None;
+                state.preediting = false;
             }
-            Event::InputMethod(input_method::Event::Preedit(content, _))
-                if !content.is_empty() && state.target.is_none() =>
+            Event::InputMethod(input_method::Event::Preedit(content, _)) => {
+                // A clear can cancel or immediately precede Commit. Preserve the
+                // pending target, then recapture when the next preedit run starts.
+                if !content.is_empty() && !state.preediting {
+                    state.target = Some(self.collaboration.composition_target(self.selection));
+                }
+                state.preediting = !content.is_empty();
+            }
+            Event::Keyboard(iced::keyboard::Event::KeyPressed { .. })
+            | Event::Mouse(mouse::Event::ButtonPressed(_))
+                if !state.preediting =>
             {
-                state.target = Some(self.collaboration.composition_target(self.selection));
+                state.target = None;
             }
             _ => {}
         }
         if matches!(event, Event::InputMethod(input_method::Event::Commit(_))) {
+            state.preediting = false;
             let target = state
                 .target
                 .take()

@@ -637,6 +637,9 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if let Some(position) = cursor.position_in(bounds) {
+                    if state.preedit.as_ref().is_none_or(|p| p.content.is_empty()) {
+                        state.composition_target = None;
+                    }
                     if position.x >= bounds.width - 10.0 && state.rich.height() > bounds.height {
                         let (y, height) = state.scrollbar();
                         let anchor = if y <= position.y && position.y <= y + height {
@@ -751,6 +754,9 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 text,
                 ..
             }) if state.focused => {
+                if state.preedit.as_ref().is_none_or(|p| p.content.is_empty()) {
+                    state.composition_target = None;
+                }
                 state.modifiers = *modifiers;
                 let press = KeyPress {
                     key: key.clone(),
@@ -788,7 +794,12 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         state.composition_target = None;
                     }
                     input_method::Event::Preedit(content, selection) => {
-                        if !content.is_empty() && state.composition_target.is_none() {
+                        // Empty preedit may cancel composition or precede Commit.
+                        // Keep its target for Commit, but recapture for a new run.
+                        if !content.is_empty()
+                            && (state.composition_target.is_none()
+                                || state.preedit.as_ref().is_none_or(|p| p.content.is_empty()))
+                        {
                             state.composition_target = self
                                 .collaboration
                                 .map(|document| document.composition_target(self.source_selection));

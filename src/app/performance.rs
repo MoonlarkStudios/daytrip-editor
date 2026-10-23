@@ -627,6 +627,10 @@ fn crdt_incoming_changes_preserve_composition_selection_and_derived_editor_state
     );
     assert_eq!(harness.app.document.source(), unchanged);
     assert!(RichEditor::intent_stats(&harness.tree).1);
+    harness.event(
+        Event::InputMethod(input_method::Event::Preedit(String::new(), None)),
+        Point::ORIGIN,
+    );
     remote.replace(0..0, "λ").unwrap();
     harness.message(Message::ReplicaLoaded(Ok(remote.collaboration.state())));
     assert!(RichEditor::intent_stats(&harness.tree).1);
@@ -994,6 +998,142 @@ fn crdt_replace_all_rebases_reverse_selection_through_earlier_changes() {
 }
 
 #[test]
+fn canceled_preedit_recaptures_the_next_composition_target_in_both_editors() {
+    fn event(app: &mut App, tree: &mut widget::Tree, renderer: &Renderer, event: Event) {
+        let size = Size::new(720.0, 800.0);
+        let mut messages = Vec::new();
+        {
+            let mut editor = app.editor_view(app.mode == super::EditorMode::Source);
+            let node = editor.as_widget_mut().layout(
+                tree,
+                renderer,
+                &layout::Limits::new(Size::ZERO, size),
+            );
+            editor.as_widget_mut().update(
+                tree,
+                &event,
+                Layout::new(&node),
+                mouse::Cursor::Available(Point::new(70.0, 20.0)),
+                renderer,
+                &mut clipboard::Null,
+                &mut Shell::new(&mut messages),
+                &Rectangle::with_size(size),
+            );
+        }
+        for message in messages {
+            drop(app.update(message));
+        }
+    }
+    let original = "# Heading\r\n\r\nBefore selected after\n\n| A | B |\n|---|---|\n| one | two |\n\n![alt](missing.png)\n\nFinal words.";
+    for source_mode in [false, true] {
+        for (preedit, committed) in [("にほん", "日本語"), ("zhongwen", "中文"), ("ㅎ", "한국어")]
+        {
+            let (mut app, task) = App::new();
+            drop(task);
+            app.set_document(original.into(), None, "Composition.md".into());
+            if source_mode {
+                drop(app.update(Message::ToggleSource));
+            }
+            let mut tree = widget::Tree::new(app.editor_view(source_mode).as_widget());
+            let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+                iced::Font::DEFAULT,
+                18.0.into(),
+            ));
+            let mut send = |app: &mut App, value| event(app, &mut tree, &renderer, value);
+            for button in [
+                mouse::Event::ButtonPressed(mouse::Button::Left),
+                mouse::Event::ButtonReleased(mouse::Button::Left),
+            ] {
+                send(&mut app, Event::Mouse(button));
+            }
+            // Seed the same reverse cross-block native selection in both modes.
+            let canceled_selection = Selection {
+                anchor: original.find("Final").unwrap(),
+                head: original.find("Heading").unwrap(),
+            };
+            app.selection = canceled_selection;
+            app.sync_editor();
+            for input in [
+                input_method::Event::Opened,
+                input_method::Event::Preedit("cancel".into(), Some(0..6)),
+                input_method::Event::Preedit(String::new(), None),
+            ] {
+                send(&mut app, Event::InputMethod(input));
+            }
+            assert_eq!(app.document.source(), original);
+            assert!(!app.document.can_undo());
+            assert_eq!(app.selection, canceled_selection);
+            let target = original.find("words").unwrap();
+            app.selection = Selection {
+                anchor: target + 5,
+                head: target,
+            };
+            app.sync_editor();
+            send(
+                &mut app,
+                Event::InputMethod(input_method::Event::Preedit(preedit.into(), None)),
+            );
+            assert_eq!(app.document.source(), original);
+            // macOS clears marked text immediately before delivering a commit.
+            send(
+                &mut app,
+                Event::InputMethod(input_method::Event::Preedit(String::new(), None)),
+            );
+            send(
+                &mut app,
+                Event::InputMethod(input_method::Event::Commit(committed.into())),
+            );
+            let expected = original.replacen("words", committed, 1);
+            assert_eq!(app.document.source(), expected, "source_mode={source_mode}");
+            assert_eq!(app.document.collaboration.materialize(), expected);
+            assert_eq!(app.selection, Selection::caret(target + committed.len()));
+            assert_eq!(
+                app.editor.snapshot(),
+                if source_mode {
+                    app.document.source()
+                } else {
+                    &app.projection.text
+                }
+            );
+            drop(app.update(Message::Undo));
+            assert_eq!(app.document.source(), original);
+            drop(app.update(Message::Redo));
+            assert_eq!(app.document.source(), expected);
+            // A direct commit after cancellation and a local motion must use
+            // the new caret, even when the next IME emits no nonempty preedit.
+            for input in [
+                input_method::Event::Preedit("cancel".into(), None),
+                input_method::Event::Preedit(String::new(), None),
+            ] {
+                send(&mut app, Event::InputMethod(input));
+            }
+            send(
+                &mut app,
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(key::Named::ArrowLeft),
+                    modified_key: Key::Named(key::Named::ArrowLeft),
+                    physical_key: key::Physical::Code(key::Code::ArrowLeft),
+                    location: keyboard::Location::Standard,
+                    modifiers: keyboard::Modifiers::empty(),
+                    text: None,
+                    repeat: false,
+                }),
+            );
+            let caret = app.selection.head;
+            let mut next = expected.clone();
+            next.insert(caret, '好');
+            send(
+                &mut app,
+                Event::InputMethod(input_method::Event::Commit("好".into())),
+            );
+            assert_eq!(app.document.source(), next);
+            drop(app.update(Message::Undo));
+            assert_eq!(app.document.source(), expected);
+        }
+    }
+}
+
+#[test]
 fn crdt_source_widget_composition_uses_the_same_stable_exactly_once_commit() {
     use crate::document::Document;
     fn event(app: &mut App, tree: &mut widget::Tree, renderer: &Renderer, event: Event) {
@@ -1046,10 +1186,12 @@ fn crdt_source_widget_composition_uses_the_same_stable_exactly_once_commit() {
         &renderer,
         Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
     );
-    drop(app.update(Message::SelectSource(Selection {
-        anchor: 7,
-        head: 15,
-    })));
+    app.selection = Selection {
+        anchor: 15,
+        head: 7,
+    };
+    app.sync_editor();
+    assert_eq!(app.editor.selection(), app.selection);
     event(
         &mut app,
         &mut tree,
@@ -1063,6 +1205,12 @@ fn crdt_source_widget_composition_uses_the_same_stable_exactly_once_commit() {
         Event::InputMethod(input_method::Event::Preedit("にほん".into(), Some(0..9))),
     );
     assert_eq!(app.document.source(), "Before selected after");
+    event(
+        &mut app,
+        &mut tree,
+        &renderer,
+        Event::InputMethod(input_method::Event::Preedit(String::new(), None)),
+    );
     let mut remote = Document::from_state(&app.document.collaboration.state()).unwrap();
     remote.replace(9..12, "remote").unwrap(); // partial change inside the composition replacement
     drop(app.update(Message::ReplicaLoaded(Ok(remote.collaboration.state()))));

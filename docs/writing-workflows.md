@@ -1,5 +1,7 @@
 # A complete writing document
 
+Follow-up [macOS clipboard, drop, and input-method validation](native-writing-validation.md) records native observations, the canceled-composition target fix, automated coverage and remaining platform checks.
+
 Still's **The quiet hour · sample** sidebar action opens an independent local copy of a representative essay. It contains prose, headings, a linked reference, a photograph with alt text/caption/credit, an attributed quotation, a table and a checklist. The sample and its image are bundled and work offline. Each invocation uses a fresh directory under the application configuration's `samples/` folder; editing one copy never replaces another. Save As moves it into your own folder.
 
 ## Writing and details

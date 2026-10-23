@@ -39,6 +39,147 @@ fn select(app: &mut App, selection: Selection) {
 }
 
 #[tokio::test]
+async fn dropped_image_import_keeps_later_reverse_selection_remote_edits_and_undo() {
+    use iced::futures::StreamExt;
+    let root = tempfile::tempdir().unwrap();
+    let image = root.path().join("写 真.png");
+    let path = root.path().join("Writing.md");
+    image::RgbaImage::from_pixel(2, 2, image::Rgba([20, 70, 90, 255]))
+        .save(&image)
+        .unwrap();
+    let bytes = std::fs::read(&image).unwrap();
+    let original = "# Heading\r\n\r\nParagraph.\n\n| A | B |\n|---|---|\n| one | two |\n\n![alt](missing.png)\n\nTail.";
+    let mut app = app(original);
+    app.path = Some(path.clone());
+    let gap = original.find("Paragraph").unwrap();
+    select(&mut app, Selection::caret(gap));
+    // Schedule the actual import without executing native dialogs or image tasks.
+    let task = app.update_message(AppMessage::Dropped(image.clone()));
+    assert!(app.busy);
+    assert_eq!(app.document.source(), original);
+    let selection = Selection {
+        anchor: original.len(),
+        head: original.find("Heading").unwrap(),
+    };
+    select(&mut app, selection);
+    let stable_selection = app.document.collaboration.selection(selection);
+    let mut peer = Document::from_state(&app.document.collaboration.state()).unwrap();
+    peer.replace(0..0, "Remote prefix.\n\n").unwrap();
+    send(
+        &mut app,
+        AppMessage::ReplicaLoaded(Ok(peer.collaboration.state())),
+    );
+    let before_import = app.document.source().to_owned();
+    let mut outputs = iced_runtime::task::into_stream(task).unwrap();
+    let mut completed = 0;
+    while let Some(action) = outputs.next().await {
+        match action {
+            iced_runtime::Action::Output(message) => {
+                assert!(matches!(
+                    &message,
+                    AppMessage::Writing(Message::Imported { result: Ok(_), .. })
+                ));
+                send(&mut app, message);
+                completed += 1;
+            }
+            action => panic!("Unexpected import action: {action:?}"),
+        }
+    }
+    assert_eq!(completed, 1);
+    assert!(!app.busy);
+    assert_eq!(std::fs::read(image).unwrap(), bytes);
+    let imported = app.document.source().to_owned();
+    assert!(imported.contains("![写 真](<Writing%2Eassets/"));
+    assert!(imported.contains("Remote prefix."));
+    assert_eq!(
+        app.selection,
+        app.document
+            .collaboration
+            .resolve_selection(&stable_selection)
+            .unwrap()
+    );
+    assert!(app.selection.anchor > app.selection.head);
+    let destination = app
+        .projection
+        .rich
+        .images
+        .iter()
+        .find(|image| image.url.contains("Writing%2Eassets/"))
+        .unwrap();
+    let stored = assets::local_path(&destination.url, path.parent())
+        .unwrap()
+        .unwrap();
+    assert_eq!(std::fs::read(stored).unwrap(), bytes);
+    send(&mut app, AppMessage::Undo);
+    assert_eq!(app.document.source(), before_import);
+    send(&mut app, AppMessage::Redo);
+    assert_eq!(app.document.source(), imported);
+}
+
+#[test]
+fn canceling_first_save_after_image_drop_preserves_unsaved_source_selection_and_history() {
+    let mut app = app("# Heading\n\nUnfinished paragraph.");
+    send(
+        &mut app,
+        AppMessage::Edit(text_editor::Action::Edit(text_editor::Edit::Insert('!'))),
+    );
+    let source = app.document.source().to_owned();
+    let selection = Selection {
+        anchor: source.len(),
+        head: 2,
+    };
+    select(&mut app, selection);
+    drop(app.update_message(AppMessage::Dropped(PathBuf::from("photo.png"))));
+    assert!(app.busy);
+    assert!(app.writing.pending_media.is_some());
+    let generation = app.document.collaboration.generation();
+    send(
+        &mut app,
+        AppMessage::Saved {
+            result: Err(storage::FileError::Io("Save cancelled".into())),
+            source: Arc::new(source.clone()),
+            version: String::new(),
+            generation,
+        },
+    );
+    assert!(!app.busy);
+    assert!(app.path.is_none());
+    assert!(app.dirty);
+    assert!(app.writing.pending_media.is_none());
+    assert_eq!(app.document.source(), source);
+    assert_eq!(app.selection, selection);
+    send(&mut app, AppMessage::Undo);
+    assert_eq!(app.document.source(), "# Heading\n\nUnfinished paragraph.");
+}
+
+#[test]
+fn document_drop_and_cancel_leave_unsaved_writing_and_reverse_selection_intact() {
+    let mut app = app("# Heading\n\nParagraph.");
+    send(
+        &mut app,
+        AppMessage::Edit(text_editor::Action::Edit(text_editor::Edit::Insert('!'))),
+    );
+    let source = app.document.source().to_owned();
+    let selection = Selection {
+        anchor: source.len(),
+        head: 2,
+    };
+    select(&mut app, selection);
+    send(&mut app, AppMessage::Dropped(PathBuf::from("another.md")));
+    assert!(matches!(app.overlay, Some(Overlay::Unsaved)));
+    assert!(matches!(app.pending, Some(Pending::Open(Some(_)))));
+    assert_eq!(app.document.source(), source);
+    assert_eq!(app.selection, selection);
+    send(&mut app, AppMessage::CloseOverlay);
+    assert!(app.overlay.is_none());
+    assert!(app.pending.is_none());
+    assert_eq!(app.document.source(), source);
+    assert_eq!(app.selection, selection);
+    send(&mut app, AppMessage::Undo);
+    assert_eq!(app.document.source(), "# Heading\n\nParagraph.");
+}
+
+#[tokio::test]
 async fn representative_document_edits_undo_merge_save_reopen_and_export() {
     let root = tempfile::tempdir().unwrap();
     let path = root.path().join("Writing.md");
