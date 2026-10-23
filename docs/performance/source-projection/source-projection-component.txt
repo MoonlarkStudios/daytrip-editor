@@ -1,0 +1,11 @@
+
+running 1 test
+test app::application::performance::performance_source_projection_updates ... blocks=10000 kind=word edits=100 source=4.162001ms projection=46.488329ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91050050
+blocks=10000 kind=unicode-syntax edits=100 source=3.569544ms projection=42.445538ms source_mirror_splice_bytes=37300 full_source_equivalent_bytes=91065200
+blocks=10000 kind=equal-length edits=100 source=526.628µs projection=19.856329ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91045000
+blocks=50000 kind=word edits=100 source=14.426173ms projection=253.028872ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457450050
+blocks=50000 kind=unicode-syntax edits=100 source=11.939169ms projection=230.194926ms source_mirror_splice_bytes=37400 full_source_equivalent_bytes=457465200
+blocks=50000 kind=equal-length edits=100 source=722.166µs projection=101.571826ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457445000
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 103 filtered out; finished in 3.40s

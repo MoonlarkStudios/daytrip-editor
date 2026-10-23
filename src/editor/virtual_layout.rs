@@ -588,19 +588,21 @@ mod tests {
         let mut projection = Projection::new(&source);
         let mut window = VirtualLayout::default();
         let block_edit =
-            |source: &mut String, projection: &Projection, head: &mut usize, inserted: &str| {
+            |source: &mut String, projection: &mut Projection, head: &mut usize, inserted: &str| {
                 let mut document = crate::document::Document::new(source.clone());
                 document.replace(*head..*head, inserted);
                 *source = document.source().to_owned();
                 *head += inserted.len();
-                projection
-                    .updating_blocks(source, document.block_change.as_ref().unwrap(), Some(*head))
-                    .unwrap()
+                assert!(projection.update_blocks(
+                    source,
+                    document.block_change.as_ref().unwrap(),
+                    Some(*head)
+                ));
             };
         for step in 0..56 {
             let mut head = source.find("Paragraph 152").unwrap() + "Paragraph 152 w".len();
             if matches!(step % 7, 0 | 2 | 5 | 6) {
-                projection = projection.disclosing(projection.disclosure_at(None));
+                projection.set_disclosure(projection.disclosure_at(None));
                 let input = LayoutInput {
                     projection: &projection,
                     theme: &theme,
@@ -612,39 +614,48 @@ mod tests {
                 window.rebuild(input);
                 window.show_source(input, head, 500.0);
             }
-            projection = match step % 7 {
+            match step % 7 {
                 0 => {
                     let mut document = crate::document::Document::new(source.clone());
                     document.replace(head..head, "x");
                     source.insert(head, 'x');
                     head += 1;
-                    projection
-                        .updating(&source, Some(head))
-                        .or_else(|| {
-                            projection.updating_blocks(
+                    assert!(
+                        projection.update_words(&source, Some(head))
+                            || projection.update_blocks(
                                 &source,
                                 document.block_change.as_ref().unwrap(),
-                                Some(head),
+                                Some(head)
                             )
-                        })
-                        .unwrap()
+                    );
                 }
-                1 => projection.disclosing(
+                1 => projection.set_disclosure(
                     projection.disclosure_at(Some(source.find("bold words").unwrap() + 3)),
                 ),
                 2 => {
                     head = source.find("Cell 311").unwrap() + "Cell 311 w".len();
-                    block_edit(&mut source, &projection, &mut head, "**z**")
+                    block_edit(&mut source, &mut projection, &mut head, "**z**")
                 }
-                3 => projection.disclosing(projection.disclosure_at(Some(4))),
+                3 => projection.set_disclosure(projection.disclosure_at(Some(4))),
                 4 => {
                     source.insert_str(0, "New line\n\n");
                     head += "New line\n\n".len();
-                    Projection::with_context(&source, Some(head))
+                    projection = Projection::with_context(&source, Some(head));
                 }
-                5 => block_edit(&mut source, &projection, &mut head, "日本語 e\u{301}"),
-                _ => block_edit(&mut source, &projection, &mut head, "\n\nNew paragraph\n\n"),
+                5 => block_edit(&mut source, &mut projection, &mut head, "日本語 e\u{301}"),
+                _ => block_edit(
+                    &mut source,
+                    &mut projection,
+                    &mut head,
+                    "\n\nNew paragraph\n\n",
+                ),
             };
+            if step == 0 {
+                // Skip an intermediate projection, then replace text without
+                // changing offsets. Shared maps must not authorize stale geometry.
+                source.replace_range(head - 1..head, "z");
+                assert!(projection.update_words(&source, Some(head)));
+            }
             let input = LayoutInput {
                 projection: &projection,
                 theme: &theme,

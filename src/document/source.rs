@@ -327,9 +327,11 @@ impl Document {
         self.characters = self.characters - block.characters
             + blocks.iter().map(|block| block.characters).sum::<usize>();
         self.source.replace_range(edit.clone(), replacement);
-        for block in &mut self.blocks[index + 1..] {
-            block.range.start = block.range.start - edit.len() + replacement.len();
-            block.range.end = block.range.end - edit.len() + replacement.len();
+        if edit.len() != replacement.len() {
+            for block in &mut self.blocks[index + 1..] {
+                block.range.start = block.range.start - edit.len() + replacement.len();
+                block.range.end = block.range.end - edit.len() + replacement.len();
+            }
         }
         self.blocks.splice(index..index + 1, blocks);
         self.block_change = Some(BlockChange {

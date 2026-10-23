@@ -2,6 +2,8 @@
 
 Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / cosmic-text 0.15, release optimization, macOS 26.7.1 on Apple silicon (arm64), and bundled Newsreader fonts. The baseline is `5144f50`, after [incremental block parsing](incremental-parsing.md).
 
+The subsequent [source/projection update report](source-projection-updates.md) addresses text and metadata copying after native snapshotting.
+
 ## Snapshot ownership
 
 Previously, each native edit called `Content::text()`. Iced clones each physical line and concatenates a new document-sized String. Navigation already borrowed the existing projection, but typing and IME commits still paid for those allocations and copies.

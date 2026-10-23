@@ -295,7 +295,7 @@ struct State {
 
 struct LayoutKey {
     lines: Arc<HighlightLines>,
-    source: Arc<str>,
+    source: Arc<()>,
     tokens: Tokens,
     typography: Typography,
     width: f32,
@@ -403,9 +403,9 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         let source_changed = state
             .layout_key
             .as_ref()
-            .is_some_and(|key| !Arc::ptr_eq(&key.source, &self.projection.source));
+            .is_some_and(|key| !Arc::ptr_eq(&key.source, &self.projection.source_id));
         let content_changed = state.layout_key.as_ref().is_none_or(|key| {
-            !Arc::ptr_eq(&key.source, &self.projection.source)
+            !Arc::ptr_eq(&key.source, &self.projection.source_id)
                 || key.tokens != self.theme.tokens
                 || key.typography != self.theme.typography
                 || key.width != bounds.width
@@ -439,7 +439,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             state.rich.rebuild(input);
             state.layout_key = Some(LayoutKey {
                 lines: Arc::clone(&self.projection.highlights),
-                source: Arc::clone(&self.projection.source),
+                source: Arc::clone(&self.projection.source_id),
                 tokens: self.theme.tokens,
                 typography: self.theme.typography,
                 width: bounds.width,
@@ -1151,7 +1151,7 @@ mod tests {
                 }) {
                     selection = next;
                 }
-                projection = projection.disclosing(projection.disclosure_at(Some(selection.head)));
+                projection.set_disclosure(projection.disclosure_at(Some(selection.head)));
                 content = native_buffer::with_text(&projection.text);
                 content.move_to(
                     projection
@@ -1223,7 +1223,7 @@ mod tests {
         ] {
             let state = tree.state.downcast_ref::<State>();
             let expected_y = state.caret(head).y - state.scroll;
-            projection = projection.disclosing(projection.disclosure_at(focused.then_some(head)));
+            projection.set_disclosure(projection.disclosure_at(focused.then_some(head)));
             let selection = Selection {
                 anchor: first,
                 head,
@@ -1247,7 +1247,7 @@ mod tests {
         assert!(state.rich.source_caret_on_side(edge, false).y > caret.y);
         state.visual_cursor = Some((edge, true));
         let expected_y = state.caret(edge).y - state.scroll;
-        projection = projection.disclosing(projection.disclosure_at(None));
+        projection.set_disclosure(projection.disclosure_at(None));
         relayout(&mut tree, &projection, Selection::caret(edge), false);
         let state = tree.state.downcast_ref::<State>();
         assert_eq!(state.visual_cursor.unwrap().0, edge);
@@ -1267,7 +1267,7 @@ mod tests {
         state.last_selection = Some(Selection::caret(first));
         let (anchor, y) = state.rich.resident().viewport_anchor(state.scroll).unwrap();
         let screen_y = y - state.scroll;
-        projection = projection.disclosing(projection.disclosure_at(Some(first)));
+        projection.set_disclosure(projection.disclosure_at(Some(first)));
         relayout(&mut tree, &projection, Selection::caret(first), true);
         let state = tree.state.downcast_ref::<State>();
         assert!((state.rich.source_caret(anchor, None).y - state.scroll - screen_y).abs() < 0.01);
@@ -1276,7 +1276,7 @@ mod tests {
 
         // An explicit offscreen navigation jump must also retain wrap intent
         // when it changes the active disclosure context.
-        projection = projection.disclosing(projection.disclosure_at(None));
+        projection.set_disclosure(projection.disclosure_at(None));
         relayout(&mut tree, &projection, Selection::caret(first), false);
         let state = tree.state.downcast_mut::<State>();
         let edge = state
@@ -1285,7 +1285,7 @@ mod tests {
             .source_line_edge(first, state.caret(first), true);
         state.visual_cursor = Some((edge, true));
         state.last_selection = Some(Selection::caret(first));
-        projection = projection.disclosing(projection.disclosure_at(Some(edge)));
+        projection.set_disclosure(projection.disclosure_at(Some(edge)));
         relayout(&mut tree, &projection, Selection::caret(edge), true);
         let state = tree.state.downcast_ref::<State>();
         assert_eq!(state.visual_cursor, Some((edge, true)));
@@ -1345,7 +1345,7 @@ mod tests {
         for focus in [false, true, false, true] {
             let state = tree.state.downcast_ref::<State>();
             let screen_y = state.caret(head).y - state.scroll;
-            projection = projection.disclosing(projection.disclosure_at(focus.then_some(head)));
+            projection.set_disclosure(projection.disclosure_at(focus.then_some(head)));
             content = native_buffer::with_text(&projection.text);
             relayout(&mut tree, &content, &projection, selection, 240.0);
             let state = tree.state.downcast_ref::<State>();
@@ -1368,7 +1368,7 @@ mod tests {
         editor.refresh_viewport(state, Size::new(240.0, 500.0));
         let (anchor, y) = state.rich.resident().viewport_anchor(state.scroll).unwrap();
         let screen_y = y - state.scroll;
-        projection = projection.disclosing(projection.disclosure_at(None));
+        projection.set_disclosure(projection.disclosure_at(None));
         content = native_buffer::with_text(&projection.text);
         relayout(&mut tree, &content, &projection, selection, 180.0);
         let state = tree.state.downcast_ref::<State>();

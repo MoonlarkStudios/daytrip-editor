@@ -1,21 +1,29 @@
-//! Reparse an isolated block window and retain projection metadata elsewhere.
+//! Reparse an isolated block window and splice owned projection metadata.
 
 use std::ops::Range;
 use std::sync::Arc;
 
-use super::{OffsetMap, Parsed, Piece, Projection, ProjectionChange, TextChange};
+use super::{Disclosure, OffsetMap, Parsed, Piece, Projection, ProjectionChange, TextChange};
 use crate::document::block_parser::BlockChange;
 use crate::document::rich_document::RichDocument;
 
 impl Projection {
-    /// The source model certifies independent boundaries. Validate its snapshot
-    /// before reusing metadata; references and footnotes always use a full parse.
-    pub(crate) fn updating_blocks(
-        &self,
+    /// Preflight every splice before mutating the retained source or metadata.
+    pub(crate) fn update_blocks(
+        &mut self,
         source: &str,
         change: &BlockChange,
         caret: Option<usize>,
-    ) -> Option<Self> {
+    ) -> bool {
+        self.block_update(source, change, caret).is_some()
+    }
+
+    fn block_update(
+        &mut self,
+        source: &str,
+        change: &BlockChange,
+        caret: Option<usize>,
+    ) -> Option<()> {
         let old = &change.old;
         let new = &change.new;
         if self.parsed.global_dependencies
@@ -40,11 +48,25 @@ impl Projection {
             old: old.clone(),
             new: new.clone(),
         };
-        let parsed = Arc::new(patch_parsed(&self.parsed, &local.parsed, &raw)?);
-        let disclosure = Self::resolve_disclosure(source, &parsed, caret);
-        // Updating another block must not leave previously revealed syntax
-        // visible. If disclosure also moves outside the island, use the general
-        // path, which already handles distant and multiline contexts.
+        let plan = ParsedPlan::new(&self.parsed, &raw)?;
+        let disclosure = if caret.is_some_and(|head| new.start <= head && head <= new.end) {
+            Disclosure(
+                local
+                    .disclosure
+                    .0
+                    .iter()
+                    .map(|r| r.start + new.start..r.end + new.start)
+                    .collect(),
+            )
+        } else {
+            let mut disclosure = self.disclosure_at(caret.map(|head| raw.previous_offset(head)));
+            for range in &mut disclosure.0 {
+                if range.start >= old.end {
+                    translate(range, old.end, new.end);
+                }
+            }
+            disclosure
+        };
         let outside = |ranges: &[Range<usize>], window: &Range<usize>, base: usize| {
             ranges
                 .iter()
@@ -63,75 +85,70 @@ impl Projection {
         }
         let display = self.to_display(old.start)..self.to_display(old.end);
         let next_display = display.start..display.start + local.text.len();
+        let shown = TextChange {
+            old: display.clone(),
+            new: next_display.clone(),
+        };
+        let rich_plan = RichPlan::new(&self.rich, &shown)?;
         let a = self.line_starts.binary_search(&display.start).ok()?;
         let b = if display.end == self.text.len() && !self.text.ends_with('\n') {
             self.highlights.len()
         } else {
             self.line_starts.binary_search(&display.end).ok()?
         };
-        let mut highlights = self.highlights[..a].to_vec();
         let shared_tail = b < self.highlights.len();
         if shared_tail && !local.text.ends_with('\n') {
             return None;
         }
         let count = local.highlights.len() - usize::from(shared_tail);
-        highlights.extend_from_slice(&local.highlights[..count]);
-        highlights.extend_from_slice(&self.highlights[b..]);
-        let mut text = self.text.clone();
-        text.replace_range(display.clone(), &local.text);
-        let mapping = Arc::new(OffsetMap {
-            pieces: patch_pieces(
-                &self.mapping.pieces,
-                &local.mapping.pieces,
-                &raw,
-                &TextChange {
-                    old: display.clone(),
-                    new: next_display.clone(),
-                },
-            )?,
-            source_length: source.len(),
-            display_length: text.len(),
-        });
-        let line_starts: Arc<[usize]> = std::iter::once(0)
-            .chain(text.match_indices('\n').map(|(n, _)| n + 1))
-            .collect();
-        if line_starts.len() != highlights.len() {
+        let mut highlights = (*self.highlights).clone();
+        highlights.splice(a..b, local.highlights[..count].iter().cloned());
+        let mut starts = self.line_starts.to_vec();
+        starts.splice(
+            a..b,
+            local.line_starts[..count]
+                .iter()
+                .map(|start| start + display.start),
+        );
+        if shown.old.len() != shown.new.len() {
+            for start in &mut starts[a + count..] {
+                *start = *start - shown.old.len() + shown.new.len();
+            }
+        }
+        if starts.len() != highlights.len() {
             return None;
         }
-        let mut rich = parsed.rich.clone();
-        rich.map_ranges(|offset| mapping.to_display(offset));
-        let mut region = TextChange {
-            old: display,
-            new: next_display,
-        };
-        let overlaps = |range: &Range<usize>| range.start < old.end && old.start < range.end;
-        // An unchanged terminating newline is not part of an inline relayout.
-        // Keep structural windows broad: heading levels, table rows and image
-        // flow can change the layout unit's kind, requiring index discovery.
+        let mapping = Arc::new(OffsetMap {
+            pieces: patch_pieces(&self.mapping.pieces, &local.mapping.pieces, &raw, &shown)?,
+            source_length: source.len(),
+            display_length: self.text.len() - display.len() + local.text.len(),
+        });
         let plain = local.rich.headings.is_empty()
             && local.rich.tables.is_empty()
             && local.rich.images.is_empty()
-            && !self.parsed.rich.headings.iter().any(|h| overlaps(&h.range))
-            && !self.parsed.rich.tables.iter().any(|t| overlaps(&t.range))
-            && !self.parsed.rich.images.iter().any(|i| overlaps(&i.range));
+            && plan.rich.headings.is_empty()
+            && plan.rich.tables.is_empty()
+            && plan.rich.images.is_empty();
+        let mut region = shown.clone();
         if plain && self.text[region.old.clone()].ends_with('\n') && local.text.ends_with('\n') {
             region.old.end -= 1;
             region.new.end -= 1;
         }
-        Some(Self {
-            text,
-            mapping,
-            rich,
-            parsed,
-            disclosure,
-            line_starts,
-            source: Arc::from(source),
-            highlights: Arc::new(highlights),
-            change: Some(ProjectionChange {
-                previous: Arc::clone(&self.highlights),
-                regions: vec![region],
-            }),
-        })
+        // All fallible boundary checks are complete. Retained Strings, table
+        // rows and parsed vectors keep their allocations; only suffix offsets move.
+        plan.apply(&mut self.parsed, local.parsed, &raw);
+        rich_plan.apply(&mut self.rich, local.rich, &raw, &shown);
+        self.text.replace_range(display, &local.text);
+        self.source.replace_range(old.clone(), &source[new.clone()]);
+        self.source_id = Arc::new(());
+        self.mapping = mapping;
+        self.line_starts = starts.into();
+        self.disclosure = disclosure;
+        self.change = Some(ProjectionChange {
+            previous: std::mem::replace(&mut self.highlights, Arc::new(highlights)),
+            regions: vec![region],
+        });
+        Some(())
     }
 }
 
@@ -139,109 +156,179 @@ fn translate(range: &mut Range<usize>, from: usize, to: usize) {
     *range = range.start - from + to..range.end - from + to;
 }
 
-/// No retained node may cross the certified window. Metadata within it is
-/// replaced; suffix offsets move, and unchanged values retain their semantics.
-fn patch<T: Clone>(
+/// Retained ranges must be entirely outside the window; empty boundary nodes
+/// belong to it. Check contiguity as well as containment before any mutation.
+fn window<T>(
     old: &[T],
-    local: &[T],
     change: &TextChange,
     extent: impl Fn(&T) -> Range<usize>,
-    move_item: impl Fn(&mut T, usize, usize),
-) -> Option<Vec<T>> {
-    let mut before = Vec::new();
-    let mut after = Vec::new();
-    for item in old {
+) -> Option<Range<usize>> {
+    let mut first = 0;
+    let mut removed = 0;
+    let mut after = false;
+    for (index, item) in old.iter().enumerate() {
         let range = extent(item);
-        // Empty table-prefix/tail decorations belong to this isolated block,
-        // including at EOF. Retaining them would duplicate local metadata.
-        if range.is_empty() && change.old.start <= range.start && range.end <= change.old.end {
-            continue;
-        }
-        if range.end <= change.old.start {
-            before.push(item.clone());
-        } else if range.start >= change.old.end {
-            let mut item = item.clone();
-            move_item(&mut item, change.old.end, change.new.end);
-            after.push(item);
-        } else if range.start < change.old.start || range.end > change.old.end {
-            return None;
+        let empty =
+            range.is_empty() && change.old.start <= range.start && range.end <= change.old.end;
+        if !empty && range.end <= change.old.start {
+            if removed > 0 || after {
+                return None;
+            }
+            first = index + 1;
+        } else if !empty && range.start >= change.old.end {
+            after = true;
+        } else {
+            if after || range.start < change.old.start || range.end > change.old.end {
+                return None;
+            }
+            removed += 1;
         }
     }
-    before.extend(local.iter().cloned().map(|mut item| {
-        move_item(&mut item, 0, change.new.start);
-        item
-    }));
-    before.extend(after);
-    Some(before)
+    Some(first..first + removed)
 }
 
-fn patch_parsed(old: &Parsed, local: &Parsed, c: &TextChange) -> Option<Parsed> {
-    let range = |r: &Range<usize>| r.clone();
-    let mut rich = RichDocument::default();
-    rich.headings = patch(
-        &old.rich.headings,
-        &local.rich.headings,
-        c,
-        |h| h.range.clone(),
-        |h, a, b| translate(&mut h.range, a, b),
-    )?;
-    rich.images = patch(
-        &old.rich.images,
-        &local.rich.images,
-        c,
-        |i| i.range.clone(),
-        |i, a, b| translate(&mut i.range, a, b),
-    )?;
-    rich.tables = patch(
-        &old.rich.tables,
-        &local.rich.tables,
-        c,
-        |t| t.range.clone(),
-        |t, a, b| {
-            translate(&mut t.range, a, b);
-            translate(&mut t.source_range, a, b);
-            for cell in t.rows.iter_mut().chain(&mut t.source_rows).flatten() {
-                translate(cell, a, b);
+fn patch<T>(
+    old: &mut Vec<T>,
+    local: Vec<T>,
+    window: Range<usize>,
+    change: &TextChange,
+    move_item: impl Fn(&mut T, usize, usize),
+) {
+    let tail = window.start + local.len();
+    old.splice(
+        window,
+        local.into_iter().map(|mut item| {
+            if change.new.start != 0 {
+                move_item(&mut item, 0, change.new.start);
             }
-        },
-    )?;
-    Some(Parsed {
-        decorations: patch(
-            &old.decorations,
-            &local.decorations,
+            item
+        }),
+    );
+    if change.old.end != change.new.end {
+        for item in &mut old[tail..] {
+            move_item(item, change.old.end, change.new.end);
+        }
+    }
+}
+
+struct RichPlan {
+    headings: Range<usize>,
+    images: Range<usize>,
+    tables: Range<usize>,
+}
+impl RichPlan {
+    fn new(old: &RichDocument, c: &TextChange) -> Option<Self> {
+        Some(Self {
+            headings: window(&old.headings, c, |h| h.range.clone())?,
+            images: window(&old.images, c, |i| i.range.clone())?,
+            tables: window(&old.tables, c, |t| t.range.clone())?,
+        })
+    }
+    fn apply(
+        self,
+        old: &mut RichDocument,
+        local: RichDocument,
+        raw: &TextChange,
+        display: &TextChange,
+    ) {
+        patch(
+            &mut old.headings,
+            local.headings,
+            self.headings,
+            display,
+            |h, a, b| translate(&mut h.range, a, b),
+        );
+        patch(
+            &mut old.images,
+            local.images,
+            self.images,
+            display,
+            |i, a, b| translate(&mut i.range, a, b),
+        );
+        // Table source cells and displayed cells use different coordinate systems.
+        let tail = self.tables.start + local.tables.len();
+        old.tables.splice(
+            self.tables,
+            local.tables.into_iter().map(|mut table| {
+                translate(&mut table.range, 0, display.new.start);
+                translate(&mut table.source_range, 0, raw.new.start);
+                for cell in table.rows.iter_mut().flatten() {
+                    translate(cell, 0, display.new.start);
+                }
+                for cell in table.source_rows.iter_mut().flatten() {
+                    translate(cell, 0, raw.new.start);
+                }
+                table
+            }),
+        );
+        for table in &mut old.tables[tail..] {
+            if display.old.end != display.new.end {
+                translate(&mut table.range, display.old.end, display.new.end);
+                for cell in table.rows.iter_mut().flatten() {
+                    translate(cell, display.old.end, display.new.end);
+                }
+            }
+            if raw.old.end != raw.new.end {
+                translate(&mut table.source_range, raw.old.end, raw.new.end);
+                for cell in table.source_rows.iter_mut().flatten() {
+                    translate(cell, raw.old.end, raw.new.end);
+                }
+            }
+        }
+    }
+}
+
+struct ParsedPlan {
+    decorations: Range<usize>,
+    marks: Range<usize>,
+    pairs: Range<usize>,
+    safe_text: Range<usize>,
+    prefixes: Range<usize>,
+    rich: RichPlan,
+}
+impl ParsedPlan {
+    fn new(old: &Parsed, c: &TextChange) -> Option<Self> {
+        Some(Self {
+            decorations: window(&old.decorations, c, |d| d.range.clone())?,
+            marks: window(&old.marks, c, |m| m.range.clone())?,
+            pairs: window(&old.pairs, c, |p| p.open.start..p.close.end)?,
+            safe_text: window(&old.safe_text, c, Clone::clone)?,
+            prefixes: window(&old.block_prefixes, c, Clone::clone)?,
+            rich: RichPlan::new(&old.rich, c)?,
+        })
+    }
+    fn apply(self, old: &mut Parsed, local: Parsed, c: &TextChange) {
+        patch(
+            &mut old.decorations,
+            local.decorations,
+            self.decorations,
             c,
-            |d| d.range.clone(),
             |d, a, b| translate(&mut d.range, a, b),
-        )?,
-        marks: patch(
-            &old.marks,
-            &local.marks,
+        );
+        patch(&mut old.marks, local.marks, self.marks, c, |m, a, b| {
+            translate(&mut m.range, a, b)
+        });
+        patch(&mut old.pairs, local.pairs, self.pairs, c, |p, a, b| {
+            translate(&mut p.open, a, b);
+            translate(&mut p.body, a, b);
+            translate(&mut p.close, a, b);
+        });
+        patch(
+            &mut old.safe_text,
+            local.safe_text,
+            self.safe_text,
             c,
-            |m| m.range.clone(),
-            |m, a, b| translate(&mut m.range, a, b),
-        )?,
-        pairs: patch(
-            &old.pairs,
-            &local.pairs,
-            c,
-            |p| p.open.start..p.close.end,
-            |p, a, b| {
-                translate(&mut p.open, a, b);
-                translate(&mut p.body, a, b);
-                translate(&mut p.close, a, b);
-            },
-        )?,
-        safe_text: patch(&old.safe_text, &local.safe_text, c, range, translate)?,
-        block_prefixes: patch(
-            &old.block_prefixes,
-            &local.block_prefixes,
-            c,
-            range,
             translate,
-        )?,
-        rich,
-        global_dependencies: false,
-    })
+        );
+        patch(
+            &mut old.block_prefixes,
+            local.block_prefixes,
+            self.prefixes,
+            c,
+            translate,
+        );
+        self.rich.apply(&mut old.rich, local.rich, c, c);
+    }
 }
 
 fn patch_pieces(
@@ -250,41 +337,45 @@ fn patch_pieces(
     raw: &TextChange,
     display: &TextChange,
 ) -> Option<Vec<Piece>> {
-    let mut before = Vec::new();
-    let mut after = Vec::new();
-    for piece in old {
-        if piece.source.start < raw.old.start {
-            let mut prefix = piece.clone();
-            if prefix.source.end > raw.old.start {
-                if !prefix.identity {
-                    return None;
-                }
-                prefix.display.end -= prefix.source.end - raw.old.start;
-                prefix.source.end = raw.old.start;
+    // Mapping snapshots are retained by old layout, so build one immutable
+    // successor. Size it once instead of growing separate prefix/tail buffers.
+    let prefix_end = old.partition_point(|piece| piece.source.start < raw.old.start);
+    let suffix_start = old.partition_point(|piece| piece.source.end <= raw.old.end);
+    let mut pieces = Vec::with_capacity(prefix_end + local.len() + old.len() - suffix_start);
+    for piece in &old[..prefix_end] {
+        let mut prefix = piece.clone();
+        if prefix.source.end > raw.old.start {
+            if !prefix.identity {
+                return None;
             }
-            before.push(prefix);
+            prefix.display.end -= prefix.source.end - raw.old.start;
+            prefix.source.end = raw.old.start;
         }
-        if piece.source.end > raw.old.end {
-            let mut suffix = piece.clone();
-            if suffix.source.start < raw.old.end {
-                if !suffix.identity {
-                    return None;
-                }
-                suffix.display.start += raw.old.end - suffix.source.start;
-                suffix.source.start = raw.old.end;
-            }
-            translate(&mut suffix.source, raw.old.end, raw.new.end);
-            translate(&mut suffix.display, display.old.end, display.new.end);
-            after.push(suffix);
-        }
+        pieces.push(prefix);
     }
-    before.extend(local.iter().cloned().map(|mut piece| {
+    pieces.extend(local.iter().cloned().map(|mut piece| {
         translate(&mut piece.source, 0, raw.new.start);
         translate(&mut piece.display, 0, display.new.start);
         piece
     }));
-    before.extend(after);
-    Some(before)
+    for piece in &old[suffix_start..] {
+        let mut suffix = piece.clone();
+        if suffix.source.start < raw.old.end {
+            if !suffix.identity {
+                return None;
+            }
+            suffix.display.start += raw.old.end - suffix.source.start;
+            suffix.source.start = raw.old.end;
+        }
+        if raw.old.end != raw.new.end {
+            translate(&mut suffix.source, raw.old.end, raw.new.end);
+        }
+        if display.old.end != display.new.end {
+            translate(&mut suffix.display, display.old.end, display.new.end);
+        }
+        pieces.push(suffix);
+    }
+    Some(pieces)
 }
 
 #[cfg(test)]
@@ -324,6 +415,107 @@ mod tests {
         }
     }
 
+    fn payloads(rich: &RichDocument) -> Vec<usize> {
+        rich.images
+            .iter()
+            .flat_map(|image| [image.url.as_ptr() as usize, image.alt.as_ptr() as usize])
+            .chain(rich.tables.iter().flat_map(|table| {
+                [
+                    table.alignment.as_ptr() as usize,
+                    table.rows.as_ptr() as usize,
+                    table.source_rows.as_ptr() as usize,
+                ]
+                .into_iter()
+                .chain(
+                    table
+                        .rows
+                        .iter()
+                        .chain(&table.source_rows)
+                        .map(|row| row.as_ptr() as usize),
+                )
+            }))
+            .collect()
+    }
+
+    #[test]
+    fn local_updates_retain_owned_payloads_and_immutable_layout_snapshots() {
+        let source = "# Before\n\nPlain **bold** and words.\n\n| A | B |\n|---|---|\n| c | d |\n\n![alt](somewhere.png)\n\nTail";
+        let point = source.find("Plain").unwrap() + 3;
+        let mut document = Document::new(source.into());
+        let mut projection = Projection::with_context(source, Some(point));
+        // Allow for local insertions without triggering normal capacity growth.
+        projection.source.reserve(128);
+        projection.text.reserve(128);
+        let source_storage = projection.source.as_ptr();
+        let display_storage = projection.text.as_ptr();
+        let parsed_payloads = payloads(&projection.parsed.rich);
+        let display_payloads = payloads(&projection.rich);
+        let marks_storage = projection.parsed.marks.as_ptr();
+        let old_mapping = Arc::clone(&projection.mapping);
+        let old_lines = Arc::clone(&projection.line_starts);
+        let old_highlights = Arc::clone(&projection.highlights);
+        let old_source_id = Arc::clone(&projection.source_id);
+        let old_offsets = (0..=source.len())
+            .map(|offset| old_mapping.to_display(offset))
+            .collect::<Vec<_>>();
+        document.replace(point..point, "x");
+        assert!(projection.update_words(document.source(), Some(point + 1)));
+        assert_full(&projection, document.source(), Some(point + 1));
+        assert_eq!(source_storage, projection.source.as_ptr());
+        assert_eq!(display_storage, projection.text.as_ptr());
+        assert_eq!(marks_storage, projection.parsed.marks.as_ptr());
+        assert_eq!(parsed_payloads, payloads(&projection.parsed.rich));
+        assert_eq!(display_payloads, payloads(&projection.rich));
+        assert!(!Arc::ptr_eq(&old_source_id, &projection.source_id));
+        assert!(Arc::ptr_eq(
+            &old_highlights,
+            &projection.change.as_ref().unwrap().previous
+        ));
+
+        document.replace(point + 1..point + 1, "日本_");
+        let id = Arc::clone(&projection.source_id);
+        assert!(!projection.update_words(document.source(), Some(point + 8)));
+        assert!(Arc::ptr_eq(&id, &projection.source_id));
+        assert!(projection.update_blocks(
+            document.source(),
+            document.block_change.as_ref().unwrap(),
+            Some(point + 8)
+        ));
+        assert_full(&projection, document.source(), Some(point + 8));
+        assert_eq!(source_storage, projection.source.as_ptr());
+        assert_eq!(display_storage, projection.text.as_ptr());
+        assert_eq!(parsed_payloads, payloads(&projection.parsed.rich));
+        assert_eq!(display_payloads, payloads(&projection.rich));
+        assert_eq!(
+            old_offsets,
+            (0..=source.len())
+                .map(|offset| old_mapping.to_display(offset))
+                .collect::<Vec<_>>()
+        );
+        let full_old = Projection::with_context(source, Some(point));
+        assert_eq!(old_lines, full_old.line_starts);
+        assert_eq!(old_highlights, full_old.highlights);
+    }
+
+    #[test]
+    fn equal_length_word_replacements_share_unchanged_offsets() {
+        let source = "Plain words here.\n\n| a | b |\n|---|---|\n| c | d |\n\n![alt](image.png)";
+        let point = source.find("words").unwrap() + 1;
+        let mut projection = Projection::with_context(source, Some(point));
+        let mapping = Arc::clone(&projection.mapping);
+        let lines = Arc::clone(&projection.line_starts);
+        let previous = Arc::clone(&projection.highlights);
+        let parsed = projection.parsed.clone();
+        let mut next = source.to_owned();
+        next.replace_range(point..point + 2, "ab");
+        assert!(projection.update_words(&next, Some(point + 2)));
+        assert!(Arc::ptr_eq(&mapping, &projection.mapping));
+        assert!(Arc::ptr_eq(&lines, &projection.line_starts));
+        assert!(!Arc::ptr_eq(&previous, &projection.highlights));
+        assert_eq!(parsed, projection.parsed);
+        assert_full(&projection, &next, Some(point + 2));
+    }
+
     #[test]
     fn block_updates_match_full_projection_styles_and_every_mapping() {
         let mut accepted = 0;
@@ -345,21 +537,20 @@ mod tests {
                         "\n|a|b|\n|---|---|\n",
                     ] {
                         let mut document = Document::new(source.clone());
-                        let old = Projection::with_context(&source, Some(point));
+                        let mut next = Projection::with_context(&source, Some(point));
                         document.replace(point..point, inserted);
                         let Some(change) = &document.block_change else {
                             continue;
                         };
                         let head = Some(point + inserted.len());
-                        let Some(next) = old.updating_blocks(document.source(), change, head)
-                        else {
+                        if !next.update_blocks(document.source(), change, head) {
                             continue;
                         };
                         accepted += 1;
                         assert_full(&next, document.source(), head);
                         for caret in [None, Some(0), head, Some(document.source().len())] {
-                            let disclosed = next.disclosing(next.disclosure_at(caret));
-                            assert_full(&disclosed, document.source(), caret);
+                            next.set_disclosure(next.disclosure_at(caret));
+                            assert_full(&next, document.source(), caret);
                         }
                     }
                 }
@@ -389,21 +580,23 @@ mod tests {
             let end = document.source().rfind("\n\nTail").unwrap();
             document.replace(start..end, replacement);
             let head = Some(start + replacement.len());
-            projection = document
+            if document
                 .block_change
                 .as_ref()
-                .and_then(|change| projection.updating_blocks(document.source(), change, head))
-                .inspect(|_| {
-                    accepted += 1;
-                })
-                .unwrap_or_else(|| Projection::with_context(document.source(), head));
+                .is_some_and(|change| projection.update_blocks(document.source(), change, head))
+            {
+                accepted += 1;
+            } else {
+                projection = Projection::with_context(document.source(), head);
+            }
             assert_full(&projection, document.source(), head);
             let point = document.source().find("last").unwrap_or(start);
             let mut next = document.source().to_owned();
             next.insert(point, 'x');
-            if let Some(word) = projection.updating(&next, Some(point + 1)) {
-                assert_full(&word, &next, Some(point + 1));
+            if projection.update_words(&next, Some(point + 1)) {
+                assert_full(&projection, &next, Some(point + 1));
             }
+            projection = Projection::with_context(document.source(), head);
         }
         assert!(accepted >= 5, "accepted {accepted}");
     }
@@ -412,19 +605,12 @@ mod tests {
     fn stale_windows_and_distant_disclosure_take_the_general_path() {
         let source = "# First\n\nPlain words.\n\n# Last";
         let mut document = Document::new(source.into());
-        let old = Projection::with_context(source, Some(4));
+        let mut old = Projection::with_context(source, Some(4));
         let point = source.find("words").unwrap();
         document.replace(point..point, "日本");
         let change = document.block_change.as_ref().unwrap();
-        assert!(
-            old.updating_blocks(document.source(), change, Some(point))
-                .is_none()
-        );
-        let stale = Projection::new(&format!("Other {source}"));
-        assert!(
-            stale
-                .updating_blocks(document.source(), change, None)
-                .is_none()
-        );
+        assert!(!old.update_blocks(document.source(), change, Some(point)));
+        let mut stale = Projection::new(&format!("Other {source}"));
+        assert!(!stale.update_blocks(document.source(), change, None));
     }
 }

@@ -1309,7 +1309,8 @@ mod tests {
         let before = layout.source_caret(0, None);
         let height = layout.height;
         let head = source.find("label").unwrap() + 2;
-        let revealed = concealed.disclosing(concealed.disclosure_at(Some(head)));
+        let mut revealed = concealed;
+        revealed.set_disclosure(revealed.disclosure_at(Some(head)));
         layout.rebuild(
             &revealed,
             &Preset::Paper.resolve(),
@@ -1496,9 +1497,9 @@ mod tests {
             if step < 135 && step % 5 == 0 {
                 let mut next = source.clone();
                 next.insert(head, 'x');
-                projection = projection
-                    .updating(&next, Some(head + 1))
-                    .unwrap_or_else(|| Projection::with_context(&next, Some(head + 1)));
+                if !projection.update_words(&next, Some(head + 1)) {
+                    projection = Projection::with_context(&next, Some(head + 1));
+                }
                 source = next;
             } else {
                 let head = if step % 2 == 0 {
@@ -1510,7 +1511,7 @@ mod tests {
                         source.find("label").unwrap() + 2
                     }
                 };
-                projection = projection.disclosing(projection.disclosure_at(Some(head)));
+                projection.set_disclosure(projection.disclosure_at(Some(head)));
             }
             actual.rebuild(&projection, &theme, 1.0, 180.0, None, &images);
             patched += usize::from(actual.patches > 0);
@@ -1593,7 +1594,7 @@ mod tests {
         let initial = start.elapsed();
         let start = Instant::now();
         for i in 0..100 {
-            projection = projection.disclosing(projection.disclosure_at(Some(i * 100)));
+            projection.set_disclosure(projection.disclosure_at(Some(i * 100)));
             layout.rebuild(&projection, &theme, 1.0, 720.0, None, &images);
         }
         println!(

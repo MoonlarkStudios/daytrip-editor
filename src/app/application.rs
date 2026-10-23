@@ -959,34 +959,29 @@ impl App {
         self.selection = self.selection.clamp(self.document.source());
         let caret =
             (self.mode == EditorMode::Live && self.editor_focused).then_some(self.selection.head);
-        let next = if self.projection_revision != Some(self.document.revision) {
+        let previous_highlights = Arc::clone(&self.projection.highlights);
+        if self.projection_revision != Some(self.document.revision) {
             let previous_revision = self.projection_revision;
             self.projection_revision = Some(self.document.revision);
-            Some(
-                self.projection
-                    .updating(self.document.source(), caret)
-                    .or_else(|| {
-                        self.document
-                            .block_change
-                            .as_ref()
-                            .filter(|change| Some(change.previous_revision) == previous_revision)
-                            .and_then(|change| {
-                                self.projection.updating_blocks(
-                                    self.document.source(),
-                                    change,
-                                    caret,
-                                )
-                            })
+            if !self.projection.update_words(self.document.source(), caret)
+                && !self
+                    .document
+                    .block_change
+                    .as_ref()
+                    .filter(|change| Some(change.previous_revision) == previous_revision)
+                    .is_some_and(|change| {
+                        self.projection
+                            .update_blocks(self.document.source(), change, caret)
                     })
-                    .unwrap_or_else(|| Projection::with_context(self.document.source(), caret)),
-            )
+            {
+                self.projection = Projection::with_context(self.document.source(), caret);
+            }
         } else {
             let disclosure = self.projection.disclosure_at(caret);
-            (self.projection.disclosure != disclosure)
-                .then(|| self.projection.disclosing(disclosure))
-        };
-        let previous = next.map(|next| std::mem::replace(&mut self.projection, next));
-        let old = previous.as_ref().unwrap_or(&self.projection);
+            if self.projection.disclosure != disclosure {
+                self.projection.set_disclosure(disclosure);
+            }
+        }
         let native_edited = std::mem::take(&mut self.native_edited);
         let current = self.editor.snapshot();
         let target = if self.mode == EditorMode::Source {
@@ -1008,7 +1003,7 @@ impl App {
                 !native_edited
                     && !self.editor_source
                     && self.mode != EditorMode::Source
-                    && Arc::ptr_eq(&old.highlights, &change.previous)
+                    && Arc::ptr_eq(&previous_highlights, &change.previous)
             });
             let changes = regions.map_or_else(
                 || vec![projection::difference(current, target)],
@@ -2770,7 +2765,7 @@ mod tests {
         let mut app = app(source);
         send(&mut app, Message::SelectSource(Selection::caret(2)));
         let lines = Arc::clone(&app.projection.highlights);
-        let snapshot = Arc::clone(&app.projection.source);
+        let snapshot = Arc::clone(&app.projection.source_id);
         send(&mut app, Message::Edit(Action::Move(Motion::Right)));
         assert!(Arc::ptr_eq(&lines, &app.projection.highlights));
         let selection = Selection {
@@ -2788,7 +2783,7 @@ mod tests {
         assert_eq!(app.editor.content().text(), "日本語\n\n**Next**");
         assert_eq!(app.selection, selection);
         assert!(!Arc::ptr_eq(&lines, &app.projection.highlights));
-        assert!(Arc::ptr_eq(&snapshot, &app.projection.source));
+        assert!(Arc::ptr_eq(&snapshot, &app.projection.source_id));
     }
 
     #[test]

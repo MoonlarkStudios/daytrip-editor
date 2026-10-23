@@ -47,12 +47,13 @@ pub struct Projection {
     pub highlights: Arc<HighlightLines>,
     pub rich: RichDocument,
     pub disclosure: Disclosure,
-    /// Shared source snapshot identifies disclosure-only changes without reparsing.
-    pub source: Arc<str>,
+    pub source: String,
+    /// Source identity is independent of text ownership; layout retains only this key.
+    pub source_id: Arc<()>,
     pub mapping: Arc<OffsetMap>,
     pub change: Option<ProjectionChange>,
     pub line_starts: Arc<[usize]>,
-    parsed: Arc<Parsed>,
+    parsed: Parsed,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -137,6 +138,18 @@ pub struct TextChange {
     pub new: Range<usize>,
 }
 
+impl TextChange {
+    fn previous_offset(&self, offset: usize) -> usize {
+        if offset < self.new.start {
+            offset
+        } else if offset <= self.new.end {
+            self.old.start + (offset - self.new.start).min(self.old.len())
+        } else {
+            offset - self.new.len() + self.old.len()
+        }
+    }
+}
+
 pub fn difference(before: &str, after: &str) -> TextChange {
     // Compare equal chunks with memcmp instead of decoding every unchanged
     // character in a large document. Only splice boundaries need UTF-8 checks.
@@ -191,14 +204,14 @@ impl Projection {
     pub fn with_context(source: &str, caret: Option<usize>) -> Self {
         let parsed = Self::parse(source);
         let disclosure = Self::resolve_disclosure(source, &parsed, caret);
-        Self::from_parsed(Arc::from(source), disclosure, parsed)
+        Self::from_parsed(source.to_owned(), disclosure, parsed)
     }
 
     fn with_disclosure(source: &str, disclosure: Disclosure) -> Self {
-        Self::from_parsed(Arc::from(source), disclosure, Self::parse(source))
+        Self::from_parsed(source.to_owned(), disclosure, Self::parse(source))
     }
 
-    fn parse(source: &str) -> Arc<Parsed> {
+    fn parse(source: &str) -> Parsed {
         let mut decorations = Vec::new();
         let mut marks = Vec::new();
         let mut pairs = Vec::new();
@@ -468,7 +481,7 @@ impl Projection {
                 .cmp(&b.range.start)
                 .then(b.range.end.cmp(&a.range.end))
         });
-        Arc::new(Parsed {
+        Parsed {
             decorations,
             marks,
             rich,
@@ -476,7 +489,7 @@ impl Projection {
             block_prefixes,
             safe_text,
             global_dependencies,
-        })
+        }
     }
 
     /// Resolves the active heading and just the innermost paired inline span.
@@ -522,31 +535,39 @@ impl Projection {
         Disclosure(ranges)
     }
 
-    /// Changes disclosure for the shared source revision without parsing again.
-    pub fn disclosing(&self, disclosure: Disclosure) -> Self {
-        if let Some(next) = self.disclosing_lines(&disclosure) {
-            return next;
+    /// Changes disclosure in place, retaining source text and parsed metadata.
+    pub fn set_disclosure(&mut self, disclosure: Disclosure) {
+        if self.set_disclosure_lines(&disclosure) {
+            return;
         }
-        let mut next = Self::from_parsed(
-            Arc::clone(&self.source),
-            disclosure,
-            Arc::clone(&self.parsed),
-        );
-        next.change = Some(ProjectionChange {
-            previous: Arc::clone(&self.highlights),
-            regions: self.disclosure_regions(&next),
+        let visible = project(&self.source, &self.parsed, true, |decoration| {
+            decoration.kind == Concealment::Structural
+                || !disclosure.0.iter().any(|range| {
+                    decoration.range.start < range.end && range.start < decoration.range.end
+                })
         });
-        next
+        let regions = self.disclosure_regions(&disclosure, &visible.mapping);
+        self.change = Some(ProjectionChange {
+            previous: std::mem::replace(&mut self.highlights, visible.highlights),
+            regions,
+        });
+        self.text = visible.text;
+        self.mapping = visible.mapping;
+        self.rich = visible.rich;
+        self.disclosure = disclosure;
+        self.line_starts = std::iter::once(0)
+            .chain(self.text.match_indices('\n').map(|(n, _)| n + 1))
+            .collect();
     }
 
     /// Keep distant and multiline disclosure changes separate. Whole source
     /// lines contain every affected replacement, including a Setext underline.
-    fn disclosure_regions(&self, next: &Self) -> Vec<TextChange> {
+    fn disclosure_regions(&self, disclosure: &Disclosure, mapping: &OffsetMap) -> Vec<TextChange> {
         let mut lines = self
             .disclosure
             .0
             .iter()
-            .chain(&next.disclosure.0)
+            .chain(&disclosure.0)
             .map(|range| {
                 let start = self.source[..range.start].rfind('\n').map_or(0, |n| n + 1);
                 let end = self.source[range.end..]
@@ -570,12 +591,12 @@ impl Projection {
             .into_iter()
             .map(|range| TextChange {
                 old: self.to_display(range.start)..self.to_display(range.end),
-                new: next.to_display(range.start)..next.to_display(range.end),
+                new: mapping.to_display(range.start)..mapping.to_display(range.end),
             })
             .collect()
     }
 
-    fn from_parsed(source: Arc<str>, disclosure: Disclosure, parsed: Arc<Parsed>) -> Self {
+    fn from_parsed(source: String, disclosure: Disclosure, parsed: Parsed) -> Self {
         let visible = project(&source, &parsed, true, |decoration| {
             decoration.kind == Concealment::Structural
                 || !disclosure.0.iter().any(|range| {
@@ -592,6 +613,7 @@ impl Projection {
             rich: visible.rich,
             disclosure,
             source,
+            source_id: Arc::new(()),
             mapping: visible.mapping,
             parsed,
         }

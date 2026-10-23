@@ -500,3 +500,73 @@ fn performance_incremental_block_parsing() {
         );
     }
 }
+
+#[test]
+#[ignore = "run using mise run bench; source/projection phases without native/render costs"]
+fn performance_source_projection_updates() {
+    use crate::document::projection::Projection;
+
+    for blocks in [10_000, 50_000] {
+        for kind in ["word", "unicode-syntax", "equal-length"] {
+            let mut document = crate::document::Document::new(fixture(blocks));
+            let mut head = document.blocks[blocks / 2 + 1].range.start + 11;
+            let mut projection = Projection::with_context(document.source(), Some(head));
+            let payloads = projection
+                .rich
+                .images
+                .iter()
+                .map(|image| image.url.as_ptr())
+                .collect::<Vec<_>>();
+            let mut source_time = Duration::ZERO;
+            let mut projection_time = Duration::ZERO;
+            let mut mirror_bytes = 0;
+            let mut full_equivalent = 0;
+            for step in 0..100 {
+                let (removed, inserted) = match kind {
+                    "word" => (0, "x"),
+                    "unicode-syntax" => (0, "日_"),
+                    _ => (1, if step % 2 == 0 { "q" } else { "r" }),
+                };
+                let start = Instant::now();
+                document.replace(head..head + removed, inserted);
+                source_time += start.elapsed();
+                if removed == 0 {
+                    head += inserted.len();
+                }
+                let start = Instant::now();
+                let word = projection.update_words(document.source(), Some(head));
+                if !word {
+                    assert!(projection.update_blocks(
+                        document.source(),
+                        document.block_change.as_ref().expect("isolated paragraph"),
+                        Some(head)
+                    ));
+                }
+                projection_time += start.elapsed();
+                mirror_bytes += if word {
+                    inserted.len()
+                } else {
+                    document.block_change.as_ref().unwrap().new.len()
+                };
+                full_equivalent += document.source().len();
+            }
+            println!(
+                "blocks={blocks} kind={kind} edits=100 source={source_time:?} projection={projection_time:?} source_mirror_splice_bytes={mirror_bytes} full_source_equivalent_bytes={full_equivalent}"
+            );
+            assert_eq!(projection.source, document.source());
+            let full = Projection::with_context(document.source(), Some(head));
+            assert_eq!(projection.text, full.text);
+            assert_eq!(projection.highlights, full.highlights);
+            assert_eq!(projection.rich, full.rich);
+            assert_eq!(
+                payloads,
+                projection
+                    .rich
+                    .images
+                    .iter()
+                    .map(|image| image.url.as_ptr())
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+}

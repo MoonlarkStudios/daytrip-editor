@@ -23,16 +23,19 @@ fn rebase(range: &mut Range<usize>, edit: &Range<usize>, inserted: usize) {
 
 impl Projection {
     /// Word characters strictly within a parsed text run cannot change Markdown
-    /// structure or delimiter flanking. Everything else takes the full parser.
-    pub fn updating(&self, source: &str, caret: Option<usize>) -> Option<Self> {
+    /// structure or delimiter flanking. Other edits use the block or full parser.
+    fn word_change(
+        &self,
+        source: &str,
+        caret: Option<usize>,
+    ) -> Option<(TextChange, Range<usize>)> {
         let diff = difference(&self.source, source);
         let inserted = &source[diff.new.clone()];
         let removed = &self.source[diff.old.clone()];
         if diff.old.len() + inserted.len() == 0
             || diff.old.len() + inserted.len() > 1024
             || !inserted.bytes().chain(removed.bytes()).all(word_byte)
-            || !self.source[..diff.old.start]
-                .as_bytes()
+            || !self.source.as_bytes()[..diff.old.start]
                 .last()
                 .is_some_and(|&b| word_byte(b))
             || self
@@ -88,37 +91,74 @@ impl Projection {
             return None;
         }
 
-        let display = self.to_display(diff.old.start)..self.to_display(diff.old.end);
-        let mut text = self.text.clone();
-        text.replace_range(display.clone(), inserted);
-        let mut pieces = self.mapping.pieces.clone();
-        for piece in &mut pieces {
-            rebase(&mut piece.source, &diff.old, inserted.len());
-            rebase(&mut piece.display, &display, inserted.len());
-        }
-        let mut parsed = (*self.parsed).clone();
-        for decoration in &mut parsed.decorations {
-            rebase(&mut decoration.range, &diff.old, inserted.len());
-        }
-        for mark in &mut parsed.marks {
-            rebase(&mut mark.range, &diff.old, inserted.len());
-        }
-        for pair in &mut parsed.pairs {
-            rebase(&mut pair.open, &diff.old, inserted.len());
-            rebase(&mut pair.body, &diff.old, inserted.len());
-            rebase(&mut pair.close, &diff.old, inserted.len());
-        }
-        for range in parsed
-            .block_prefixes
-            .iter_mut()
-            .chain(&mut parsed.safe_text)
-        {
-            rebase(range, &diff.old, inserted.len());
-        }
-        rebase_rich(&mut parsed.rich, &diff.old, inserted.len(), false);
-        let disclosure = self.disclosure_after(&diff.old, inserted.len());
-        if disclosure != Self::resolve_disclosure(source, &parsed, caret) {
+        // Interior word edits preserve the enclosing heading/span. Map the new
+        // head back through the splice before mutating any retained metadata.
+        if self.disclosure_at(caret.map(|head| diff.previous_offset(head))) != self.disclosure {
             return None;
+        }
+        let display = self.to_display(diff.old.start)..self.to_display(diff.old.end);
+        Some((diff, display))
+    }
+
+    /// Returns false without changing the projection when the edit is unsafe.
+    pub fn update_words(&mut self, source: &str, caret: Option<usize>) -> bool {
+        let Some((diff, display)) = self.word_change(source, caret) else {
+            return false;
+        };
+        let inserted = &source[diff.new.clone()];
+        let disclosure = self.disclosure_after(&diff.old, inserted.len());
+        self.text.replace_range(display.clone(), inserted);
+        self.source.replace_range(diff.old.clone(), inserted);
+        self.source_id = Arc::new(());
+        if diff.old.len() != inserted.len() {
+            let mut pieces = self.mapping.pieces.clone();
+            let first = pieces.partition_point(|piece| piece.source.end < diff.old.end);
+            for piece in &mut pieces[first..] {
+                rebase(&mut piece.source, &diff.old, inserted.len());
+                rebase(&mut piece.display, &display, inserted.len());
+            }
+            let parsed = &mut self.parsed;
+            for decoration in &mut parsed.decorations {
+                if decoration.range.end >= diff.old.end {
+                    rebase(&mut decoration.range, &diff.old, inserted.len());
+                }
+            }
+            for mark in &mut parsed.marks {
+                if mark.range.end >= diff.old.end {
+                    rebase(&mut mark.range, &diff.old, inserted.len());
+                }
+            }
+            for pair in &mut parsed.pairs {
+                if pair.close.end >= diff.old.end {
+                    rebase(&mut pair.open, &diff.old, inserted.len());
+                    rebase(&mut pair.body, &diff.old, inserted.len());
+                    rebase(&mut pair.close, &diff.old, inserted.len());
+                }
+            }
+            for range in parsed
+                .block_prefixes
+                .iter_mut()
+                .chain(&mut parsed.safe_text)
+            {
+                if range.end >= diff.old.end {
+                    rebase(range, &diff.old, inserted.len());
+                }
+            }
+            rebase_rich(&mut parsed.rich, &diff.old, inserted.len(), false);
+            rebase_rich(&mut self.rich, &display, inserted.len(), true);
+            for table in &mut self.rich.tables {
+                if table.source_range.end >= diff.old.end {
+                    rebase(&mut table.source_range, &diff.old, inserted.len());
+                    for range in table.source_rows.iter_mut().flatten() {
+                        rebase(range, &diff.old, inserted.len());
+                    }
+                }
+            }
+            self.mapping = Arc::new(OffsetMap {
+                pieces,
+                source_length: source.len(),
+                display_length: self.text.len(),
+            });
         }
         let line = self
             .line_starts
@@ -126,56 +166,41 @@ impl Projection {
             .saturating_sub(1);
         let local = display.start - self.line_starts[line]..display.end - self.line_starts[line];
         let mut highlights = (*self.highlights).clone();
-        let mut runs = highlights[line].to_vec();
-        for (range, _) in &mut runs {
-            rebase(range, &local, inserted.len());
-        }
-        highlights[line] = runs.into();
-        let mut line_starts = self.line_starts.to_vec();
-        for start in &mut line_starts[line + 1..] {
-            *start = shift(*start, &display, inserted.len());
-        }
-        let mut rich = self.rich.clone();
-        // Source ranges and displayed ranges have different offsets.
-        rebase_rich(&mut rich, &display, inserted.len(), true);
-        for table in &mut rich.tables {
-            rebase(&mut table.source_range, &diff.old, inserted.len());
-            for range in table.source_rows.iter_mut().flatten() {
-                rebase(range, &diff.old, inserted.len());
+        if diff.old.len() != inserted.len() {
+            let mut runs = highlights[line].to_vec();
+            for (range, _) in &mut runs {
+                rebase(range, &local, inserted.len());
             }
+            highlights[line] = runs.into();
+            let mut line_starts = self.line_starts.to_vec();
+            for start in &mut line_starts[line + 1..] {
+                *start = shift(*start, &display, inserted.len());
+            }
+            self.line_starts = line_starts.into();
         }
-        Some(Self {
-            mapping: Arc::new(OffsetMap {
-                pieces,
-                source_length: source.len(),
-                display_length: text.len(),
-            }),
-            text,
-            source: Arc::from(source),
-            highlights: Arc::new(highlights),
-            rich,
-            line_starts: line_starts.into(),
-            parsed: Arc::new(parsed),
-            disclosure,
-            change: Some(ProjectionChange {
-                regions: vec![TextChange {
-                    old: display.clone(),
-                    new: display.start..display.start + inserted.len(),
-                }],
-                previous: Arc::clone(&self.highlights),
-            }),
-        })
+        self.disclosure = disclosure;
+        self.change = Some(ProjectionChange {
+            regions: vec![TextChange {
+                old: display.clone(),
+                new: display.start..display.start + inserted.len(),
+            }],
+            previous: std::mem::replace(&mut self.highlights, Arc::new(highlights)),
+        });
+        true
     }
 }
 
 fn rebase_rich(rich: &mut RichDocument, edit: &Range<usize>, inserted: usize, display: bool) {
-    for heading in &mut rich.headings {
+    let first = rich.headings.partition_point(|h| h.range.end < edit.end);
+    for heading in &mut rich.headings[first..] {
         rebase(&mut heading.range, edit, inserted);
     }
-    for image in &mut rich.images {
+    let first = rich.images.partition_point(|i| i.range.end < edit.end);
+    for image in &mut rich.images[first..] {
         rebase(&mut image.range, edit, inserted);
     }
-    for table in &mut rich.tables {
+    let first = rich.tables.partition_point(|t| t.range.end < edit.end);
+    for table in &mut rich.tables[first..] {
         rebase(&mut table.range, edit, inserted);
         for cell in table.rows.iter_mut().flatten() {
             rebase(cell, edit, inserted);
@@ -208,13 +233,13 @@ mod tests {
                     if point + removed > source.len() || !source.is_char_boundary(point + removed) {
                         continue;
                     }
-                    let old = Projection::with_context(source, Some(point));
+                    let mut fast = Projection::with_context(source, Some(point));
                     let mut next = source.to_owned();
                     next.replace_range(point..point + removed, inserted);
                     let head = point + inserted.len();
-                    let Some(fast) = old.updating(&next, Some(head)) else {
+                    if !fast.update_words(&next, Some(head)) {
                         continue;
-                    };
+                    }
                     accepted += 1;
                     let full = Projection::with_context(&next, Some(head));
                     assert_eq!(
@@ -224,6 +249,9 @@ mod tests {
                     assert_eq!(fast.highlights, full.highlights, "{next:?}");
                     assert_eq!(fast.rich, full.rich, "{next:?}");
                     assert_eq!(fast.line_starts, full.line_starts);
+                    assert_eq!(fast.parsed, full.parsed, "{next:?}");
+                    assert_eq!(fast.disclosure, full.disclosure);
+                    assert_eq!(fast.source, next);
                     for raw in next
                         .char_indices()
                         .map(|(n, _)| n)
@@ -279,11 +307,11 @@ mod tests {
             ("A [abxc] text\n\n[abc]: https://example.com", "x", ""),
             ("A <htxtps://example.com>", "x", ""),
         ] {
-            let projection = Projection::new(source);
+            let mut projection = Projection::new(source);
             let point = source.find(old).unwrap();
             let mut next = source.to_owned();
             next.replace_range(point..point + old.len(), replacement);
-            assert!(projection.updating(&next, None).is_none(), "{source:?}");
+            assert!(!projection.update_words(&next, None), "{source:?}");
         }
     }
 

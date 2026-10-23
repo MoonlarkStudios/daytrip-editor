@@ -10,12 +10,12 @@ use super::{
 type Runs = Arc<[(Range<usize>, Style)]>;
 
 impl Projection {
-    pub(super) fn disclosing_lines(&self, disclosure: &Disclosure) -> Option<Self> {
+    pub(super) fn set_disclosure_lines(&mut self, disclosure: &Disclosure) -> bool {
         let mut lines = Vec::new();
         for range in self.disclosure.0.iter().chain(&disclosure.0) {
             // Setext underlines and multiline link syntax change the line count.
             if self.source[range.clone()].contains('\n') {
-                return None;
+                return false;
             }
             let start = self.source[..range.start].rfind('\n').map_or(0, |n| n + 1);
             let end = self.source[range.end..]
@@ -36,7 +36,7 @@ impl Projection {
             .chain(visible.text.match_indices('\n').map(|(n, _)| n + 1))
             .collect();
         if starts.len() != self.line_starts.len() {
-            return None;
+            return false;
         }
         let mut highlights = (*self.highlights).clone();
         let mut regions = Vec::new();
@@ -49,7 +49,7 @@ impl Projection {
             // A table row may be collapsed entirely; only actual displayed lines
             // can be repainted independently.
             if starts[line] != new.start {
-                return None;
+                return false;
             }
             let end = starts.get(line + 1).map_or(visible.text.len(), |n| n - 1);
             highlights[line] =
@@ -60,20 +60,16 @@ impl Projection {
                 regions.push(TextChange { old, new });
             }
         }
-        Some(Self {
-            change: Some(ProjectionChange {
-                previous: Arc::clone(&self.highlights),
-                regions,
-            }),
-            text: visible.text,
-            mapping: visible.mapping,
-            rich: visible.rich,
-            highlights: Arc::new(highlights),
-            line_starts: starts,
-            source: Arc::clone(&self.source),
-            parsed: Arc::clone(&self.parsed),
-            disclosure: disclosure.clone(),
-        })
+        self.change = Some(ProjectionChange {
+            previous: std::mem::replace(&mut self.highlights, Arc::new(highlights)),
+            regions,
+        });
+        self.text = visible.text;
+        self.mapping = visible.mapping;
+        self.rich = visible.rich;
+        self.line_starts = starts;
+        self.disclosure = disclosure.clone();
+        true
     }
 
     fn disclosure_runs(
@@ -141,7 +137,7 @@ mod tests {
                 .map(|(n, _)| Some(n))
                 .chain([Some(source.len()), None])
             {
-                actual = actual.disclosing(actual.disclosure_at(caret));
+                actual.set_disclosure(actual.disclosure_at(caret));
                 let full = Projection::with_context(source, caret);
                 assert_eq!(actual.text, full.text, "at {caret:?} in {source:?}");
                 assert_eq!(

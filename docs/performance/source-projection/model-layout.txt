@@ -1,0 +1,34 @@
+[bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 29.09s
+     Running unittests src/lib.rs (target/release/deps/still-1e7d549fdb02224e)
+
+running 6 tests
+6000 blocks: parse=11.6335ms, 1000 source edits=1.674625ms, per edit=1.674µs
+test document::source::tests::performance_large_document_source_edits ... ok
+Continuous 2000 blocks: load=106.430709ms, 100 native-buffer/source/projection edits=20.88475ms, mean=208.847µs
+test app::application::tests::performance_continuous_edit_projection ... ok
+Rich 2000 blocks: 100 syntax disclosure + cached layouts=31.377959ms, mean=313.78µs
+blocks=10000 local_source_edits=100 elapsed=2.735083ms boundary_scan_bytes=37300 full_scan_equivalent_bytes=91065200
+blocks=10000 bytes=400000 native_edits=100 full_snapshot=63.467167ms retained_snapshot=666.792µs full_snapshot_bytes=40015150 local_snapshot_bytes=19250
+blocks=10000 kind=word edits=100 source=3.037289ms projection=45.424463ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91050050
+Rich 2000 blocks: initial layout=115.256833ms, 100 projection + cached layouts=243.218208ms, mean=2.432183ms
+test editor::rich_layout::tests::performance_rich_layout_cache ... ok
+blocks=10000 kind=unicode-syntax edits=100 source=2.751249ms projection=42.296461ms source_mirror_splice_bytes=37300 full_source_equivalent_bytes=91065200
+blocks=50000 bytes=2000000 native_edits=100 full_snapshot=260.288833ms retained_snapshot=2.953708ms full_snapshot_bytes=200015150 local_snapshot_bytes=19250
+test editor::native_buffer::tests::performance_native_snapshots ... ok
+blocks=10000 kind=equal-length edits=100 source=735.957µs projection=19.497668ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=91045000
+blocks=50000 local_source_edits=100 elapsed=10.637583ms boundary_scan_bytes=37400 full_scan_equivalent_bytes=457465200
+blocks=50000 kind=word edits=100 source=11.385039ms projection=247.948954ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457450050
+test app::application::performance::performance_incremental_block_parsing ... ok
+blocks=50000 kind=unicode-syntax edits=100 source=10.169873ms projection=207.084588ms source_mirror_splice_bytes=37400 full_source_equivalent_bytes=457465200
+blocks=50000 kind=equal-length edits=100 source=1.100665ms projection=104.852832ms source_mirror_splice_bytes=100 full_source_equivalent_bytes=457445000
+test app::application::performance::performance_source_projection_updates ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 98 filtered out; finished in 3.49s
+
+     Running unittests src/main.rs (target/release/deps/still-8d7c581f591337ea)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
