@@ -1,0 +1,24 @@
+Baseline commit: 6a2d743 perf(document): incrementally apply offline imports
+Hardware: Apple M2 Max, 32 GiB (same host as docs/performance/offline-imports/environment.txt)
+Release, thin LTO, codegen-units=1; 30 samples; 720x800 software viewport.
+git rev-parse 6a2d743
+6a2d74335021c3a8dcfc72a821f30fafe50e305e
+
+sw_vers
+ProductName:		macOS
+ProductVersion:		26.7.1
+BuildVersion:		25G241
+
+uname -m
+arm64
+
+mise exec -- rustc -Vv
+rustc 1.95.0 (59807616e 2026-04-14)
+binary: rustc
+commit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860
+commit-date: 2026-04-14
+host: aarch64-apple-darwin
+release: 1.95.0
+LLVM version: 22.1.2
+
+Log trailing whitespace and empty EOF lines normalized for Git; measurements unchanged.

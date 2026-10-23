@@ -16,7 +16,7 @@ use iced::widget::text_editor::{Action, Binding, Content, Edit, KeyPress, Motion
 use iced::{Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vector, window};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::app::Message;
+use crate::app::{Message, WritingMessage};
 use crate::document::collaboration::{Collaboration, CompositionTarget, StablePosition};
 use crate::document::projection::{HighlightLines, Projection};
 use crate::document::selection::Selection;
@@ -218,9 +218,9 @@ impl<'a> RichEditor<'a> {
                 }
             }
             Binding::Paste => {
-                if let Some(text) = clipboard.read(iced::advanced::clipboard::Kind::Standard) {
-                    shell.publish(Message::Edit(Action::Edit(Edit::Paste(Arc::new(text)))));
-                }
+                shell.publish(Message::Writing(WritingMessage::Paste(
+                    clipboard.read(iced::advanced::clipboard::Kind::Standard),
+                )));
             }
             Binding::Move(motion) | Binding::Select(motion) => {
                 let selecting = matches!(binding, Binding::Select(_));
@@ -247,6 +247,11 @@ impl<'a> RichEditor<'a> {
                             .resident()
                             .vertical_source(caret, x, direction, page)
                             .unwrap_or((self.source_selection.head, caret.y));
+                        if state.modifiers.command() {
+                            shell.publish(Message::Writing(WritingMessage::OpenAt(head)));
+                            shell.capture_event();
+                            return;
+                        }
                         state.set_visual_cursor(head, y);
                         Some(head)
                     }
@@ -299,6 +304,11 @@ impl<'a> RichEditor<'a> {
                 for binding in sequence {
                     self.apply_binding(binding, state, clipboard, shell, bounds);
                 }
+            }
+            Binding::Custom(Message::Writing(WritingMessage::Paste(None))) => {
+                shell.publish(Message::Writing(WritingMessage::Paste(
+                    clipboard.read(iced::advanced::clipboard::Kind::Standard),
+                )))
             }
             Binding::Custom(message) => shell.publish(message),
         }
@@ -653,6 +663,18 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         head
                     };
                     let display = self.projection.to_display(head);
+                    if click.kind() == mouse::click::Kind::Double
+                        && self
+                            .projection
+                            .rich
+                            .images
+                            .iter()
+                            .any(|image| image.range.start <= display && display <= image.range.end)
+                    {
+                        shell.publish(Message::Writing(WritingMessage::ImageAt(head)));
+                        shell.capture_event();
+                        return;
+                    }
                     let source_selection = match click.kind() {
                         mouse::click::Kind::Double => {
                             self.raw_selection(self.word_selection(display))

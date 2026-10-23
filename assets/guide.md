@@ -33,6 +33,7 @@ fn main() {
 | Cmd/Ctrl + F | Find and replace |
 | Cmd/Ctrl + B | Bold selection |
 | Cmd/Ctrl + I | Italic selection |
+| Cmd/Ctrl + K | Create or edit a link |
 | Cmd/Ctrl + Shift + M | Toggle source |
 | Cmd/Ctrl + Shift + F | Focus mode |
 | Cmd/Ctrl + Z | Undo |
@@ -42,7 +43,13 @@ fn main() {
 
 Edit a table cell directly. Tab and Shift+Tab move between cells. Enter moves down the current column; Enter or Tab at the end adds a row. Shift+Enter starts a paragraph after the table. Paste tab-separated values to fill several cells at once.
 
-Images render as single selectable objects. Type an image such as `![A quiet room](images/room.png)` using a local path or a web URL. Save your document before using relative paths. Select an image and delete, replace, or copy it; undo restores its original Markdown.
+Paste or drop an image, or use **Image** to choose a file or URL. Save once to keep local images beside your Markdown. Images fit the column and remain selectable objects. Double-click an image to edit its alt text, caption, and photo credit. Save As carries relative assets to the new folder, and HTML export embeds local images in one file.
+
+## Give a clear credit
+
+Select a phrase and press Cmd/Ctrl+K to add or edit a link. Normal clicks keep you editing; Cmd/Ctrl-click opens the destination. Pasting a web URL onto selected text creates a link. Use **❝** to add a quotation with an author and source. Credits remain ordinary Markdown links and text.
+
+Open **The quiet hour · sample** in the sidebar to try the whole workflow. **Recovery copies** holds idle checkpoints of unsaved writing; opening a copy preserves the saved-file conflict check. Save regularly, and export HTML when you want a portable reading copy.
 
 ## A note on this experiment
 

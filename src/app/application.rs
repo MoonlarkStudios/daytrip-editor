@@ -29,6 +29,11 @@ use crate::io::storage::{self, FileError, LoadedFile, Preferences};
 use crate::theme::styles::{self, Button};
 use crate::theme::{Preset, ResolvedTheme};
 
+#[path = "recovery.rs"]
+pub(crate) mod recovery;
+#[path = "writing.rs"]
+pub(crate) mod writing;
+
 const EDITOR: &str = "document-editor";
 const SCROLL: &str = "document-scroll";
 const SEARCH: &str = "document-search";
@@ -78,10 +83,14 @@ pub struct App {
     match_revealed: bool,
     notification: Option<String>,
     zoom: f32,
+    writing: writing::State,
+    recovery: recovery::State,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Writing(writing::Message),
+    Recovery(recovery::Message),
     Edit(text_editor::Action),
     CommitComposition {
         target: CompositionTarget,
@@ -196,6 +205,8 @@ enum Overlay {
     Settings,
     Collaboration,
     Unsaved,
+    Writing,
+    Recovery,
 }
 
 #[derive(Debug, Clone)]
@@ -205,6 +216,8 @@ enum Pending {
     Replica,
     Guide,
     Welcome,
+    Sample,
+    Recover(Box<crate::io::recovery::Snapshot>),
     Close(window::Id),
 }
 
@@ -264,6 +277,8 @@ impl App {
             match_revealed: false,
             notification: None,
             zoom: 1.0,
+            writing: writing::State::default(),
+            recovery: recovery::State::default(),
         };
         app.sync_editor();
         app.selection = app.projection.normalize_caret(app.selection);
@@ -284,7 +299,11 @@ impl App {
             .map(|path| Task::done(Message::OpenPath(path)))
             .unwrap_or_else(Task::none);
         let image_task = app.image_tasks();
-        (app, Task::batch([theme_task, open_task, image_task]))
+        let recovery_task = app.recovery_discovery();
+        (
+            app,
+            Task::batch([theme_task, open_task, image_task, recovery_task]),
+        )
     }
 
     pub fn title(&self) -> String {
@@ -308,16 +327,29 @@ impl App {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        iced::event::listen_with(|event, status, id| match event {
-            Event::Window(window::Event::CloseRequested) => Some(Message::CloseRequested(id)),
-            Event::Window(window::Event::FileDropped(path)) => Some(Message::Dropped(path)),
-            Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. })
-                if status == iced::event::Status::Ignored =>
+        Subscription::batch([
+            if self.dirty
+                && !self.loading
+                && self
+                    .recovery
+                    .needs_checkpoint(self.document.collaboration.generation())
             {
-                shortcut(&key, modifiers)
-            }
-            _ => None,
-        })
+                iced::time::every(std::time::Duration::from_secs(1))
+                    .map(|_| Message::Recovery(recovery::Message::Tick))
+            } else {
+                Subscription::none()
+            },
+            iced::event::listen_with(|event, status, id| match event {
+                Event::Window(window::Event::CloseRequested) => Some(Message::CloseRequested(id)),
+                Event::Window(window::Event::FileDropped(path)) => Some(Message::Dropped(path)),
+                Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. })
+                    if status == iced::event::Status::Ignored =>
+                {
+                    shortcut(&key, modifiers)
+                }
+                _ => None,
+            }),
+        ])
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -326,7 +358,7 @@ impl App {
             self.document.costs = Default::default();
         }
         let task = self.update_message(message);
-        Task::batch([task, self.image_tasks()])
+        Task::batch([task, self.image_tasks(), self.recovery_cleanup()])
     }
 
     fn image_tasks(&mut self) -> Task<Message> {
@@ -357,7 +389,6 @@ impl App {
                     | Message::CommitComposition { .. }
                     | Message::Select(_)
                     | Message::SelectSource(_)
-                    | Message::EditorFocused(_)
                     | Message::TableTab(_)
                     | Message::Format(_)
                     | Message::Undo
@@ -374,7 +405,6 @@ impl App {
                     | Message::CommitComposition { .. }
                     | Message::Select(_)
                     | Message::SelectSource(_)
-                    | Message::EditorFocused(_)
                     | Message::TableTab(_)
                     | Message::Activate(_)
                     | Message::JumpTo(_)
@@ -399,6 +429,8 @@ impl App {
             return Task::none();
         }
         match message {
+            Message::Writing(message) => return self.update_writing(message),
+            Message::Recovery(message) => return self.update_recovery(message),
             Message::CommitComposition { target, text } => {
                 if let Some(selection) = self.document.collaboration.resolve_composition(&target) {
                     self.selection = selection.clamp(self.document.source());
@@ -594,6 +626,9 @@ impl App {
                     self.document.break_history_group();
                 }
             }
+            // Focus must reconcile even under a modal/loading guard. Otherwise
+            // RichEditor emits the same mismatch on every redraw after a dialog
+            // focuses its field, keeping Iced in an update/rebuild loop.
             Message::EditorFocused(focused) => {
                 if self.editor_focused != focused {
                     self.editor_focused = focused;
@@ -673,6 +708,9 @@ impl App {
             }
             Message::New => return self.request(Pending::New),
             Message::Open => return self.request(Pending::Open(None)),
+            Message::Dropped(path) if crate::io::assets::is_image(&path) => {
+                return self.import_dropped_image(path);
+            }
             Message::OpenPath(path) | Message::Dropped(path) => {
                 return self.request(Pending::Open(Some(path)));
             }
@@ -745,6 +783,9 @@ impl App {
                         self.dirty = self.document.source() != self.saved_source
                             || self.document.collaboration.generation() != self.saved_generation;
                         self.remember(path);
+                        if !self.dirty {
+                            self.recovery.retire();
+                        }
                         self.notification = Some("Document saved".into());
                         if !self.dirty
                             && let Some(pending) = self.pending.take()
@@ -755,10 +796,18 @@ impl App {
                                 self.persist_preferences(),
                             ]);
                         }
-                        return self.persist_preferences();
+                        return Task::batch([
+                            self.persist_preferences(),
+                            Task::done(Message::Writing(writing::Message::ResumeImage)),
+                        ]);
                     }
-                    Err(FileError::Io(error)) if error == "Save cancelled" => {}
-                    Err(error) => self.notification = Some(error.to_string()),
+                    Err(FileError::Io(error)) if error == "Save cancelled" => {
+                        self.writing.pending_media = None;
+                    }
+                    Err(error) => {
+                        self.writing.pending_media = None;
+                        self.notification = Some(error.to_string());
+                    }
                 }
             }
             Message::Export => {
@@ -766,17 +815,31 @@ impl App {
                     return Task::none();
                 }
                 self.busy = true;
-                let html = storage::export_html(self.document.source());
+                let source = self.document.source().to_owned();
+                let export_name = PathBuf::from(&self.display_name)
+                    .with_extension("html")
+                    .to_string_lossy()
+                    .into_owned();
+                let base = self
+                    .path
+                    .as_deref()
+                    .and_then(|p| p.parent())
+                    .map(|p| p.to_owned());
                 return Task::perform(
                     async move {
                         let Some(file) = rfd::AsyncFileDialog::new()
-                            .set_file_name("document.html")
+                            .set_file_name(export_name)
                             .add_filter("HTML", &["html"])
                             .save_file()
                             .await
                         else {
                             return Ok(None);
                         };
+                        let html = tokio::task::spawn_blocking(move || {
+                            crate::io::export::html(&source, base.as_deref())
+                        })
+                        .await
+                        .map_err(|e| FileError::Io(e.to_string()))??;
                         storage::save(file.path().to_path_buf(), html, None)
                             .await
                             .map(Some)
@@ -831,6 +894,7 @@ impl App {
                         }
                     }
                     self.overlay = None;
+                    self.writing.close_details();
                     self.pending = None;
                 }
             }
@@ -985,19 +1049,7 @@ impl App {
                 }
             }
             Message::CloseRequested(id) => return self.request(Pending::Close(id)),
-            Message::Link(url) => {
-                if url.starts_with("https://")
-                    || url.starts_with("http://")
-                    || url.starts_with("mailto:")
-                {
-                    return Task::perform(
-                        async move { open::that_detached(url).map_err(|error| error.to_string()) },
-                        Message::LinkOpened,
-                    );
-                }
-                self.notification =
-                    Some("Only web and email links can be opened from the editor.".into());
-            }
+            Message::Link(url) => return self.open_destination(url),
             Message::LinkOpened(result) => {
                 if let Err(error) = result {
                     self.notification = Some(error);
@@ -1023,6 +1075,7 @@ impl App {
     }
 
     fn changed(&mut self) {
+        self.recovery.edited();
         self.dirty = self.document.source() != self.saved_source
             || self.document.collaboration.generation() != self.saved_generation;
         self.notification = self.edit_error.take();
@@ -1442,6 +1495,9 @@ impl App {
     }
 
     fn format(&mut self, format: Format) -> Task<Message> {
+        if matches!(format, Format::Link) {
+            return self.update_writing(writing::Message::Details(writing::Kind::Link));
+        }
         if self.mode == EditorMode::Read {
             self.mode = EditorMode::Live;
             self.sync_editor();
@@ -1589,6 +1645,12 @@ impl App {
 
     fn execute(&mut self, pending: Pending) -> Task<Message> {
         match pending {
+            Pending::Recover(snapshot) => self.restore_draft(*snapshot),
+            Pending::Sample => {
+                self.busy = true;
+                self.loading = true;
+                return Task::perform(crate::io::writing_sample::load(), Message::Loaded);
+            }
             Pending::New => {
                 self.set_document(String::new(), None, "Untitled.md".into());
                 return self.activate(0, false);
@@ -1635,7 +1697,10 @@ impl App {
                     Message::ReplicaChosen,
                 );
             }
-            Pending::Close(id) => return window::close(id),
+            Pending::Close(id) => {
+                self.recovery.retire();
+                return window::close(id);
+            }
         }
         operation::snap_to(SCROLL, scrollable::RelativeOffset::START)
     }
@@ -1645,6 +1710,10 @@ impl App {
     }
 
     fn install_document(&mut self, document: Document, path: Option<PathBuf>, name: String) {
+        self.recovery.retire();
+        self.writing = writing::State::default();
+        self.images.clear_history();
+        self.overlay = None;
         self.document = document;
         self.projection = Projection::new(self.document.source());
         self.projection_revision = Some(self.document.revision);
@@ -1691,6 +1760,8 @@ impl App {
             self.saved_version.clone()
         };
         let name = self.display_name.clone();
+        let old_path = self.path.clone();
+        let image_history = self.images.history();
         Task::perform(
             async move {
                 let path = if let Some(path) = path {
@@ -1705,6 +1776,18 @@ impl App {
                         .path()
                         .to_path_buf()
                 };
+                let asset_source = Arc::clone(&source);
+                let asset_path = path.clone();
+                tokio::task::spawn_blocking(move || {
+                    crate::io::assets::relocate(
+                        &asset_source,
+                        old_path.as_deref(),
+                        &asset_path,
+                        &image_history,
+                    )
+                })
+                .await
+                .map_err(|error| FileError::Io(error.to_string()))??;
                 collaboration_store::save_document(
                     path,
                     (*source).clone(),
@@ -1773,6 +1856,8 @@ impl App {
                 Overlay::Settings => self.settings_view(),
                 Overlay::Collaboration => self.collaboration_view(),
                 Overlay::Unsaved => self.unsaved_view(),
+                Overlay::Writing => self.writing_view(),
+                Overlay::Recovery => self.recovery_view(),
             };
             layers = layers
                 .push(backdrop)
@@ -1903,6 +1988,16 @@ impl App {
         } else {
             list = list.push(text("WORKSPACE").size(10).color(tokens.faint));
             list = list.push(self.file_button(&self.display_name, None, true));
+            list = list.push(self.file_action(
+                "Recovery copies",
+                Message::Recovery(recovery::Message::Show),
+                false,
+            ));
+            list = list.push(self.file_action(
+                "The quiet hour · sample",
+                Message::Writing(writing::Message::Sample),
+                false,
+            ));
             if self.display_name != "Welcome.md" {
                 list = list.push(self.file_action("Welcome", Message::Welcome, false));
             }
@@ -2095,13 +2190,41 @@ impl App {
             ("```", Format::Fence),
             ("▦", Format::Table),
         ] {
-            toolbar = toolbar.push(
+            let message = if matches!(format, Format::Quote) {
+                Message::Writing(writing::Message::Details(writing::Kind::Quote))
+            } else {
+                Message::Format(format)
+            };
+            let hint = match format {
+                Format::Heading => "Heading",
+                Format::Bold => "Bold · ⌘ / Ctrl+B",
+                Format::Italic => "Italic · ⌘ / Ctrl+I",
+                Format::Code => "Inline code",
+                Format::Link => "Link · ⌘ / Ctrl+K",
+                Format::Quote => "Quotation and source credit",
+                Format::List => "List",
+                Format::Task => "Task",
+                Format::Fence => "Code block",
+                Format::Table => "Table",
+            };
+            toolbar = toolbar.push(tooltip(
                 button(text(label).size(13))
-                    .on_press(Message::Format(format))
+                    .on_press(message)
                     .padding([5, 9])
                     .style(styles::button_style(tokens, Button::Quiet)),
-            );
+                text(hint).size(12),
+                tooltip::Position::Bottom,
+            ));
         }
+        toolbar = toolbar.push(tooltip(
+            self.small_button(
+                "Image",
+                Message::Writing(writing::Message::Details(writing::Kind::Image)),
+                false,
+            ),
+            text("Add or edit image · paste or drop").size(12),
+            tooltip::Position::Bottom,
+        ));
         toolbar.height(32).into()
     }
 
@@ -2305,6 +2428,7 @@ impl App {
             ("Save as", "⌘/Ctrl Shift S"),
             ("Find & replace", "⌘/Ctrl F"),
             ("Bold / Italic", "⌘/Ctrl B / I"),
+            ("Create / edit link", "⌘/Ctrl K"),
             ("Live preview / source", "⌘/Ctrl Shift M"),
             ("Focus mode", "⌘/Ctrl Shift F"),
             ("Previous / next block", "Alt ↑ / ↓"),
@@ -2635,6 +2759,11 @@ fn editor_binding(press: text_editor::KeyPress) -> Option<text_editor::Binding<M
             text_editor::Action::Edit(text_editor::Edit::Paste(Arc::new("\n".into()))),
         )));
     }
+    if press.modifiers.command() && matches!(press.key.as_ref(), Key::Character("v")) {
+        return Some(text_editor::Binding::Custom(Message::Writing(
+            writing::Message::Paste(None),
+        )));
+    }
     if let Some(message) = shortcut(&press.key, press.modifiers) {
         return Some(text_editor::Binding::Custom(message));
     }
@@ -2662,6 +2791,7 @@ fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
                 }),
                 "b" => Some(Message::Format(Format::Bold)),
                 "i" => Some(Message::Format(Format::Italic)),
+                "k" => Some(Message::Format(Format::Link)),
                 "m" if modifiers.shift() => Some(Message::ToggleSource),
                 "z" => Some(if modifiers.shift() {
                     Message::Redo

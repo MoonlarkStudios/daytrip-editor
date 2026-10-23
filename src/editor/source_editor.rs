@@ -7,7 +7,7 @@ use iced::advanced::{
 use iced::widget::text_editor::{Action, Edit};
 use iced::{Element, Event, Length, Rectangle, Renderer, Size, Theme, Vector};
 
-use crate::app::Message;
+use crate::app::{Message, WritingMessage};
 use crate::document::collaboration::{Collaboration, CompositionTarget};
 use crate::document::selection::Selection;
 
@@ -133,6 +133,27 @@ impl Widget<Message, Theme, Renderer> for SourceEditor<'_> {
                     text: (*text).clone(),
                 },
                 message => message,
+            });
+        } else if matches!(event, Event::Keyboard(iced::keyboard::Event::KeyPressed { key: iced::keyboard::Key::Character(character), modifiers, .. }) if modifiers.command() && character.eq_ignore_ascii_case("v"))
+        {
+            let fallback = clipboard.read(iced::advanced::clipboard::Kind::Standard);
+            let mut messages = Vec::new();
+            let mut child_shell = Shell::new(&mut messages);
+            self.child.as_widget_mut().update(
+                &mut tree.children[0],
+                event,
+                layout,
+                cursor,
+                renderer,
+                clipboard,
+                &mut child_shell,
+                viewport,
+            );
+            shell.merge(child_shell, |message| match message {
+                Message::Writing(WritingMessage::Paste(None)) => {
+                    Message::Writing(WritingMessage::Paste(fallback.clone()))
+                }
+                other => other,
             });
         } else {
             self.child.as_widget_mut().update(

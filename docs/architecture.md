@@ -104,3 +104,7 @@ HTML export escapes raw Markdown HTML and includes a restrictive content securit
 The collaboration foundation measurements are in [CRDT performance](crdt-performance.md), followed by [cached UTF-16 traversal](utf16-performance.md).
 
 [Offline import measurements](offline-imports.md) record staged update filtering and incremental source/projection batches.
+
+## Writing workflows
+
+`app/writing.rs` owns focused link/image/quotation details and deferred paste/import intent; `document/writing.rs` recognizes and serializes their portable Markdown. All accepted edits still use `Document::transact` with stable targets and deliberate human undo grouping. `io/assets.rs` publishes bounded immutable assets and copies references for Save As; `io/export.rs` embeds local images in self-contained HTML. `app/recovery.rs` debounces idle checkpoints and retires late writes; `io/recovery.rs` stores one checksummed compatible CRDT state plus the saved-file baseline atomically. Presentation remains local. The [writing workflow policy](writing-workflows.md) describes limits, conflict behavior, recovery retention and validation.

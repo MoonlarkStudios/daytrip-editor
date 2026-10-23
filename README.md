@@ -2,7 +2,7 @@
 
 A quiet, native Markdown editor built with **Iced 0.14** and Rust. Warm paper, considered typography, a restrained sidebar, and one surface for writing and reading.
 
-Still is a working technology evaluation toward a Typora-like editor. It uses production-oriented file handling and tested document state, but **is not yet a production-ready Typora replacement**. Continuous editing includes rich heading sizes, editable tables, images, viewport virtualization, deferred native-buffer shaping, conservative incremental block parsing, reusable native text snapshots, and in-place source/projection updates. Broader editing fidelity, remaining linear document work, recovery, and accessibility remain release work.
+Still is a working technology evaluation toward a Typora-like editor. It uses production-oriented file handling and tested document state, but **is not yet a production-ready Typora replacement**. Continuous editing includes rich heading sizes, editable tables, images, viewport virtualization, deferred native-buffer shaping, conservative incremental block parsing, reusable native text snapshots, and in-place source/projection updates. Broader editing fidelity, remaining linear document work, broader platform validation, and accessibility remain release work.
 
 ## Run
 
@@ -31,19 +31,22 @@ macOS requires Xcode Command Line Tools. Linux needs a C toolchain and the X11/W
 
 ## Write
 
+Open **The quiet hour · sample** in the sidebar for a complete, editable document with a bundled photograph, caption, links, and attributed quotation.
+
 - **Live editor:** the active heading reveals its prefix, and only the innermost inline span under the caret reveals its delimiters or link destination. Other completed syntax occupies no space. Moving out of a span conceals it immediately; leaving the editor conceals all markers. Small local reflow is allowed, with source-based caret/selection preservation and viewport anchoring. Arrow keys, mouse dragging, copy/cut/paste, and selection operate across the entire document.
 - **Rich blocks in Live:** headings have six size levels; tables have editable, wrapping cells and aligned columns; images render in the page. Cursor movement and selection stay continuous through all of them. Read remains an optional comparison view.
 - **Tables:** Tab/Shift+Tab moves between cells. Enter moves down the current column and adds a row at the end. Tab from the last cell also adds a row. Shift+Enter creates a paragraph after the table. Pasting TSV or multiple lines fills cells and grows rows; literal pipes are escaped. Backspace/Delete at a cell boundary navigates across the boundary.
-- **Images:** local paths, file URLs, and HTTP/HTTPS URLs load and decode in background tasks. Relative paths resolve beside the saved document. Images fit the page and behave as single selectable objects; delete, replace, copy/cut, and undo preserve their Markdown.
+- **Images:** paste a copied image file or raster image, drop PNG/JPEG/GIF/WebP files, or use Image to choose a file or URL. Local imports use immutable assets beside your Markdown. Double-click an image or use Image to edit alt text, caption, and photo credit. Images fit the page; delete, replace, copy/cut, and undo preserve their Markdown. Save As copies relative assets; HTML export embeds them.
+- **Links and credits:** Cmd/Ctrl+K creates or edits a link; pasting a URL onto selected text links it. Normal clicks edit and Cmd/Ctrl-click opens the destination. Use ❝ for attributed quotations. Captions, photo credits and source references remain ordinary Markdown.
 - **Source:** use the bottom-left toggle or Cmd/Ctrl+Shift+M to inspect the exact Markdown. Switching preserves the caret and selection, including selection direction.
 - **Formatting:** select text and use Cmd/Ctrl+B or I, or the contextual toolbar. Code, links, headings, blockquotes, lists, tasks, fences, and tables can also be inserted.
 - **Lists and tasks:** Enter continues lists and resets the next task to unchecked; Enter in an empty item exits the list. Edit disclosed heading markers directly with ordinary selection, Backspace, and Delete. Click task checkboxes in Read view to toggle them.
 - **Navigation:** switch the sidebar to Outline. Alt+Up/Down moves between blocks. The sidebar also provides recent documents and an editable Markdown guide.
 - **Find and replace:** Cmd/Ctrl+F, with exact, case-sensitive Unicode matching. Enter/Next reveals and selects a match.
-- **Files:** Cmd/Ctrl+N, O, S; Cmd/Ctrl+Shift+S for Save As. Dropped files open through the same unsaved-change guard. Export creates a standalone HTML document.
+- **Files:** Cmd/Ctrl+N, O, S; Cmd/Ctrl+Shift+S for Save As. Dropped Markdown files open through the same unsaved-change guard; images insert at the current selection. Export creates a standalone HTML document.
 - **Focus:** Cmd/Ctrl+Shift+F hides the sidebar. Cmd/Ctrl plus/minus adjusts text size. Cmd/Ctrl+Z and Shift+Z undo and redo.
 
-Changes are saved manually. Closing, opening, or replacing a dirty document requires Save, Discard, or Cancel. Saves use a synchronized temporary file in the destination directory, atomic replacement, existing permissions, and a check against the last saved contents to detect external modifications. Edits made while saving remain dirty. There is no crash recovery yet; save valuable work regularly.
+Changes are saved manually. Closing, opening, or replacing a dirty document requires Save, Discard, or Cancel. Saves use a synchronized temporary file in the destination directory, atomic replacement, existing permissions, and a check against the last saved contents to detect external modifications. Edits made while saving remain dirty. After two idle seconds, or every 30 seconds of continuous writing, unsaved work receives a private, checksummed recovery checkpoint. Recovery copies in the sidebar opens a compatible editable copy with the saved-file conflict baseline intact. Save valuable work regularly: the newest work after the last checkpoint may not survive a crash. See [writing workflows, asset storage, recovery and export](docs/writing-workflows.md).
 
 ## Themes
 
@@ -67,7 +70,7 @@ Typography supports `body_size` (12–32), `line_height` (1.2–2.2), and `conte
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for source boundaries, validation commands, Rust conventions and project exceptions, and commit policy. [AGENTS.md](AGENTS.md) provides concise instructions for agent work. The code follows the applicable [Google Rust style guidance](https://google.github.io/styleguide/rustguide.html). Technical details are in [architecture](docs/architecture.md), [evaluation notes](docs/evaluation.md), the [large-document baseline](docs/performance.md), [viewport virtualization](docs/virtualization.md), [native-buffer initialization](docs/native-buffer.md), [incremental block parsing](docs/incremental-parsing.md), [native snapshots](docs/native-snapshots.md), and [source/projection updates](docs/source-projection-updates.md).
 
-Current support includes headings, inline styles, links, nested lists, tasks, blockquotes, rules, GFM tables, code fences, and PNG/JPEG/GIF/WebP images. Reference-style links resolve across blocks in the live projection. Image objects use block layout even when written inline; GIFs show their first frame. Strikethrough lines and clickable task controls remain in Read view. LaTeX math, Mermaid, footnote popovers, image property/resize controls, column/row manipulation controls, typewriter scrolling, PDF/office exports, tabs, and folder watching remain unfinished.
+Current support includes headings, inline styles, links, nested lists, tasks, blockquotes, rules, GFM tables, code fences, and PNG/JPEG/GIF/WebP images. Reference-style links resolve across blocks in the live projection. Image objects use block layout even when written inline; GIFs show their first frame. Strikethrough lines and clickable task controls remain in Read view. LaTeX math, Mermaid, footnote popovers, image resize/crop controls, column/row manipulation controls, typewriter scrolling, PDF/office exports, tabs, and folder watching remain unfinished.
 
 MIT licensed. The bundled font has its own [license](assets/fonts/OFL.txt).
 

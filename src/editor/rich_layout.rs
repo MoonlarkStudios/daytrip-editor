@@ -290,9 +290,13 @@ impl RichLayout {
                 let top = builder.y;
                 match unit.kind {
                     UnitKind::Line(heading) => {
-                        let size = heading.map_or(builder.size, |level| {
-                            styles::heading_size(builder.size, level)
-                        });
+                        let size = styles::line_size(
+                            builder.size,
+                            heading,
+                            projection.text[unit.range.clone()]
+                                .trim_matches('\r')
+                                .is_empty(),
+                        );
                         builder.line(unit.range.clone(), size, heading.is_some());
                     }
                     UnitKind::TableRow { table, row } => {
@@ -385,9 +389,11 @@ impl RichLayout {
                 )
                 .filter(|heading| heading.range.start <= start && start < heading.range.end)
                 .map(|heading| heading.level);
-            let size = heading.map_or(builder.size, |level| {
-                styles::heading_size(builder.size, level)
-            });
+            let size = styles::line_size(
+                builder.size,
+                heading,
+                projection.text[start..end].trim_matches('\r').is_empty(),
+            );
             builder.line(start..end, size, heading.is_some());
             if end == projection.text.len() {
                 break;

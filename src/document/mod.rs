@@ -8,5 +8,6 @@ pub(crate) mod rich_document;
 pub(crate) mod selection;
 mod source;
 pub(crate) mod table_edit;
+pub(crate) mod writing;
 
 pub(crate) use source::Document;

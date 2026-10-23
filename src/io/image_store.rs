@@ -35,10 +35,27 @@ pub enum Asset {
 #[derive(Default)]
 pub struct ImageStore {
     assets: HashMap<String, Asset>,
+    // Decoded assets may be evicted; source references remain available to Undo.
+    // Save As carries this document session's previously referenced local files.
+    history: HashSet<String>,
+    history_bytes: usize,
+    history_incomplete: bool,
     revision: u64,
 }
 
 impl ImageStore {
+    pub fn history(&self) -> crate::io::assets::History {
+        crate::io::assets::History {
+            references: self.history.iter().cloned().collect(),
+            complete: !self.history_incomplete,
+        }
+    }
+    pub fn clear_history(&mut self) {
+        self.history.clear();
+        self.history_bytes = 0;
+        self.history_incomplete = false;
+    }
+
     pub fn revision(&self) -> u64 {
         self.revision
     }
@@ -70,7 +87,23 @@ impl ImageStore {
     pub fn request(&mut self, images: &[Image], base: Option<&Path>) -> Task<Message> {
         let active = images
             .iter()
-            .map(|image| key(&image.url, base))
+            .map(|image| {
+                if !self.history_incomplete
+                    && !image.url.starts_with("http://")
+                    && !image.url.starts_with("https://")
+                    && !self.history.contains(&image.url)
+                {
+                    if self.history_bytes + image.url.len() > 16 * 1024 * 1024
+                        || self.history.len() >= 65_536
+                    {
+                        self.history_incomplete = true;
+                    } else {
+                        self.history_bytes += image.url.len();
+                        self.history.insert(image.url.clone());
+                    }
+                }
+                key(&image.url, base)
+            })
             .collect::<HashSet<_>>();
         self.assets.retain(|key, _| active.contains(key));
         let loading = self

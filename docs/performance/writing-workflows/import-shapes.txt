@@ -1,0 +1,23 @@
+
+running 1 test
+test app::application::performance::large_offline_import_shapes ... remote/sparse-32/10000/first n=1 input=0.000/0.000/0.000ms update=49.425/49.425/49.425ms crdt=41.589/41.589/41.589ms source=0.766/0.766/0.766ms adapters=7.070/7.070/7.070ms layout=0.098/0.098/0.098ms draw=0.003/0.003/0.003ms raster=1.486/1.486/1.486ms total=51.012/51.012/51.012ms (p50/p95/max)
+remote/sparse-32/10000 n=10 input=0.000/0.000/0.000ms update=12.672/49.425/49.425ms crdt=5.574/41.589/41.589ms source=0.646/0.766/0.766ms adapters=6.464/7.070/7.070ms layout=0.075/0.098/0.098ms draw=0.002/0.003/0.003ms raster=1.207/1.486/1.486ms total=13.951/51.012/51.012ms (p50/p95/max)
+import/windows blocks=10000 shape=sparse-32 certified=10/10
+remote/fallback-128/10000/first n=1 input=0.000/0.000/0.000ms update=173.504/173.504/173.504ms crdt=150.718/150.718/150.718ms source=7.318/7.318/7.318ms adapters=15.468/15.468/15.468ms layout=2.523/2.523/2.523ms draw=0.003/0.003/0.003ms raster=1.255/1.255/1.255ms total=177.284/177.284/177.284ms (p50/p95/max)
+remote/fallback-128/10000 n=10 input=0.000/0.000/0.000ms update=29.583/173.504/173.504ms crdt=6.395/150.718/150.718ms source=7.742/8.616/8.616ms adapters=15.456/16.010/16.010ms layout=2.468/2.646/2.646ms draw=0.003/0.004/0.004ms raster=1.242/1.346/1.346ms total=33.223/177.284/177.284ms (p50/p95/max)
+import/windows blocks=10000 shape=fallback-128 certified=0/10
+remote/structural-8/10000/first n=1 input=0.000/0.000/0.000ms update=19.683/19.683/19.683ms crdt=15.117/15.117/15.117ms source=0.300/0.300/0.300ms adapters=4.266/4.266/4.266ms layout=2.188/2.188/2.188ms draw=0.002/0.002/0.002ms raster=1.220/1.220/1.220ms total=23.094/23.094/23.094ms (p50/p95/max)
+remote/structural-8/10000 n=10 input=0.000/0.000/0.000ms update=10.697/19.683/19.683ms crdt=5.610/15.117/15.117ms source=0.241/0.659/0.659ms adapters=4.301/6.913/6.913ms layout=2.240/2.363/2.363ms draw=0.002/0.003/0.003ms raster=1.238/1.410/1.410ms total=14.127/23.094/23.094ms (p50/p95/max)
+import/windows blocks=10000 shape=structural-8 certified=10/10
+remote/sparse-32/50000/first n=1 input=0.000/0.000/0.000ms update=260.297/260.297/260.297ms crdt=217.420/217.420/217.420ms source=2.940/2.940/2.940ms adapters=39.938/39.938/39.938ms layout=0.522/0.522/0.522ms draw=0.003/0.003/0.003ms raster=1.344/1.344/1.344ms total=262.165/262.165/262.165ms (p50/p95/max)
+remote/sparse-32/50000 n=10 input=0.000/0.000/0.000ms update=67.579/260.297/260.297ms crdt=30.480/217.420/217.420ms source=2.615/4.649/4.649ms adapters=34.126/39.938/39.938ms layout=0.227/0.522/0.522ms draw=0.003/0.007/0.007ms raster=1.258/1.344/1.344ms total=69.081/262.165/262.165ms (p50/p95/max)
+import/windows blocks=50000 shape=sparse-32 certified=10/10
+remote/fallback-128/50000/first n=1 input=0.000/0.000/0.000ms update=838.794/838.794/838.794ms crdt=724.503/724.503/724.503ms source=33.898/33.898/33.898ms adapters=80.394/80.394/80.394ms layout=12.760/12.760/12.760ms draw=0.003/0.003/0.003ms raster=1.199/1.199/1.199ms total=852.757/852.757/852.757ms (p50/p95/max)
+remote/fallback-128/50000 n=10 input=0.000/0.000/0.000ms update=153.395/838.794/838.794ms crdt=30.126/724.503/724.503ms source=33.898/37.558/37.558ms adapters=84.862/95.066/95.066ms layout=13.174/20.917/20.917ms draw=0.003/0.004/0.004ms raster=1.225/1.455/1.455ms total=167.903/852.757/852.757ms (p50/p95/max)
+import/windows blocks=50000 shape=fallback-128 certified=0/10
+remote/structural-8/50000/first n=1 input=0.000/0.000/0.000ms update=98.693/98.693/98.693ms crdt=70.959/70.959/70.959ms source=2.112/2.112/2.112ms adapters=25.621/25.621/25.621ms layout=11.492/11.492/11.492ms draw=0.002/0.002/0.002ms raster=1.176/1.176/1.176ms total=111.362/111.362/111.362ms (p50/p95/max)
+remote/structural-8/50000 n=10 input=0.000/0.000/0.000ms update=49.736/98.693/98.693ms crdt=27.016/70.959/70.959ms source=0.963/2.112/2.112ms adapters=21.298/25.621/25.621ms layout=11.879/12.339/12.339ms draw=0.003/0.006/0.006ms raster=1.203/1.285/1.285ms total=62.823/111.362/111.362ms (p50/p95/max)
+import/windows blocks=50000 shape=structural-8 certified=10/10
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 162 filtered out; finished in 11.08s

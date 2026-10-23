@@ -143,21 +143,34 @@ pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), FileError> {
     Ok(())
 }
 
-pub fn export_html(source: &str) -> String {
+#[cfg(test)]
+fn export_html(source: &str) -> String {
+    render_html(
+        pulldown_cmark::Parser::new_ext(source, pulldown_cmark::Options::all()),
+        "Still — document",
+    )
+}
+
+pub(super) fn render_html<'a>(
+    events: impl Iterator<Item = pulldown_cmark::Event<'a>>,
+    title: &str,
+) -> String {
     let mut body = String::new();
     // Markdown HTML is escaped in export so a note cannot embed executable scripts.
-    let events =
-        pulldown_cmark::Parser::new_ext(source, pulldown_cmark::Options::all()).map(|event| {
-            match event {
-                pulldown_cmark::Event::Html(html) | pulldown_cmark::Event::InlineHtml(html) => {
-                    pulldown_cmark::Event::Text(html)
-                }
-                other => other,
-            }
-        });
+    let events = events.map(|event| match event {
+        pulldown_cmark::Event::Html(html) | pulldown_cmark::Event::InlineHtml(html) => {
+            pulldown_cmark::Event::Text(html)
+        }
+        other => other,
+    });
     pulldown_cmark::html::push_html(&mut body, events);
+    let title = title
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;");
     format!(
-        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src https: data:; style-src 'unsafe-inline'\"><title>Still — document</title><style>body{{max-width:720px;margin:64px auto;padding:0 24px;color:#2d3431;background:#faf9f6;font:18px/1.7 Georgia,serif}}h1,h2,h3{{line-height:1.25}}a{{color:#416c58}}pre,code{{background:#eff0e9;border-radius:5px}}pre{{padding:20px;overflow:auto}}blockquote{{border-left:3px solid #416c58;margin-left:0;padding-left:24px;color:#737a74}}table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #ddd;padding:8px 12px}}img{{max-width:100%}}</style></head><body>\n{body}\n</body></html>"
+        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'\"><title>{title}</title><style>body{{max-width:720px;margin:64px auto;padding:0 24px;color:#2d3431;background:#faf9f6;font:18px/1.7 Georgia,serif}}h1,h2,h3{{line-height:1.25}}a{{color:#416c58}}pre,code{{background:#eff0e9;border-radius:5px}}pre{{padding:20px;overflow:auto}}blockquote{{border-left:3px solid #416c58;margin-left:0;padding-left:24px;color:#737a74}}table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #ddd;padding:8px 12px}}img{{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:24px auto 12px;border-radius:4px}}p{{margin:0 0 1.1em}}h1{{font-size:2.22em;margin-bottom:.55em}}h2{{margin-top:1.4em}}blockquote p:last-child{{font-size:.92em}}@media print{{body{{margin:0 auto;background:white}}a{{color:inherit}}img{{max-height:65vh}}}}</style></head><body>\n{body}\n</body></html>"
     )
 }
 

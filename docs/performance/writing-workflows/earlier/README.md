@@ -1,0 +1,1 @@
+Diagnostic runs before the final Save As image-history retention fix. Retained for audit, including the repeated high-water memory investigation. These are not the final writing-workflow comparison. The root directory contains the final validated measurements.

@@ -438,7 +438,13 @@ fn estimate(unit: &LayoutUnit, input: LayoutInput<'_>) -> f32 {
     match unit.kind {
         UnitKind::Line(level) => flow(
             unit.range.clone(),
-            level.map_or(body, |level| styles::heading_size(body, level)),
+            styles::line_size(
+                body,
+                level,
+                input.projection.text[unit.range.clone()]
+                    .trim_matches('\r')
+                    .is_empty(),
+            ),
             input.width,
             level.is_some(),
         ),
