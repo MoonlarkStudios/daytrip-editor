@@ -1,0 +1,54 @@
+{
+  "commit": "97cd2fe",
+  "bundle_id": "app.still.editor.drop-validation",
+  "keyboard_settings": "unchanged",
+  "fixture_sha256": "ffde4f1c56e88bfaf83151d2fd6e91fb498bdf4a8692f7a590265ffa6973fd66",
+  "input_png_sha256": "14916ae34c805dc0173d9a03a0e0a8ed3417e3a8521053a2d5e175d0c2dd3482",
+  "signed_executable_sha256": "7adecd272e3c29bc05e968dcd75ec80a3cd5a8582f1c894ef0d1beeb121725b2",
+  "finder_control_moved_probe": true,
+  "native_drop": {
+    "saved_source_sha256": "f52410609ecb067d360d0775ba746ffb852dcdd01530a98e54cd1957852a1b98",
+    "source_bytes": 2221,
+    "image_count": 2,
+    "original_prefix_unchanged": true,
+    "imported_asset_count": 1,
+    "asset_bytes_match_input": true,
+    "caption_present": true,
+    "credit_present": true
+  },
+  "undo_details": {
+    "image_count": 2,
+    "caption_removed": true,
+    "credit_removed": true,
+    "sha256": "2d646735af650ac8a2e03a54d1eb81c8df297fa863a124c3f380964dcb583223"
+  },
+  "undo_drop": {
+    "equals_original_bytes": true,
+    "image_count": 1,
+    "sha256": "ffde4f1c56e88bfaf83151d2fd6e91fb498bdf4a8692f7a590265ffa6973fd66",
+    "asset_retained_for_redo": true
+  },
+  "redo": {
+    "equals_saved_drop_details_bytes": true,
+    "sha256": "f52410609ecb067d360d0775ba746ffb852dcdd01530a98e54cd1957852a1b98",
+    "source_bytes": 2221
+  },
+  "reverse_cut_undo": {
+    "cut_showed_empty_document": true,
+    "restored_exact_bytes": true,
+    "sha256": "f52410609ecb067d360d0775ba746ffb852dcdd01530a98e54cd1957852a1b98"
+  },
+  "forward_cut_undo": {
+    "cut_showed_empty_document": true,
+    "restored_exact_bytes": true,
+    "sha256": "f52410609ecb067d360d0775ba746ffb852dcdd01530a98e54cd1957852a1b98"
+  },
+  "unsaved_guard": {
+    "new_document_prompt_observed": true,
+    "escape_canceled_without_switching": true,
+    "typing_marker_undo_restored_exact_bytes": true,
+    "sha256": "f52410609ecb067d360d0775ba746ffb852dcdd01530a98e54cd1957852a1b98"
+  },
+  "native_png_gesture": "Performed and confirmed by the user; verified afterward through CUA and saved files.",
+  "scope": "PNG at caret; cross-block forward/reverse cut and Undo afterward. No native JPEG/GIF/WebP, active-selection drop, first-save image-drop cancellation, Markdown-drop cancellation, or CJK candidate window claim."
+}
