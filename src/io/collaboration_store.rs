@@ -148,7 +148,7 @@ impl Paths {
         };
         if journal.len() < 72 || &journal[..8] != JOURNAL {
             return Err(invalid(
-                "Damaged Still save journal; preserve files for recovery",
+                "Damaged Daytrip save journal; preserve files for recovery",
             ));
         }
         let state = decode(&journal[72..])?;

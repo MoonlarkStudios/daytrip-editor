@@ -1,6 +1,6 @@
 # Architecture
 
-Still is one Cargo package with a thin `main.rs` calling `still::run()`. The library root declares responsibility-based modules and exports only that application entry point. Implementation modules stay crate-private; a separate crate or public model API needs a concrete consumer or build-time reason.
+Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` calling `still::run()`. The library root declares responsibility-based modules and exports only that application entry point. Implementation modules stay crate-private; a separate crate or public model API needs a concrete consumer or build-time reason.
 
 `App` owns application state and follows Iced's `update → state → view` model. File operations run in background tasks and return typed messages. The active resolved theme is stored in `App` and shared by styles, text highlights, and canvas icons.
 

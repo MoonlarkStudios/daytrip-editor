@@ -1,6 +1,6 @@
-# Contributing to Still
+# Contributing to Daytrip
 
-Still is a native Rust/Iced application in one Cargo package. Prefer direct code, clear ownership, and changes whose behavior and cost can be reviewed independently.
+Daytrip is a native Rust/Iced application in one Cargo package. Prefer direct code, clear ownership, and changes whose behavior and cost can be reviewed independently. The internal Cargo package remains `still` for this branding rename.
 
 ## Development environment
 
@@ -22,7 +22,7 @@ mise run dev
 | `mise run release` | Build the optimized application |
 | `mise run bench` | Run the ignored model and layout benchmarks |
 | `mise run profile` | Profile 10k/50k-block interactions through software rasterization |
-| `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Still.app` on macOS |
+| `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Daytrip.app` on macOS |
 
 Set `STILL_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
 
@@ -65,7 +65,7 @@ Follow the applicable [Google Rust Style Guide](https://google.github.io/stylegu
 - **Module roots:** prefer declarations and deliberate re-exports in `lib.rs` and group `mod.rs` files. Native startup lives in `app/startup.rs`, with a small executable bootstrap in `main.rs`.
 
 Vendored dependencies retain upstream formatting and existing implementation details;
-Still's safe-Rust requirement applies to application code and our dependency patch.
+Daytrip's safe-Rust requirement applies to application code and our dependency patch.
 The narrowly patched Yrs dependency, its provenance and removal policy are in
 [vendor/README.md](vendor/README.md). Run `mise run check-yrs` when changing it;
 do not apply application lint cleanup to imported third-party source.

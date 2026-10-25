@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="asset-title">
+  <title id="asset-title">daytrip open book</title>
+  <g>
+    <path id="symbol-left-leaf" fill="#EAE5DD" d="M 21 12 C 15 8 10 12 10 19 L 10 151 C 10 160 13 166 20 171 L 119 244 L 104 65 C 103 55 101 51 94 47 Z" />
+    <path id="symbol-right-leaf" fill="#A1839A" d="M 224 59 C 230 55 233 58 233 65 L 233 152 C 233 160 231 163 225 168 L 137 244 L 154 102 C 155 95 157 92 163 88 Z" />
+  </g>
+</svg>

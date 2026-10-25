@@ -14,7 +14,7 @@ pub const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
 pub enum FileError {
     #[error("{0}")]
     Io(String),
-    #[error("This file changed outside Still. Use Save As to keep both versions.")]
+    #[error("This file changed outside Daytrip. Use Save As to keep both versions.")]
     Conflict,
     #[error(
         "Markdown differs from its collaboration checkpoint. Preserve both files; open a copy without metadata to import it as a new document."
@@ -28,7 +28,7 @@ pub enum FileError {
         "An interrupted save conflicts with external changes. Preserve the Markdown, .still, and .still-journal files for recovery."
     )]
     RecoveryConflict,
-    #[error("This file exceeds Still's current 16 MiB document limit.")]
+    #[error("This file exceeds Daytrip's current 16 MiB document limit.")]
     TooLarge,
 }
 
@@ -57,6 +57,7 @@ pub fn preferences_path() -> Option<PathBuf> {
     if let Some(directory) = std::env::var_os("STILL_CONFIG_DIR") {
         return Some(PathBuf::from(directory).join("preferences.toml"));
     }
+    // Keep the original location so existing preferences, samples, and recovery copies survive.
     ProjectDirs::from("app", "Still", "Still")
         .map(|dirs| dirs.config_dir().join("preferences.toml"))
 }
@@ -147,7 +148,7 @@ pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), FileError> {
 fn export_html(source: &str) -> String {
     render_html(
         pulldown_cmark::Parser::new_ext(source, pulldown_cmark::Options::all()),
-        "Still — document",
+        "Daytrip — document",
     )
 }
 

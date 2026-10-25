@@ -17,7 +17,7 @@ pub enum Icon {
     Save,
     Code,
     Close,
-    Leaf,
+    Book,
     Export,
     Undo,
     Redo,
@@ -115,19 +115,7 @@ impl<Message> canvas::Program<Message> for Drawing {
                 &[(10., 3.), (8., 15.)],
             ],
             Icon::Close => &[&[(4., 4.), (14., 14.)], &[(14., 4.), (4., 14.)]],
-            Icon::Leaf => &[
-                &[(4., 14.), (9., 9.), (13., 5.)],
-                &[
-                    (4., 12.),
-                    (3., 8.),
-                    (6., 4.),
-                    (15., 2.),
-                    (15., 10.),
-                    (11., 14.),
-                    (7., 15.),
-                    (4., 12.),
-                ],
-            ],
+            Icon::Book => &[],
             Icon::Export => &[
                 &[(9., 11.), (9., 2.)],
                 &[(5., 6.), (9., 2.), (13., 6.)],
@@ -155,6 +143,59 @@ impl<Message> canvas::Program<Message> for Drawing {
         }
         if matches!(self.kind, Icon::Search) {
             frame.stroke(&Path::circle(Point::new(7.5, 7.5), 5.0), stroke);
+        }
+        if matches!(self.kind, Icon::Book) {
+            frame.with_save(|frame| {
+                // Compact open-book master, in its original 256-unit coordinates.
+                // The monochrome treatment follows the active semantic icon color.
+                frame.scale(18.0 / 256.0);
+                let left = Path::new(|builder| {
+                    builder.move_to(Point::new(21.0, 12.0));
+                    builder.bezier_curve_to(
+                        Point::new(15.0, 8.0),
+                        Point::new(10.0, 12.0),
+                        Point::new(10.0, 19.0),
+                    );
+                    builder.line_to(Point::new(10.0, 151.0));
+                    builder.bezier_curve_to(
+                        Point::new(10.0, 160.0),
+                        Point::new(13.0, 166.0),
+                        Point::new(20.0, 171.0),
+                    );
+                    builder.line_to(Point::new(113.0, 244.0));
+                    builder.line_to(Point::new(102.0, 65.0));
+                    builder.bezier_curve_to(
+                        Point::new(101.0, 55.0),
+                        Point::new(99.0, 51.0),
+                        Point::new(92.0, 47.0),
+                    );
+                    builder.close();
+                });
+                let right = Path::new(|builder| {
+                    builder.move_to(Point::new(224.0, 59.0));
+                    builder.bezier_curve_to(
+                        Point::new(230.0, 55.0),
+                        Point::new(233.0, 58.0),
+                        Point::new(233.0, 65.0),
+                    );
+                    builder.line_to(Point::new(233.0, 152.0));
+                    builder.bezier_curve_to(
+                        Point::new(233.0, 160.0),
+                        Point::new(231.0, 163.0),
+                        Point::new(225.0, 168.0),
+                    );
+                    builder.line_to(Point::new(143.0, 244.0));
+                    builder.line_to(Point::new(156.0, 102.0));
+                    builder.bezier_curve_to(
+                        Point::new(157.0, 95.0),
+                        Point::new(159.0, 92.0),
+                        Point::new(165.0, 88.0),
+                    );
+                    builder.close();
+                });
+                frame.fill(&left, self.color);
+                frame.fill(&right, self.color);
+            });
         }
         vec![frame.into_geometry()]
     }

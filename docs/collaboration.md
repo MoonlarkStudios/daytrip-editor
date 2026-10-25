@@ -1,6 +1,6 @@
 # Collaborative Markdown foundation
 
-Still uses **Yrs 0.28.0**, pinned in Cargo, for one root `TextRef` named `markdown`. `Document` owns its `Collaboration`, source cache, and parsed blocks. Every editor source mutation commits to Yrs first. The String, UTF-16 coordinate index, projection, native content, and layout are derived state. Focus, disclosure, wrapping, selection geometry, and scrolling are local.
+Daytrip uses **Yrs 0.28.0**, pinned in Cargo, for one root `TextRef` named `markdown`. `Document` owns its `Collaboration`, source cache, and parsed blocks. Every editor source mutation commits to Yrs first. The String, UTF-16 coordinate index, projection, native content, and layout are derived state. Focus, disclosure, wrapping, selection geometry, and scrolling are local.
 
 This delivery supports one human with accepted agent proposals and independent offline replicas. Networking, authentication, presence, and a branch-review interface are separate work.
 
@@ -44,7 +44,7 @@ Fixed-offset inverse patches have been removed. History selection metadata uses 
 
 IME preedit is transient widget state. The first nonempty preedit captures a stable replacement target and content hash; a direct commit captures the current target. A commit resolves that target and creates exactly one source transaction with its own undo group. Incoming changes before the target rebase it. If its replacement text changed or was deleted, retain preedit and collapse the eventual replacement to the resolved head, preserving incoming text. Closing composition or changing documents clears its target. The native Source widget delegates focus, preedit drawing, and input handling to Iced. A small wrapper replaces its commit message with the same stable-target transaction used by the rich editor; it does not add another paste. Reopening resets the wrapper and native composition state even when the CRDT document identity is unchanged.
 
-Undo stacks, grouping, author metadata, and presentation state are **session-local**. They are not automatically encoded in Yrs updates or restored after reopening. This matches Still's existing session history behavior. Synchronization information and deleted payloads remain in persisted CRDT state.
+Undo stacks, grouping, author metadata, and presentation state are **session-local**. They are not automatically encoded in Yrs updates or restored after reopening. This matches Daytrip's existing session history behavior. Synchronization information and deleted payloads remain in persisted CRDT state.
 
 ## Human–agent workflow
 
@@ -72,11 +72,11 @@ Offsets are **UTF-8 bytes**, not JavaScript UTF-16 indices or Python string indi
 
 Validate the base digest, identity, materialized base source, integrated state-vector ancestry **and deletions**. Bases with unresolved dependencies must wait for synchronization. Create targets in that base's compatible store and resolve them in the current document without merging the base. Expected text must match both versions. A zero-width edit also validates up to 16 surrounding Unicode scalars on both sides; an empty expected string alone never validates a gap. An overlap, changed context, deleted target, invalid range, or wrong identity returns an explicit conflict without applying any part of the proposal. Unrelated edits outside those targets can proceed while an agent works.
 
-A **mergeable fork** is a full encoded state loaded with a new writer identity. Independently seeding two documents with the same Markdown does not share history. A Yrs historical `Snapshot` is a clock/deletion marker for inspection; Still does not restore such a view as an editable fork or promise it has equivalent merge semantics. Exported full states are the supported bootstrap format.
+A **mergeable fork** is a full encoded state loaded with a new writer identity. Independently seeding two documents with the same Markdown does not share history. A Yrs historical `Snapshot` is a clock/deletion marker for inspection; Daytrip does not restore such a view as an editable fork or promise it has equivalent merge semantics. Exported full states are the supported bootstrap format.
 
 ## Persistence and recovery
 
-For `note.md`, Still stores a hidden `.note.md.still` checkpoint beside the physical Markdown target, plus a transient `.note.md.still-journal` and an advisory `.note.md.still-lock`. Symlinks resolve to their target. Preserve/copy the Markdown and checkpoint together to retain compatible history across cloning and offline use.
+For `note.md`, Daytrip stores a hidden `.note.md.still` checkpoint beside the physical Markdown target, plus a transient `.note.md.still-journal` and an advisory `.note.md.still-lock`. Symlinks resolve to their target. Preserve/copy the Markdown and checkpoint together to retain compatible history across cloning and offline use.
 
 A checkpoint has a versioned binary frame, UUID, length, BLAKE3 checksum, and complete Yrs update V1. The active writer ID is never stored as a reusable writer configuration. Each open/fork gets an OS-random-derived 53-bit identity excluded from the encoded state's known clients, including pending structs. Historical operation IDs remain unchanged. Document identity remains stable across reopen/copy; new ordinary Markdown imports get a new UUID.
 

@@ -1,8 +1,8 @@
-# Still
+# Daytrip
 
 A quiet, native Markdown editor built with **Iced 0.14** and Rust. Warm paper, considered typography, a restrained sidebar, and one surface for writing and reading.
 
-Still is a working technology evaluation toward a Typora-like editor. It uses production-oriented file handling and tested document state, but **is not yet a production-ready Typora replacement**. Continuous editing includes rich heading sizes, editable tables, images, viewport virtualization, deferred native-buffer shaping, conservative incremental block parsing, reusable native text snapshots, and in-place source/projection updates. Broader editing fidelity, remaining linear document work, broader platform validation, and accessibility remain release work.
+Daytrip is a working technology evaluation toward a Typora-like editor. It uses production-oriented file handling and tested document state, but **is not yet a production-ready Typora replacement**. Continuous editing includes rich heading sizes, editable tables, images, viewport virtualization, deferred native-buffer shaping, conservative incremental block parsing, reusable native text snapshots, and in-place source/projection updates. Broader editing fidelity, remaining linear document work, broader platform validation, and accessibility remain release work.
 
 ## Run
 
@@ -22,10 +22,10 @@ mise run release               # optimized desktop executable
 mise run bench                 # optimized model and layout benchmarks
 mise run profile               # 10k/50k-block events through software rendering
 mise exec -- cargo run --locked -- /path/to/note.md
-mise exec -- bash scripts/bundle-macos.sh  # target/Still.app
+mise exec -- bash scripts/bundle-macos.sh  # target/Daytrip.app
 ```
 
-Set `STILL_CONFIG_DIR` to use an isolated preferences directory when testing multiple builds.
+Set `STILL_CONFIG_DIR` to use an isolated preferences directory when testing multiple builds. The internal Cargo package and build executable retain the name `still`; existing configuration locations and collaboration formats remain compatible with earlier builds.
 
 macOS requires Xcode Command Line Tools. Linux needs a C toolchain and the X11/Wayland development libraries (on Debian/Ubuntu: `build-essential pkg-config libxkbcommon-dev libwayland-dev libx11-xcb-dev`). Windows needs the MSVC C++ build tools. Only macOS has been exercised locally; the CI matrix is configured for all three.
 
@@ -75,3 +75,5 @@ Current support includes headings, inline styles, links, nested lists, tasks, bl
 MIT licensed. The bundled font has its own [license](assets/fonts/OFL.txt).
 
 Offline replicas and versioned agent proposals are available under **Appearance → Collaboration…**. Markdown stays an ordinary `.md` file; keep its hidden `.still` checkpoint alongside it to retain shared history. See [collaboration and recovery](docs/collaboration.md) and [CRDT measurements](docs/crdt-performance.md).
+
+The **daytrip · open book** identity is available in the [branding kit](branding/daytrip/README.md), including editable SVG masters, logo variants without a tagline, platform app icons, palette, and typography guidance. The application and macOS bundle use the Daytrip name and book symbol.

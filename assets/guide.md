@@ -53,4 +53,4 @@ Open **The quiet hour · sample** in the sidebar to try the whole workflow. **Re
 
 ## A note on this experiment
 
-Still is an Iced technology evaluation. Live editing uses one continuous native buffer, with inline syntax projected out of the display and mapped back to the original source. A shared rich layout supplies heading sizes, table cells, and image objects while preserving document-wide selection. Mathematics, Mermaid, rich table manipulation, and PDF export are future work.
+Daytrip is an Iced technology evaluation. Live editing uses one continuous native buffer, with inline syntax projected out of the display and mapped back to the original source. A shared rich layout supplies heading sizes, table cells, and image objects while preserving document-wide selection. Mathematics, Mermaid, rich table manipulation, and PDF export are future work.

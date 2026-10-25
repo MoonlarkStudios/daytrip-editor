@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="737" height="218" viewBox="0 0 737 218" role="img" aria-labelledby="asset-title">
+  <title id="asset-title">daytrip</title>
+  <g>
+    <g>
+      <g fill="#302A35" fill-rule="evenodd" transform="translate(8 8)">
+        <path id="name-letter-d" d="M 70 17 L 103 2 Q 108 -1 108 4 V 132 L 121 136 V 148 H 87 L 82 138 C 72 146 61 150 47 150 C 18 150 0 131 0 101 C 0 69 20 49 48 49 C 62 49 72 54 82 62 V 25 L 70 22 Z M 82 79 C 75 69 66 64 55 64 C 36 64 26 77 26 99 C 26 122 37 135 54 135 C 65 135 74 130 82 121 Z" transform="translate(0 0)" fill="#302A35" />
+        <path id="name-letter-a" d="M 10 60 C 22 52 37 49 53 49 C 79 49 92 62 92 85 V 128 C 92 134 96 137 103 135 V 147 C 98 149 92 150 86 150 C 78 150 71 146 69 138 C 58 146 47 150 34 150 C 13 150 0 138 0 119 C 0 98 17 87 44 84 L 68 82 V 79 C 68 68 62 63 50 63 C 39 63 31 68 27 80 H 13 Z M 68 95 L 49 99 C 32 102 25 108 25 119 C 25 129 31 135 41 135 C 51 135 60 131 68 123 Z" transform="translate(126 0)" fill="#302A35" />
+        <path id="name-letter-y" d="M 0 52 H 54 V 63 L 41 67 L 67 124 L 90 67 L 77 63 V 52 H 120 V 63 L 106 68 L 66 164 C 56 189 44 202 24 202 C 9 202 0 194 0 183 C 0 175 6 169 14 169 C 22 169 27 174 27 181 C 27 186 30 189 34 189 C 41 189 47 180 53 165 L 58 152 L 15 68 L 0 63 Z" transform="translate(234 0)" fill="#302A35" />
+        <path id="name-letter-t" d="M 19 52 V 27 L 43 14 V 52 H 75 V 67 H 43 V 119 C 43 131 47 136 56 136 C 62 136 68 133 74 127 L 82 138 C 73 146 62 150 49 150 C 29 150 18 140 18 120 V 67 H 0 V 55 Z" transform="translate(365 0)" fill="#302A35" />
+        <path id="name-letter-r" d="M 0 62 L 29 49 L 37 55 V 70 C 48 56 59 49 71 49 C 77 49 81 50 85 52 L 80 79 H 66 L 60 66 C 50 68 43 75 38 86 V 132 L 55 136 V 148 H 0 V 136 L 12 132 V 75 L 0 71 Z" transform="translate(456 0) scale(.9058823529 1)" fill="#302A35" />
+        <path id="name-letter-i" d="M 24 13 C 32 13 38 19 38 27 C 38 35 32 41 24 41 C 16 41 10 35 10 27 C 10 19 16 13 24 13 Z M 0 62 L 30 50 Q 37 47 37 54 V 132 L 50 137 V 148 H 0 V 137 L 12 132 V 75 L 0 71 Z" transform="translate(541 0)" fill="#302A35" />
+        <path id="name-letter-p" d="M 0 62 L 29 49 L 37 55 V 63 C 47 54 59 49 73 49 C 102 49 121 69 121 99 C 121 130 101 150 72 150 C 59 150 49 146 38 138 V 179 L 55 183 V 195 H 0 V 183 L 12 179 V 75 L 0 71 Z M 38 79 V 121 C 46 131 56 135 67 135 C 85 135 95 122 95 100 C 95 77 84 64 67 64 C 56 64 46 69 38 79 Z" transform="translate(600 0)" fill="#302A35" />
+      </g>
+    </g>
+  </g>
+</svg>

@@ -180,7 +180,7 @@ fn publish(base: &Path, relative: &Path, bytes: &[u8]) -> Result<(), FileError> 
         .any(|part| !matches!(part, Component::Normal(_) | Component::CurDir))
     {
         return Err(error(
-            "Save As cannot relocate an image outside the document folder. Import it into Still first.",
+            "Save As cannot relocate an image outside the document folder. Import it into Daytrip first.",
         ));
     }
     let mut directory = base.to_owned();

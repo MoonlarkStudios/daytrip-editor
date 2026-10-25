@@ -308,7 +308,7 @@ impl App {
 
     pub fn title(&self) -> String {
         format!(
-            "{}{} — Still",
+            "{}{} — Daytrip",
             if self.dirty { "● " } else { "" },
             self.display_name
         )
@@ -508,7 +508,7 @@ impl App {
                 return Task::perform(
                     async {
                         let file = rfd::AsyncFileDialog::new()
-                            .add_filter("Still replica", &["stillreplica"])
+                            .add_filter("Daytrip replica", &["stillreplica"])
                             .pick_file()
                             .await
                             .ok_or_else(|| FileError::Io("Import cancelled".into()))?;
@@ -913,7 +913,7 @@ impl App {
                 return Task::perform(
                     async {
                         let Some(file) = rfd::AsyncFileDialog::new()
-                            .add_filter("Still theme", &["toml"])
+                            .add_filter("Daytrip theme", &["toml"])
                             .pick_file()
                             .await
                         else {
@@ -1689,7 +1689,7 @@ impl App {
                 return Task::perform(
                     async {
                         rfd::AsyncFileDialog::new()
-                            .add_filter("Still replica", &["stillreplica"])
+                            .add_filter("Daytrip replica", &["stillreplica"])
                             .pick_file()
                             .await
                             .map(|file| file.path().to_owned())
@@ -1925,10 +1925,10 @@ impl App {
     fn sidebar_view(&self) -> Element<'_, Message> {
         let tokens = self.resolved_theme.tokens;
         let brand = row![
-            container(icon::view(Icon::Leaf, tokens.accent))
+            container(icon::view(Icon::Book, tokens.accent))
                 .padding(7)
                 .style(styles::panel(tokens.accent_soft)),
-            text("still").size(27).font(styles::BODY_FONT),
+            text("daytrip").size(27).font(styles::BODY_FONT),
             space::horizontal(),
             self.icon_button(Icon::Plus, "New document · ⌘/Ctrl N", Message::New, false)
         ]
