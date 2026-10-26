@@ -64,9 +64,9 @@ The native Iced `Content` is still a full-document buffer; its current initializ
 mise run check
 mise run bench
 mise run profile
-DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
-DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_COLD_ONLY=1 mise run profile
-DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_COLD_ONLY=1 mise run profile
+DOSTY_PROFILE_BLOCKS=50000 DOSTY_PROFILE_SAMPLES=30 mise run profile
+DOSTY_PROFILE_BLOCKS=10000 DOSTY_PROFILE_COLD_ONLY=1 mise run profile
+DOSTY_PROFILE_BLOCKS=50000 DOSTY_PROFILE_COLD_ONLY=1 mise run profile
 ```
 
 For peak memory independent of compilation, build the release library test with `mise exec -- cargo test --locked --release --lib --no-run`, then run the resulting executable directly under `/usr/bin/time -l` with `large_document_interactions --ignored --nocapture --test-threads=1` and the cold-only environment above. Run each size in its own process. To reproduce the baseline, archive `de2e075` into a temporary directory and copy the current `src/app/performance.rs` harness into it before building with the same toolchain and lockfile.

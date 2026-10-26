@@ -1,6 +1,6 @@
 # Architecture
 
-Koan is one Cargo package, named `koan`, with a thin `main.rs` calling `koan::run()`. The library root declares responsibility-based modules and exports only that application entry point. Implementation modules stay crate-private; a separate crate or public model API needs a concrete consumer or build-time reason.
+Dosty is one Cargo package, named `dosty`, with a thin `main.rs` calling `dosty::run()`. The library root declares responsibility-based modules and exports only that application entry point. Implementation modules stay crate-private; a separate crate or public model API needs a concrete consumer or build-time reason.
 
 `App` owns application state and follows Iced's `update → state → view` model. File operations run in background tasks and return typed messages. The active resolved theme is stored in `App` and shared by styles, text highlights, and canvas icons.
 
@@ -9,7 +9,7 @@ Koan is one Cargo package, named `koan`, with a thin `main.rs` calling `koan::ru
 | `app/startup.rs` | Native startup, fonts, Iced event-loop configuration |
 | `app/application.rs` | Application state, messages, commands, native buffer, file guards, views |
 | `app/icon.rs` | Canvas icons consuming the resolved tokens |
-| `app/brand.rs` | Native paths from the generated Koan identity |
+| `app/brand.rs` | Native paths from the generated Dosty identity |
 | `app/writing.rs` | Link/image/quotation details and deferred clipboard/import commands |
 | `app/recovery.rs` | Idle recovery checkpoints, copy selection and write retirement |
 | `app/outline.rs` | Session-local outline disclosure, heading search, and section commands |

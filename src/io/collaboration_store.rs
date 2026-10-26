@@ -98,7 +98,7 @@ impl Paths {
         let sibling = |suffix: &str| {
             let mut name = OsString::from(".");
             name.push(filename);
-            // Retain the checkpoint and lock namespace across the Koan rename.
+            // Retain the checkpoint and lock namespace across the Dosty rename.
             name.push(".daytrip");
             name.push(suffix);
             markdown.with_file_name(name)
@@ -149,7 +149,7 @@ impl Paths {
         };
         if journal.len() < 72 || &journal[..8] != JOURNAL {
             return Err(invalid(
-                "Damaged Koan save journal; preserve files for recovery",
+                "Damaged Dosty save journal; preserve files for recovery",
             ));
         }
         let state = decode(&journal[72..])?;
@@ -345,7 +345,7 @@ mod tests {
     use crate::document::Document;
 
     #[test]
-    fn daytrip_checkpoints_and_locks_remain_compatible_with_koan() {
+    fn daytrip_checkpoints_and_locks_remain_compatible_with_dosty() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("note.md");
         let document = Document::new("Existing draft 日本 🦀\r\n".into());

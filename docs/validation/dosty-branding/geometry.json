@@ -1,0 +1,9 @@
+{
+  "silhouette_iou": 0.991163,
+  "reference_size": [
+    316,
+    378
+  ],
+  "reference": "../../../branding/dosty/sources/mockup-reference.png",
+  "method": "Rasterize the SVG back at reference size; compare thresholded alpha to the reference foreground. Overlay shows shared pixels dark, mockup-only red, vector-only blue. Flat-color segmentation excludes the mockup paper background. Check is part of export.py --check; remaining differences are contour fitting and raster antialiasing."
+}

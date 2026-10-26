@@ -14,7 +14,7 @@ pub const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
 pub enum FileError {
     #[error("{0}")]
     Io(String),
-    #[error("This file changed outside Koan. Use Save As to keep both versions.")]
+    #[error("This file changed outside Dosty. Use Save As to keep both versions.")]
     Conflict,
     #[error(
         "Markdown differs from its collaboration checkpoint. Preserve both files; open a copy without metadata to import it as a new document."
@@ -28,7 +28,7 @@ pub enum FileError {
         "An interrupted save conflicts with external changes. Preserve the Markdown, .daytrip, and .daytrip-journal files for recovery."
     )]
     RecoveryConflict,
-    #[error("This file exceeds Koan's current 16 MiB document limit.")]
+    #[error("This file exceeds Dosty's current 16 MiB document limit.")]
     TooLarge,
 }
 
@@ -54,13 +54,14 @@ pub struct Preferences {
 }
 
 pub fn preferences_path() -> Option<PathBuf> {
-    if let Some(directory) =
-        std::env::var_os("KOAN_CONFIG_DIR").or_else(|| std::env::var_os("DAYTRIP_CONFIG_DIR"))
+    if let Some(directory) = std::env::var_os("DOSTY_CONFIG_DIR")
+        .or_else(|| std::env::var_os("KOAN_CONFIG_DIR"))
+        .or_else(|| std::env::var_os("DAYTRIP_CONFIG_DIR"))
     {
         return Some(PathBuf::from(directory).join("preferences.toml"));
     }
     // Keep the storage identity so existing preferences, assets, and recovery
-    // entries remain available, including while an older Daytrip build is open.
+    // entries remain available across both the Koan and Daytrip identities.
     ProjectDirs::from("app", "Daytrip", "Daytrip")
         .map(|dirs| dirs.config_dir().join("preferences.toml"))
 }
@@ -151,7 +152,7 @@ pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), FileError> {
 fn export_html(source: &str) -> String {
     render_html(
         pulldown_cmark::Parser::new_ext(source, crate::document::block_parser::MARKDOWN_OPTIONS),
-        "Koan — document",
+        "Dosty — document",
     )
 }
 
@@ -173,7 +174,7 @@ pub(super) fn render_html<'a>(
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;");
-    // Export stays in Koan's light reading palette, independent of the
+    // Export stays in Dosty's light reading palette, independent of the
     // current editing atmosphere. Resolve here on the background export path.
     let paper = crate::theme::Preset::Paper.resolve();
     let hex = |color: iced::Color| {

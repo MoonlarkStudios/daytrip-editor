@@ -33,7 +33,7 @@ pub enum CollaborationError {
     #[error("Invalid UTF-8 edit range or overlapping transaction edits.")]
     InvalidRange,
     #[error(
-        "This operation exceeds Koan’s text, batch, or retained collaboration limits. See docs/collaboration.md."
+        "This operation exceeds Dosty’s text, batch, or retained collaboration limits. See docs/collaboration.md."
     )]
     TooLarge,
     #[error("Invalid or unsupported collaboration data: {0}")]

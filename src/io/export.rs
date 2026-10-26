@@ -111,7 +111,7 @@ pub fn html(source: &str, base: Option<&Path>) -> Result<String, FileError> {
     }
     Ok(storage::render_html(
         events.into_iter(),
-        document_title.as_deref().unwrap_or("Koan — document"),
+        document_title.as_deref().unwrap_or("Dosty — document"),
     ))
 }
 

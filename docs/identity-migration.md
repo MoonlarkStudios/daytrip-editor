@@ -1,22 +1,22 @@
-# Koan identity and compatibility
+# Dosty identity and compatibility
 
-The application is **Koan**, with lowercase `koan` in its outlined wordmark.
-The Cargo package and executable are `koan`; the macOS bundle is
-`target/Koan.app` with identifier `app.koan.editor`. The source repository remains
+The application is **Dosty**, with lowercase `dosty` in its outlined wordmark.
+The Cargo package and executable are `dosty`; the macOS bundle is
+`target/Dosty.app` with identifier `app.dosty.editor`. The source repository remains
 [MoonlarkStudios/daytrip-editor](https://github.com/MoonlarkStudios/daytrip-editor).
 
-## Existing Daytrip data
+## Existing Koan and Daytrip data
 
-The Koan rename needs no data migration. Preferences deliberately continue using
+The Dosty rename needs no data migration. Preferences deliberately continue using
 `ProjectDirs::from("app", "Daytrip", "Daytrip")`. The default configuration path is
 `~/Library/Application Support/app.Daytrip.Daytrip` on macOS,
 `$XDG_CONFIG_HOME/daytrip` or `~/.config/daytrip` on Linux, and
 `%APPDATA%\Daytrip\Daytrip\config` on Windows. The complete directory includes
 preferences, recovery entries, bundled samples and their assets.
 
-`KOAN_CONFIG_DIR` overrides that directory; `DAYTRIP_CONFIG_DIR` remains a fallback
-when the Koan override is unset. An explicit override selects one complete data
-location; it does not copy or merge another directory. Use a temporary directory
+`DOSTY_CONFIG_DIR` overrides that directory. `KOAN_CONFIG_DIR` and then
+`DAYTRIP_CONFIG_DIR` remain fallbacks when the Dosty override is unset. An explicit override selects one complete
+data location; it does not copy or merge another directory. Use a temporary directory
 for isolated validation.
 
 Document metadata keeps its existing names: `.note.md.daytrip`,
@@ -26,16 +26,25 @@ collaboration identity and the existing file guards across the name change.
 Binary signatures, checksums, document UUIDs, CRDT updates and in-memory
 `daytrip/` transaction labels are unchanged. No user files are renamed or removed.
 
-New offline exports suggest `.koanreplica`. Both `.koanreplica` and
-`.daytripreplica` appear in the import/open filters and use the same binary format.
+New offline exports suggest `.dostyreplica`. All three extensions—`.dostyreplica`,
+`.koanreplica` and `.daytripreplica`—appear in the import/open filters and use the same binary format.
 
-Benchmark controls are `KOAN_PROFILE_BLOCKS`, `KOAN_PROFILE_SAMPLES`,
-`KOAN_PROFILE_COLD_ONLY` and `KOAN_IMPORT_SAMPLES`, with their `DAYTRIP_` equivalents
-retained as fallbacks. The Koan setting takes precedence when both are present.
+Benchmark controls are `DOSTY_PROFILE_BLOCKS`, `DOSTY_PROFILE_SAMPLES`,
+`DOSTY_PROFILE_COLD_ONLY` and `DOSTY_IMPORT_SAMPLES`, with their `KOAN_` and then
+`DAYTRIP_` equivalents retained as fallbacks. The Dosty setting takes precedence.
 Dated validation records retain the names and commands they recorded; see the
 [evidence policy](history.md#application-identity-in-retained-evidence).
 
-## Koan rename validation (2026-10-26)
+## Dosty rename validation (2026-10-26)
+
+The [Dosty validation record](validation/dosty-branding/README.md) documents the
+approved-mockup contour overlay, 41 reproducible assets, 187 passing tests,
+repository checks, optimized build, signed bundle verification, and 21
+software-rendered theme previews. Existing Koan and Daytrip data remain in place;
+no user documents or preferences were moved. Historical validation below records
+the earlier builds under their original names.
+
+## Historical Koan rename validation (2026-10-26)
 
 Validated with the mise-pinned Rust 1.95.0 on macOS/Apple silicon:
 
@@ -69,7 +78,7 @@ not a new performance or native accessibility result.
 ## Earlier development migration (before Daytrip)
 
 The instructions below apply only to installations predating the Daytrip identity.
-They are not steps required to move from Daytrip to Koan.
+They are not steps required to move from Daytrip or Koan to Dosty.
 
 Earlier development installations need a manual transition. Close all editor
 windows first and back up the complete configuration directory, Markdown files

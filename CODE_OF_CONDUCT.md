@@ -1,6 +1,6 @@
 # Community conduct
 
-Koan welcomes contributions from people of every background and experience
+Dosty welcomes contributions from people of every background and experience
 level. Be considerate, explain your reasoning, and keep technical disagreement
 focused on the work. Give others room to ask questions and correct mistakes.
 

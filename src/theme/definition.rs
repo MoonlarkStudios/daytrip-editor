@@ -22,6 +22,8 @@ pub struct Tokens {
     pub danger: Color,
     pub success: Color,
     pub brand_accent: Color,
+    pub brand_ink: Color,
+    pub brand_paper: Color,
     pub on_accent: Color,
     pub on_accent_soft: Color,
     pub accent_hover: Color,
@@ -78,7 +80,7 @@ impl Preset {
 
     pub fn description(self) -> &'static str {
         match self {
-            Self::Paper => "Warm paper & plum ink",
+            Self::Paper => "Warm paper & smoked teal",
             Self::Midnight => "A softer light after dark",
             Self::Sage => "Quiet greens & warm linen",
         }
@@ -122,6 +124,10 @@ struct Colors {
     success: String,
     #[serde(default)]
     brand_accent: Option<String>,
+    #[serde(default)]
+    brand_ink: Option<String>,
+    #[serde(default)]
+    brand_paper: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -179,6 +185,18 @@ impl ResolvedTheme {
                 .map(|value| parse_color("brand_accent", value))
                 .transpose()?
                 .unwrap_or(accent),
+            brand_ink: colors
+                .brand_ink
+                .as_deref()
+                .map(|value| parse_color("brand_ink", value))
+                .transpose()?
+                .unwrap_or(text),
+            brand_paper: colors
+                .brand_paper
+                .as_deref()
+                .map(|value| parse_color("brand_paper", value))
+                .transpose()?
+                .unwrap_or(muted),
             on_accent,
             on_accent_soft: if contrast(accent, accent_soft) >= 4.5 {
                 accent
@@ -294,7 +312,7 @@ mod tests {
     fn rejects_invalid_colors_unknown_fields_and_unsafe_metrics() {
         let paper = include_str!("../../themes/paper.toml");
         for malformed in [
-            paper.replace("#F8F5F0", "red"),
+            paper.replace("#F3EFE4", "red"),
             paper.replace("body_size = 18", "body_size = 900"),
             paper.replace("canvas =", "typo ="),
         ] {
@@ -323,23 +341,27 @@ mod tests {
     fn legacy_custom_themes_resolve_optional_brand_and_light_primary_colors() {
         let paper = include_str!("../../themes/paper.toml");
         let mut definition: toml::Value = toml::from_str(paper).unwrap();
-        definition["colors"]
-            .as_table_mut()
-            .unwrap()
-            .remove("brand_accent");
+        for role in ["brand_accent", "brand_ink", "brand_paper"] {
+            definition["colors"].as_table_mut().unwrap().remove(role);
+        }
         for primary in ["#F4D9EC", "#302A35", "#8C7689"] {
             definition["colors"]["accent"] = primary.into();
             let theme = ResolvedTheme::from_toml(&toml::to_string(&definition).unwrap()).unwrap();
             let t = theme.tokens;
             assert_eq!(t.brand_accent, t.accent);
+            assert_eq!(t.brand_ink, t.text);
+            assert_eq!(t.brand_paper, t.muted);
             assert!(contrast(t.on_accent, t.accent) >= 4.5);
             assert!(contrast(t.on_accent, t.accent_hover) >= 4.5);
             assert!(contrast(t.on_accent_soft, t.accent_soft) >= 4.5);
         }
-        definition["colors"]
-            .as_table_mut()
-            .unwrap()
-            .insert("brand_accent".into(), "invalid".into());
-        assert!(ResolvedTheme::from_toml(&toml::to_string(&definition).unwrap()).is_err());
+        for role in ["brand_accent", "brand_ink", "brand_paper"] {
+            definition["colors"]
+                .as_table_mut()
+                .unwrap()
+                .insert(role.into(), "invalid".into());
+            assert!(ResolvedTheme::from_toml(&toml::to_string(&definition).unwrap()).is_err());
+            definition["colors"].as_table_mut().unwrap().remove(role);
+        }
     }
 }

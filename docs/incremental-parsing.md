@@ -72,7 +72,7 @@ This remains a conservative incremental parser, not a general incremental Common
 mise run check
 mise run bench
 mise run profile
-DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
+DOSTY_PROFILE_BLOCKS=50000 DOSTY_PROFILE_SAMPLES=30 mise run profile
 ```
 
 For process metrics without compilation, first build with `mise exec -- cargo test --locked --release --lib --no-run`, then run the emitted executable under `/usr/bin/time -l` with `large_document_interactions --ignored --nocapture --test-threads=1`. To reproduce the baseline, archive `b490dd2` into a temporary directory, build using mise from the trusted repository with `--manifest-path` pointing there and a shared `CARGO_TARGET_DIR`, and run its executable before rebuilding the current version. Both builds can emit the same executable filename. The interaction harness and fixtures are unchanged; the source-only benchmark is new.

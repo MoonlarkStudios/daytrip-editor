@@ -1,8 +1,8 @@
-# Koan branding
+# Dosty branding
 
-**koan + the open book** is the selected application identity.
-The lowercase outlined serif wordmark, asymmetrical book symbol, limestone,
-plum, and mauve palette are approved without a tagline.
+**dosty + the curled page and pen** is the selected application identity.
+Smoked teal, sage, and parchment sit on the Moonlark Studios charcoal/cream
+foundation, with an outlined DM Sans wordmark.
 
-Use the [Koan kit](koan/README.md) for SVG masters, logo variants,
-platform app icons, palette, and reproducible exports.
+Use the [Dosty kit](dosty/README.md) for vector masters, theme-aware logo
+variants, native paths, platform icons, and reproducible export instructions.

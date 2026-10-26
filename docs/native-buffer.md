@@ -69,9 +69,9 @@ mise exec -- cargo test --locked --release --lib --no-run
 Run the emitted library test executable directly under `/usr/bin/time -l`, one fresh process per size:
 
 ```sh
-DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_COLD_ONLY=1 /usr/bin/time -l target/release/deps/daytrip-<hash> large_document_interactions --ignored --nocapture --test-threads=1
-DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_COLD_ONLY=1 /usr/bin/time -l target/release/deps/daytrip-<hash> large_document_interactions --ignored --nocapture --test-threads=1
-/usr/bin/time -l target/release/deps/daytrip-<hash> large_document_load_components --ignored --nocapture --test-threads=1
+DOSTY_PROFILE_BLOCKS=10000 DOSTY_PROFILE_COLD_ONLY=1 /usr/bin/time -l target/release/deps/dosty-<hash> large_document_interactions --ignored --nocapture --test-threads=1
+DOSTY_PROFILE_BLOCKS=50000 DOSTY_PROFILE_COLD_ONLY=1 /usr/bin/time -l target/release/deps/dosty-<hash> large_document_interactions --ignored --nocapture --test-threads=1
+/usr/bin/time -l target/release/deps/dosty-<hash> large_document_load_components --ignored --nocapture --test-threads=1
 ```
 
 For the baseline, archive `a0b3714` into a temporary directory. Build its library tests using mise from the trusted repository, passing `--manifest-path` to that archive and the same `CARGO_TARGET_DIR` to reuse dependencies. Run each baseline measurement before rebuilding the current version; both versions may emit the same test executable filename. Cold-load and component diagnostics were already present in that commit. The current full interaction harness adds composition/history assertions after the existing interaction series.

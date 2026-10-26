@@ -125,7 +125,25 @@ impl<Message> canvas::Program<Message> for Drawing {
                 &[(10., 3.), (8., 15.)],
             ],
             Icon::Close => &[&[(4., 4.), (14., 14.)], &[(14., 4.), (4., 14.)]],
-            Icon::Book => &[],
+            Icon::Book => &[
+                &[
+                    (9., 4.),
+                    (6., 2.),
+                    (1., 2.),
+                    (1., 14.),
+                    (6., 14.),
+                    (9., 16.),
+                ],
+                &[
+                    (9., 4.),
+                    (12., 2.),
+                    (17., 2.),
+                    (17., 14.),
+                    (12., 14.),
+                    (9., 16.),
+                    (9., 4.),
+                ],
+            ],
             Icon::Heading => &[
                 &[(3., 3.), (3., 15.)],
                 &[(11., 3.), (11., 15.)],
@@ -254,14 +272,6 @@ impl<Message> canvas::Program<Message> for Drawing {
         }
         if matches!(self.kind, Icon::Image) {
             frame.fill(&Path::circle(Point::new(12.0, 6.5), 1.25), self.color);
-        }
-        if matches!(self.kind, Icon::Book) {
-            frame.with_save(|frame| {
-                // Compact open-book master, in its original 256-unit coordinates.
-                // The monochrome treatment follows the active semantic icon color.
-                frame.scale(18.0 / 256.0);
-                super::brand::draw_book(frame, self.color, self.color);
-            });
         }
         vec![frame.into_geometry()]
     }
