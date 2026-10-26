@@ -5,7 +5,7 @@ rust = { version = "1.95.0", components = "rustfmt,clippy" }
 RUST_BACKTRACE = "1"
 
 [tasks.dev]
-description = "Run Daytrip"
+description = "Run Koan"
 run = "cargo run --locked"
 
 [tasks.check]

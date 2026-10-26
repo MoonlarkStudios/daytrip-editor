@@ -7,10 +7,13 @@ use iced::{Color, Element, Point, Rectangle, Renderer, Theme};
 
 use crate::theme::Tokens;
 
-include!("../../branding/daytrip/native-paths.rs");
+include!("../../branding/koan/native-paths.rs");
 
 pub fn view<'a, Message: 'a>(tokens: Tokens) -> Element<'a, Message> {
-    Canvas::new(Signature(tokens)).width(160).height(40).into()
+    Canvas::new(Signature(tokens))
+        .width(40.0 * SIGNATURE_WIDTH / SIGNATURE_HEIGHT)
+        .height(40)
+        .into()
 }
 
 pub(super) fn draw_book(frame: &mut Frame, left: Color, right: Color) {
@@ -32,7 +35,7 @@ impl<Message> canvas::Program<Message> for Signature {
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
         let mut frame = Frame::new(renderer, bounds.size());
-        frame.scale(bounds.width / 1023.0);
+        frame.scale(bounds.width / SIGNATURE_WIDTH);
         frame.fill(&open_book_left(), self.0.text);
         frame.fill(&open_book_right(), self.0.brand_accent);
         frame.fill(

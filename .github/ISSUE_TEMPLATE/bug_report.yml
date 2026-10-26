@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Daytrip.
+description: Report a reproducible problem in Koan.
 body:
   - type: markdown
     attributes:

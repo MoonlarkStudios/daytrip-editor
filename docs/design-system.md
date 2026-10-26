@@ -1,6 +1,6 @@
-# Daytrip appearance
+# Koan appearance
 
-Daytrip's open book and outlined lowercase signature remain the identity. The application extends the brand into a quiet writing environment: warm surfaces, confident ink, restrained accents, and generous space around the document. The logo has no tagline.
+Koan's open book and outlined lowercase signature remain the identity. The application extends the brand into a quiet writing environment: warm surfaces, confident ink, restrained accents, and generous space around the document. The logo has no tagline.
 
 ## Atmospheres
 
@@ -10,7 +10,7 @@ Daytrip's open book and outlined lowercase signature remain the identity. The ap
 | Midnight | Warm charcoal and plum surfaces | Linen text, soft lilac controls |
 | Sage | Linen paper, pale botanical chrome | Dark green ink, leaf accents |
 
-The approved brand palette remains in [the brand kit](../branding/daytrip/README.md). Decorative mauve is separate from the stronger interactive accent: a small label or link must remain readable. Each preset has its own semantic colors in `themes/`, rather than a tint over one universal palette.
+The approved brand palette remains in [the brand kit](../branding/koan/README.md). Decorative mauve is separate from the stronger interactive accent: a small label or link must remain readable. Each preset has its own semantic colors in `themes/`, rather than a tint over one universal palette.
 
 Newsreader supplies document text and editorial headings. System sans serif supplies controls. Monospace supplies source, code, and paths. The sidebar signature uses the actual outlined wordmark, never a font approximation. Its Iced paths are generated from the SVG masters by the brand exporter; no SVG parsing, image decoding, or font lookup happens to render the signature.
 
@@ -41,10 +41,12 @@ HTML exports use Paper's resolved palette for a consistent, portable reading pag
 ```sh
 mise run check
 mise run release
-python3 branding/daytrip/export.py --check
-DAYTRIP_CONFIG_DIR=/tmp/daytrip-theme-preview mise exec -- cargo test --locked theme_ui_previews -- --ignored --nocapture
+python3 branding/koan/export.py --check
+KOAN_CONFIG_DIR=/tmp/koan-theme-preview mise exec -- cargo test --locked theme_ui_previews -- --ignored --nocapture
 ```
 
 The private preview test renders the real application through Iced's software renderer at 1180×820 and the minimum 760×520 window size. It covers all presets, appearance settings, focus mode, find/replace, long titles, source and reading modes, code blocks, and the unsaved dialog. PNGs are written to `target/theme-validation/`. It does not open a native window or modify the user's preferences. Theme-switch regression coverage preserves document source, reverse selection, and undo availability. Native OS presentation and assistive technology behavior require separate platform validation.
+
+The following validation predates the Koan rename and describes the Daytrip identity.
 
 Validated on 2026-10-25 with the mise-pinned Rust 1.95.0 and Iced 0.14: the isolated theming-only snapshot passed 160 regression tests (12 opt-in tests ignored), and the full development checkout passed 184 tests (16 ignored); formatting and Clippy passed; release and the signed macOS bundle built successfully; all 41 derived brand assets reproduced. The 21 software previews were visually inspected. A separate native macOS session with isolated preferences confirmed the outlined signature, theme switching, settings scrolling, text-size control, and focus mode. The native check found scrollbar overlap in the shortcut list; the final layout reserves space beside that rail. The validation window was closed without editing or saving a document.

@@ -243,7 +243,7 @@ async fn representative_document_edits_undo_merge_save_reopen_and_export() {
     );
     tool(
         &mut app,
-        Message::Field(Field::Credit, "Daytrip — illustrative image".into()),
+        Message::Field(Field::Credit, "Koan — illustrative image".into()),
     );
     tool(
         &mut app,
@@ -255,13 +255,13 @@ async fn representative_document_edits_undo_merge_save_reopen_and_export() {
     tool(&mut app, Message::Details(Kind::Quote));
     tool(
         &mut app,
-        Message::Field(Field::Credit, "Daytrip notebook".into()),
+        Message::Field(Field::Credit, "Koan notebook".into()),
     );
     tool(&mut app, Message::Accept);
     assert!(
         app.document
             .source()
-            .contains("> — Daytrip notebook, [A place to begin](<#a-place-to-begin>)")
+            .contains("> — Koan notebook, [A place to begin](<#a-place-to-begin>)")
     );
     peer.receive(&app.document.collaboration.state()).unwrap();
     assert_eq!(peer.source(), app.document.source());
@@ -285,7 +285,7 @@ async fn representative_document_edits_undo_merge_save_reopen_and_export() {
     let html = export::html(reopened.source(), Some(root.path())).unwrap();
     assert!(html.contains("data:image/png;base64,"));
     assert!(html.contains("The first light on the water."));
-    assert!(html.contains("Daytrip notebook"));
+    assert!(html.contains("Koan notebook"));
     assert_eq!(app.projection.rich.images.len(), 1);
     assert_eq!(app.projection.rich.tables.len(), 1);
 }

@@ -47,7 +47,7 @@ randomized coverage; it is not proof of every possible CRDT interleaving.
 
 The application restricts imported updates to bounded plain-text state, so this
 generic upstream reproduction does not establish a user-visible data-loss case
-in Daytrip. Keep the regression when rebasing Yrs and remove the local retry patch
+in Koan. Keep the regression when rebasing Yrs and remove the local retry patch
 when a compatible upstream release includes the repair.
 
 A final clean-build verification repeated all ten full-suite runs successfully

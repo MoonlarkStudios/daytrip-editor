@@ -44,7 +44,8 @@ not byte-for-byte terminal captures. A recorded executable hash describes the
 original binary, not a newly built binary with the normalized filename.
 
 The unedited evidence is recoverable from commit `29ebbe2`, immediately before
-the identity cleanup. Reproduction commands in narrative documentation use the
-current package/environment names; historical revisions used their own build
-configuration. The data-path transition is described in
-[manual migration](identity-migration.md).
+the identity cleanup. Dated reports retain their recorded package names, paths and commands. The Koan
+rename does not rewrite that evidence. Current builds use the `koan` executable;
+old `DAYTRIP_` profile controls remain supported aliases. See
+[identity and compatibility](identity-migration.md) for the retained data paths
+and the earlier manual migration.

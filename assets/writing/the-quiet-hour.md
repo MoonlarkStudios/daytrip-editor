@@ -20,7 +20,7 @@ The [CommonMark reference](<https://commonmark.org/help/>) is a useful companion
 
 > Make enough room for one good sentence. The next one will find you.
 >
-> — Daytrip field notes, [A place to begin](<#a-place-to-begin>)
+> — Koan field notes, [A place to begin](<#a-place-to-begin>)
 
 ## Notes for tomorrow
 

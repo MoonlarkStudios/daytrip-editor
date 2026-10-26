@@ -32,6 +32,7 @@ pub struct Entry {
     pub modified: u64,
 }
 fn path(root: &Path, id: Uuid) -> PathBuf {
+    // Existing recovery entries must remain discoverable after a brand change.
     root.join(format!("{id}.daytripdraft"))
 }
 fn invalid(message: &str) -> FileError {
@@ -186,6 +187,7 @@ mod tests {
             head: 4,
         };
         write(dir.path(), id, &snapshot).unwrap();
+        assert!(dir.path().join(format!("{id}.daytripdraft")).is_file());
         let restored = read(dir.path(), id).unwrap();
         let reopened = Document::from_state(&restored.state).unwrap();
         assert_eq!(reopened.source(), doc.source());

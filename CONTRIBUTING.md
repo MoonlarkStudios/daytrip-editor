@@ -1,6 +1,6 @@
-# Contributing to Daytrip
+# Contributing to Koan
 
-Daytrip is a native Rust/Iced application in one Cargo package. Prefer direct code, clear ownership, and changes whose behavior and cost can be reviewed independently. The Cargo package and executable are named `daytrip`.
+Koan is a native Rust/Iced application in one Cargo package. Prefer direct code, clear ownership, and changes whose behavior and cost can be reviewed independently. The Cargo package and executable are named `koan`.
 
 ## Development environment
 
@@ -34,9 +34,9 @@ mise run dev
 | `mise run release` | Build the optimized application |
 | `mise run bench` | Run the ignored model and layout benchmarks |
 | `mise run profile` | Profile 10k/50k-block interactions through software rasterization |
-| `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Daytrip.app` on macOS |
+| `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Koan.app` on macOS |
 
-Set `DAYTRIP_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
+Set `KOAN_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
 
 Repository checks use task-scoped tool versions pinned in `mise.toml`; mise installs them on first use. They do not add application dependencies. Audit and policy tests also require Python 3.9 or newer. Link checks are offline and cover repository documentation, including heading anchors; Markdown regression fixtures and runtime sample paths are not documentation links. Advisory checks need network access and leave informational warnings visible. See [dependency health](docs/dependency-health.md) for the current review.
 
@@ -44,7 +44,7 @@ Repository checks use task-scoped tool versions pinned in `mise.toml`; mise inst
 
 ```text
 src/
-  main.rs       Thin executable calling daytrip::run()
+  main.rs       Thin executable calling koan::run()
   lib.rs        Module declarations and deliberate public exports
   app/          State, messages, commands, views, native startup
   document/     Source, selection, projection, rich metadata, table edits
@@ -79,7 +79,7 @@ Follow the applicable [Google Rust Style Guide](https://google.github.io/stylegu
 - **Module roots:** prefer declarations and deliberate re-exports in `lib.rs` and group `mod.rs` files. Native startup lives in `app/startup.rs`, with a small executable bootstrap in `main.rs`.
 
 Vendored dependencies retain upstream formatting and existing implementation details;
-Daytrip's safe-Rust requirement applies to application code and our dependency patch.
+Koan's safe-Rust requirement applies to application code and our dependency patch.
 The narrow dependency patches, their provenance and removal policies are in
 [vendor/README.md](vendor/README.md). Run `mise run check-yrs` when changing it;
 do not apply application lint cleanup to imported third-party source.
@@ -101,8 +101,8 @@ Run `mise run check` before each commit and `mise run check-repo` for repository
 For performance changes, run the relevant release benchmarks and the large-document profile. For example:
 
 ```sh
-DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_SAMPLES=60 mise run profile
-DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
+KOAN_PROFILE_BLOCKS=10000 KOAN_PROFILE_SAMPLES=60 mise run profile
+KOAN_PROFILE_BLOCKS=50000 KOAN_PROFILE_SAMPLES=30 mise run profile
 ```
 
 Use the same fixture, toolchain, build settings, and sample count when comparing changes. Record hardware/platform, cold load separately from warm interactions, median/tail values, and the measured phases. Distinguish CPU/software rendering from OS/GPU presentation. Keep timing observations out of ordinary regression assertions. Retain raw evidence and explain interruptions or exclusions; see [the current baseline](docs/performance.md).
@@ -174,7 +174,7 @@ The public repository enables private vulnerability reporting, secret scanning/p
 
 ## Licensing
 
-Daytrip is licensed under the GNU General Public License, version 3 or (at your
+Koan is licensed under the GNU General Public License, version 3 or (at your
 option) any later version (`GPL-3.0-or-later`); see [LICENSE](LICENSE).
-Contributions to Daytrip are accepted under these terms. Vendored dependencies
+Contributions to Koan are accepted under these terms. Vendored dependencies
 and bundled fonts retain their own licenses and notices.
