@@ -18,6 +18,9 @@ mise run dev
 | --- | --- |
 | `mise exec -- cargo fmt --all` | Apply formatting |
 | `mise run check` | Check formatting, run Clippy with warnings denied, run regression tests |
+| `mise run check-repo` | Check local documentation links/anchors, unused dependencies and workflow syntax |
+| `mise run check-secrets` | Scan all reachable Git history for credentials; use a full clone |
+| `mise run audit` | Check locked dependencies against current RustSec data, rejecting vulnerabilities and yanked releases |
 | `mise run check-yrs` | Validate the pinned Yrs dependency patch when changing it |
 | `mise run release` | Build the optimized application |
 | `mise run bench` | Run the ignored model and layout benchmarks |
@@ -25,6 +28,8 @@ mise run dev
 | `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Daytrip.app` on macOS |
 
 Set `STILL_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
+
+Repository checks use task-scoped tool versions pinned in `mise.toml`; mise installs them on first use. They do not add application dependencies. Link checks are offline and cover repository documentation, including heading anchors; Markdown regression fixtures and runtime sample paths are not documentation links. Advisory checks need network access and leave informational warnings visible. See [dependency health](docs/dependency-health.md) for the current review.
 
 ## Source layout and API
 
@@ -82,7 +87,7 @@ Themes follow definition → resolved semantic tokens and `iced::Theme` → cent
 
 ## Validation and performance evidence
 
-Run `mise run check` before each commit. Run `mise run release` for application source changes. Add meaningful regression coverage for changes to editing, source mappings, layout, file handling, or theme validation. Prefer invariant and differential tests over tests that reproduce implementation steps. Mechanical moves and documentation changes can use existing coverage.
+Run `mise run check` before each commit and `mise run check-repo` for repository or documentation changes. Run `mise run release` for application source or dependency changes. Add meaningful regression coverage for changes to editing, source mappings, layout, file handling, or theme validation. Prefer invariant and differential tests over tests that reproduce implementation steps. Mechanical moves and documentation changes can use existing coverage.
 
 For performance changes, run the relevant release benchmarks and the large-document profile. For example:
 
@@ -115,3 +120,11 @@ docs: define Rust and contribution conventions
 ```
 
 Use an appropriate type such as `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, or `ci`. Keep summaries concrete. Review the staged diff and `git diff --cached --check` before committing. Push only when requested.
+
+## Documentation and repository maintenance
+
+Keep the [documentation index](docs/README.md), README, bundled guide and architecture map consistent with user-visible changes. Label historical measurements clearly and retain their evidence and limitations. Do not delete a benchmark, fixture, generated brand asset or upstream file merely because application code does not import it; check its documented purpose. Remove unused application code and dependencies instead of silencing warnings. Keep third-party lint exceptions confined to the documented vendor manifest.
+
+CI runs the locked Rust checks and release build on macOS, Linux and Windows, plus repository hygiene, full-history secret scanning and dependency auditing on Linux. GitHub Actions use full commit IDs, a read-only token, no persisted checkout credentials, cancellation of superseded runs and bounded job durations. Follow [GitHub's workflow security guidance](https://docs.github.com/en/actions/reference/security/secure-use) when changing them. Dependabot proposes weekly compatible Cargo and action updates; review changes and validation before merging. Yrs upgrades follow the explicit vendor rebase policy.
+
+When a public GitHub remote is created, enable private vulnerability reporting, secret scanning/push protection and Dependabot alerts in its settings. Protect the default branch against force pushes and deletion, and require the three Rust jobs and Repository hygiene to pass before merging. These are hosting settings, not controls that a checked-in file can activate. Review commit author identities and retained logs before the first push; do not rewrite existing history or remove evidence casually. Publish the intended branch explicitly rather than pushing every local ref.

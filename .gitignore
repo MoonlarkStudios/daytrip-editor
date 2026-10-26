@@ -2,3 +2,20 @@
 .DS_Store
 *.swp
 *.tmp
+
+# Local configuration and credentials never belong in the public repository.
+.env
+.env.*
+!.env.example
+mise.local.toml
+mise.*.local.toml
+.mise.local.toml
+.mise.*.local.toml
+*.pem
+*.key
+
+# Tool caches and local reports.
+__pycache__/
+*.pyc
+.lycheecache
+gitleaks-report.*

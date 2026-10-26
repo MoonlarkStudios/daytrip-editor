@@ -27,3 +27,32 @@ run = "cargo test --locked --release large_document_interactions -- --ignored --
 [tasks.check-yrs]
 description = "Test the pinned Yrs traversal patch (upstream external-asset tests excluded)"
 run = "cargo test --manifest-path vendor/yrs/Cargo.toml --locked --features sync --lib -- --test-threads=1 --skip tests::edit_traces_tests --skip tests::compatibility_tests::test_small_data_set --skip tests::compatibility_tests::test_medium_data_set"
+
+[tasks.check-repo]
+description = "Check documentation links, unused dependencies, and CI syntax"
+depends = ["check-links", "check-deps", "check-workflows"]
+
+[tasks.check-links]
+description = "Check repository documentation paths and heading anchors offline"
+tools.lychee = "0.24.2"
+run = "lychee --offline --include-fragments --no-progress '*.md' 'docs/**/*.md' 'branding/**/*.md' 'assets/fonts/*.md' 'vendor/README.md'"
+
+[tasks.check-deps]
+description = "Check for unused direct application dependencies"
+tools."cargo:cargo-shear" = "1.13.1"
+run = "cargo shear --locked --deny-warnings"
+
+[tasks.check-workflows]
+description = "Validate GitHub Actions workflow syntax and expressions"
+tools.actionlint = "1.7.12"
+run = "actionlint -shellcheck="
+
+[tasks.check-secrets]
+description = "Scan all reachable Git history for credentials (requires full clone)"
+tools."aqua:gitleaks/gitleaks" = "8.30.1"
+run = "gitleaks git --redact --no-banner --log-opts=--all"
+
+[tasks.audit]
+description = "Check the locked dependency graph against current RustSec advisories"
+tools."cargo:cargo-audit" = "0.22.2"
+run = "cargo audit --deny yanked"

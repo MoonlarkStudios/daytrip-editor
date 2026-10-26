@@ -18,6 +18,9 @@ Rust **1.95.0**, rustfmt, and Clippy are pinned in `mise.toml`. No separate glob
 
 ```sh
 mise run check                 # rustfmt, Clippy with -D warnings, tests
+mise run check-repo            # documentation links, unused dependencies, CI syntax
+mise run audit                 # current RustSec advisories for Cargo.lock
+mise run check-secrets         # credential scan of full reachable Git history
 mise run release               # optimized desktop executable
 mise run bench                 # optimized model and layout benchmarks
 mise run profile               # 10k/50k-block events through software rendering
@@ -68,7 +71,7 @@ Typography supports `body_size` (12–32), `line_height` (1.2–2.2), and `conte
 
 ## Engineering
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for source boundaries, validation commands, Rust conventions and project exceptions, and commit policy. [AGENTS.md](AGENTS.md) provides concise instructions for agent work. The code follows the applicable [Google Rust style guidance](https://google.github.io/styleguide/rustguide.html). Technical details are in [architecture](docs/architecture.md), [evaluation notes](docs/evaluation.md), the [large-document baseline](docs/performance.md), [viewport virtualization](docs/virtualization.md), [native-buffer initialization](docs/native-buffer.md), [incremental block parsing](docs/incremental-parsing.md), [native snapshots](docs/native-snapshots.md), and [source/projection updates](docs/source-projection-updates.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for source boundaries, validation commands, Rust conventions, and commit policy. [AGENTS.md](AGENTS.md) provides concise instructions for agent work. The [documentation index](docs/README.md) separates current behavior and architecture from historical measurements. [Evaluation and release gaps](docs/evaluation.md) records remaining work, and [SECURITY.md](SECURITY.md) describes reporting and dependency review.
 
 Current support includes headings, inline styles, links, nested lists, tasks, blockquotes, rules, GFM tables, code fences, and PNG/JPEG/GIF/WebP images. Reference-style links resolve across blocks in the live projection. Image objects use block layout even when written inline; GIFs show their first frame. Strikethrough lines and clickable task controls remain in Read view. LaTeX math, Mermaid, footnote popovers, image resize/crop controls, column/row manipulation controls, typewriter scrolling, PDF/office exports, tabs, and folder watching remain unfinished.
 

@@ -4,7 +4,7 @@ Simple marks. Beautiful words. The active heading shows its markers, and the inl
 
 ## The essentials
 
-Use **bold** for emphasis, *italics* for a softer voice, and ~~strikethrough~~ for a change of mind. Put `inline code` between backticks.
+Use **bold** for emphasis and *italics* for a softer voice. Put `inline code` between backticks. Strikethrough syntax is preserved; its line is currently drawn only in Read view.
 
 ## Structure your thoughts
 
@@ -36,6 +36,9 @@ fn main() {
 | Cmd/Ctrl + K | Create or edit a link |
 | Cmd/Ctrl + Shift + M | Toggle source |
 | Cmd/Ctrl + Shift + F | Focus mode |
+| Cmd/Ctrl + Shift + J | Search all headings |
+| Cmd/Ctrl + Alt + Up / Down | Move the current section |
+| Cmd/Ctrl + Alt + Left / Right | Collapse / expand its outline branch |
 | Cmd/Ctrl + Z | Undo |
 | Cmd/Ctrl + Shift + Z | Redo |
 

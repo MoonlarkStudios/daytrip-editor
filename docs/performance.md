@@ -1,14 +1,14 @@
-# Large-document performance baseline
+# Performance reports and original baseline
 
-The [outline report](outline.md#release-measurements) records heading search, collapse, section move/undo measurements, and later 10k/50k-block interaction profiles.
+The latest feature baseline is the [outline report](outline.md#release-measurements), recording heading search, collapse, section move/undo measurements, and 10k/50k-block interaction profiles on 2026-10-25.
 
 The [code editing and rendering report](code-editing.md) records the later code surfaces, lazy Read parsing, incremental syntax highlighting, and matched 10k/50k-block validation.
 
-Measured locally on 2026-10-22 with Rust 1.95.0, Iced 0.14, macOS/Apple silicon, release optimization, and the bundled Newsreader fonts. This records the current validated editor before organizational refactoring.
+The measurements below are the **original 2026-10-22 baseline**, before viewport virtualization and the later document optimizations. They describe that historical implementation, not current latency or memory use. They used Rust 1.95.0, Iced 0.14, macOS/Apple silicon, release optimization, and the bundled Newsreader fonts.
 
-The latest stage is [incremental offline imports](offline-imports.md), following [cached Yrs UTF-16 traversal](utf16-performance.md) and [the CRDT foundation](crdt-performance.md). Earlier stages remain below for historical comparison.
+Other stages include [writing workflows](writing-workflows.md#reproducible-performance), [incremental offline imports](offline-imports.md), [cached Yrs UTF-16 traversal](utf16-performance.md), and [the CRDT foundation](crdt-performance.md). The [documentation index](README.md#measurement-history) lists the full sequence. Compare only matched fixtures and settings; reports have different scopes and sample counts.
 
-The later [viewport virtualization report](virtualization.md) records the next implementation and its comparisons against this baseline.
+The [viewport virtualization report](virtualization.md) records the first implementation after this baseline.
 
 ## Reproduce
 

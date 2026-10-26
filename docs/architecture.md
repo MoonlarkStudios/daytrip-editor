@@ -9,6 +9,9 @@ Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` ca
 | `app/startup.rs` | Native startup, fonts, Iced event-loop configuration |
 | `app/application.rs` | Application state, messages, commands, native buffer, file guards, views |
 | `app/icon.rs` | Canvas icons consuming the resolved tokens |
+| `app/brand.rs` | Native paths from the generated Daytrip identity |
+| `app/writing.rs` | Link/image/quotation details and deferred clipboard/import commands |
+| `app/recovery.rs` | Idle recovery checkpoints, copy selection and write retirement |
 | `app/outline.rs` | Session-local outline disclosure, heading search, and section commands |
 | `app/performance.rs` | Private ignored large-document event/layout/software-render profiles |
 | `document/source.rs` | CRDT transaction boundary, incremental source cache and cached blocks |
@@ -25,6 +28,7 @@ Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` ca
 | `document/rich_document.rs` | Heading, table, and image metadata collected during projection parsing |
 | `document/table_edit.rs` | Cell-aware source edits and rectangular TSV paste |
 | `document/code_edit.rs` | Source-coordinate code indentation, newline handling, and fence-safe entry |
+| `document/writing.rs` | Portable Markdown links, figures and quotation edits |
 | `editor/rich_layout.rs` | Cached shaped paragraphs and shared geometry for drawing, caret, hit testing, navigation |
 | `editor/code_highlight.rs` | Bounded, incremental grammar snapshots and theme-aware syntax runs |
 | `editor/virtual_layout.rs` | Lightweight height index, viewport materialization, geometry eviction, source jumps |
@@ -38,6 +42,10 @@ Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` ca
 | `theme/styles.rs` | Central widget styles and typography |
 | `io/image_store.rs` | Asynchronous bounded image IO, decoding, and document-scoped cache |
 | `io/storage.rs` | Bounded reads, atomic writes, preferences and HTML export |
+| `io/assets.rs` | Immutable image import and bounded Save As asset copying |
+| `io/export.rs` | Standalone HTML with embedded local images |
+| `io/recovery.rs` | Atomic recovery checkpoints and saved-file baselines |
+| `io/writing_sample.rs` | Independent editable copies of the bundled sample |
 | `io/collaboration_store.rs` | Checkpoints, recovery journal, file locks and offline interchange |
 
 Tests live beside private implementations. Shared Markdown inputs belong in `tests/fixtures/`; integration tests belong in `tests/` when they exercise a deliberate public API. Profiling remains a private application test so it can exercise the real event path without exporting editor internals.

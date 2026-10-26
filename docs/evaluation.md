@@ -1,6 +1,6 @@
-# Iced evaluation
+# Iced evaluation and release gaps
 
-This is a technology evaluation, not a certification of production readiness.
+Daytrip remains a technology evaluation. This page summarizes current coverage and remaining release work; dated feature reports in the [documentation index](README.md) preserve the evidence for individual changes. Passing model and software-renderer tests does not establish native accessibility or platform readiness.
 
 ## Verified locally
 
@@ -16,7 +16,7 @@ Earlier desktop builds were checked for active heading marker disclosure, Home f
 
 File safety tests cover exact-byte atomic writes, conflict detection, and an in-flight save completing before later edits. The earlier desktop smoke test also verified native save dialogs and exact Markdown on disk.
 
-## Small model/layout benchmarks
+## Historical model/layout benchmarks
 
 The following samples predate the large-document optimizations and are retained as historical context. Run `mise run bench`. These are single local samples. The rich-layout benchmark includes text shaping/cache reuse and layout geometry, but none includes drawing, event delivery, or display presentation. The three benchmarks may run concurrently, so cold font initialization and shared font locks can affect the initial samples.
 
@@ -32,7 +32,7 @@ The following samples predate the large-document optimizations and are retained 
 
 The continuous fixture contains 1,000 headings and 1,000 paragraphs with bold text and links. Its edit measurement includes the native content mutation, source patch/history, Markdown reparse/cache reuse, projection/highlight rebuild, buffer synchronization, and statistics/search refresh. App construction can include cold font initialization and preference loading. These are not frame times or worst-case latency guarantees.
 
-The old ~3.9 µs block-only edit benchmark no longer describes the active editor. Continuous editing still reparses top-level document structure; safe word edits update projection ranges and styles incrementally.
+The old ~3.9 µs block-only edit benchmark no longer describes the active editor. The current implementation reparses eligible local blocks and applies certified projection windows; global dependencies and uncertain boundaries retain full parsing. See [architecture](architecture.md) for the active paths and [performance](performance.md) for the measurement chronology.
 
 ## Large-document interaction profile
 
@@ -44,11 +44,11 @@ The typed state/update model makes background work, file guards, and theme chang
 
 ## Remaining release work
 
-1. **Scalability.** See the [10k/50k-block profile](performance.md), [viewport virtualization](virtualization.md), [native-buffer initialization](native-buffer.md), and [incremental block parsing](incremental-parsing.md). Rich shaping is limited to resident geometry, native loading defers shaping, and eligible source edits reparse isolated blocks. Global references, containers and uncertain boundaries still take full parsing; native text snapshots, metadata rebasing, outline construction and exceptionally long paragraphs/table rows remain proportional to document size. GPU presentation and native event latency still need direct measurement.
+1. **Scalability.** Rich shaping is limited to resident geometry, native loading defers shaping, local native snapshots avoid full extraction, and eligible edits reparse isolated blocks. Global references, containers and uncertain boundaries still take full parsing; contiguous buffer growth, suffix rebasing, outline construction and exceptionally long paragraphs/table rows remain scaling limits. GPU presentation and native event latency still need direct measurement. See the [measurement index](performance.md).
 2. **Editing fidelity.** Exercise actual CJK IMEs, bidirectional scripts, grapheme clusters, alternate keyboard layouts, dragging/autoscroll, clipboard interoperability, and composition on all platforms. Some punctuation joins flatten the affected inline style to preserve text under CommonMark's delimiter rules. Partial-style toggles and complex table selections need further coverage.
-3. **Rich authoring controls.** Images currently occupy atomic block flow, including inline image syntax, and show GIFs' first frame. Add image properties/resizing, SVG/animation support, table column/row controls, clickable live task controls, and strikethrough drawing. Read remains an optional comparison renderer.
-4. **Durability.** Add crash recovery, versioned snapshots, multiwindow sessions, stronger external-change coordination, and filesystem/power-loss testing. Manual atomic save remains the persistence boundary.
+3. **Rich authoring controls.** Image insertion and alt text/caption/credit editing are implemented. Images occupy atomic block flow, including inline image syntax, and show GIFs' first frame. Resizing/cropping, SVG/animation support, table column/row controls, clickable live task controls, and strikethrough drawing remain unfinished. Read remains an optional comparison renderer.
+4. **Durability.** Journaled Markdown/CRDT saves, cooperative file locks, external-change checks and idle recovery checkpoints are implemented. Recovery can lose the newest work since the last checkpoint, and local undo stacks remain session-local. Historical snapshot browsing, multiwindow session management and broader filesystem/power-loss testing remain work. See [collaboration](collaboration.md) and [recovery behavior](writing-workflows.md#recovery-and-export).
 5. **Accessibility and integration.** Iced's widgets in this macOS build are not exposed as navigable native accessibility controls. Screen-reader support remains a release blocker. Native menus, document associations, signing/notarization, and platform packages are incomplete.
-6. **Markdown completeness.** Footnotes, mathematics, diagrams, image management, rich table editing, and additional exports remain unfinished. The live projection resolves reference-style links document-wide; Read view's separate block renderer does not yet share those definitions.
+6. **Markdown completeness.** Footnote popovers, mathematics, diagrams and PDF/office exports remain unfinished. Rich table cell editing, local image assets and standalone HTML export are implemented. The live projection resolves reference-style links document-wide; Read view's separate block renderer does not yet share those definitions.
 
-The editor now has a shared rich layout over the existing continuous input/source model. Profiling real frame latency, memory, and platform input behavior is the next step toward production readiness.
+The [native validation report](native-writing-validation.md) records the macOS clipboard, PNG drop, accented input and file-dialog checks already performed. Real CJK candidate windows, Windows/Linux native workflows and assistive technology remain unverified. The [dependency health report](dependency-health.md) tracks third-party advisories separately from application regressions.

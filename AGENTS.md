@@ -4,6 +4,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing this repository. It defi
 
 - Keep one Cargo package. Group work under `src/{app,document,editor,theme,io}`; keep `main.rs` thin and public exports deliberate.
 - Use the mise-pinned Rust toolchain. Run `mise run check` before each commit and `mise run release` for application source changes. Performance changes also need relevant release benchmarks and large-document profiles.
+- Run `mise run check-repo` for repository/documentation changes and `mise run audit` for dependency changes. Keep current behavior docs distinct from historical validation evidence; review [dependency health](docs/dependency-health.md) before changing vendored code or audit policy.
 - Test private implementations beside their modules; shared inputs belong in `tests/fixtures`. Do not expose internals solely for tests.
 - Preserve authoritative Markdown, UTF-8 source selections with anchor/head direction, lossless source/display mappings, undo, and continuous movement across rich blocks.
 - Contextual disclosure must preserve source caret/selection, wrap affinity, and viewport anchoring through local reflow. Hidden syntax occupies no reserved space.

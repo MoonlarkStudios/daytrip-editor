@@ -63,7 +63,7 @@ Release/profile commands and measurements are recorded below. Automated software
 
 ## Sample image provenance
 
-`assets/writing/coast.png` was generated with the built-in image generation tool, using the `imagegen` skill in built-in mode. It is explicitly credited as an illustrative generated image in the sample; no real photographer or location is asserted. Original output is retained in the Codex generated-images directory.
+`assets/writing/coast.png` was generated with OpenAI's image generation tool. It is explicitly credited as an illustrative generated image in the sample; no real photographer or location is asserted. The checked-in PNG is the application asset; building and testing require no external image library or private generation directory.
 
 Exact generation prompt:
 
