@@ -4,7 +4,16 @@ Daytrip is a native Rust/Iced application in one Cargo package. Prefer direct co
 
 ## Development environment
 
-Install [mise](https://mise.jdx.dev/getting-started.html) and your platform's native build tools, as described in [README.md](README.md). From the repository root:
+Install [mise](https://mise.jdx.dev/getting-started.html) and your platform's native build tools:
+
+- **macOS:** Xcode Command Line Tools.
+- **Linux:** a C toolchain and X11/Wayland development libraries. On Debian/Ubuntu,
+  install `build-essential pkg-config libxkbcommon-dev libwayland-dev libx11-xcb-dev`.
+  File dialogs also need `libdbus`, a GTK/GNOME/KDE desktop portal backend, and
+  Zenity for fallback.
+- **Windows:** MSVC C++ build tools.
+
+From the repository root:
 
 ```sh
 mise trust
@@ -100,7 +109,28 @@ Use the same fixture, toolchain, build settings, and sample count when comparing
 
 Check cursor movement, forward/reverse selection across rich blocks, disclosure, undo, and scrolling when an optimization affects those paths. Preserve exact geometry and source mappings or cover the new behavior explicitly. Native IME, accessibility, and platform behavior still need manual testing beyond the automated harness.
 
-## Commits
+## Public contribution workflow
+
+Open an issue to discuss substantial behavior or architecture changes before
+implementing them. Bug reports should include a minimal synthetic reproduction;
+use private reporting for security issues. Follow the
+[community conduct guidelines](CODE_OF_CONDUCT.md).
+
+Fork [the repository](https://github.com/MoonlarkStudios/daytrip-editor), create a
+focused branch, and open a pull request against `main`. Run the applicable checks
+above and fill out the PR template. Use the commit-message format below for the PR
+title: squash merging uses that title as the public commit subject.
+
+`main` requires a pull request, up-to-date passing Rust checks on macOS, Linux and
+Windows, passing Repository hygiene, and resolved review conversations. Force pushes
+and deletion are disabled, and these protections include administrators. The current
+single-maintainer setup does not require an additional approving reviewer for the
+maintainer's own changes; the maintainer reviews outside contributions. Increase the
+required approval count when another maintainer is available. Merged branches are
+deleted automatically. First-time contributors may need a maintainer to approve
+their CI run; workflows receive a read-only token and no persisted Git credentials.
+
+## Commit messages
 
 Each commit represents one logical change and passes the existing mise checks. Keep mechanical organization separate from behavior changes, dependency updates, and convention changes. Commit application `Cargo.lock`; keep generated `target/` output out of Git.
 
@@ -127,4 +157,4 @@ Keep the [documentation index](docs/README.md), README, bundled guide and archit
 
 CI runs the locked Rust checks and release build on macOS, Linux and Windows, plus repository hygiene, full-history secret scanning and dependency auditing on Linux. GitHub Actions use full commit IDs, a read-only token, no persisted checkout credentials, cancellation of superseded runs and bounded job durations. Follow [GitHub's workflow security guidance](https://docs.github.com/en/actions/reference/security/secure-use) when changing them. Dependabot proposes weekly compatible Cargo and action updates; review changes and validation before merging. Yrs, cryoglyph and Iced highlighter upgrades follow the explicit vendor rebase policy.
 
-When a public GitHub remote is created, enable private vulnerability reporting, secret scanning/push protection and Dependabot alerts in its settings. Protect the default branch against force pushes and deletion, and require the three Rust jobs and Repository hygiene to pass before merging. These are hosting settings, not controls that a checked-in file can activate. Review commit author identities and retained logs before the first push; do not rewrite existing history or remove evidence casually. Publish the intended branch explicitly rather than pushing every local ref.
+The public repository enables private vulnerability reporting, secret scanning/push protection and Dependabot alerts/security updates. Preserve these hosting settings alongside the branch protections above; checked-in files alone cannot activate them. Review commit author identities and retained logs before publishing; do not rewrite published history or remove evidence casually. Publish the intended branch explicitly rather than pushing every local ref.
