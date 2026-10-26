@@ -2,7 +2,11 @@
 
 [![Check](https://github.com/MoonlarkStudios/daytrip-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/MoonlarkStudios/daytrip-editor/actions/workflows/ci.yml)
 
-![Dosty](branding/dosty/logos/lockup-horizontal.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="branding/dosty/logos/pen-page-reverse.svg">
+  <source media="(prefers-color-scheme: light)" srcset="branding/dosty/logos/pen-page.svg">
+  <img src="branding/dosty/logos/pen-page.svg" alt="Dosty inkwell logo" width="96" height="96">
+</picture>
 
 A quiet, native Markdown editor built with Rust and Iced. Write with live formatting,
 tables, images, and themes, or switch to the Markdown source at any time.
