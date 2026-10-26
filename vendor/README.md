@@ -1,4 +1,6 @@
-# Pinned Yrs patches
+# Vendored dependencies
+
+## Yrs 0.28.0
 
 `yrs/` is the crates.io **yrs 0.28.0** source distribution, MIT licensed.
 Its `.cargo_vcs_info.json` identifies upstream commit
@@ -65,3 +67,46 @@ equivalent fix, remove the vendor override and directory, pin the new version,
 then repeat the invariant tests and comparable editor profiles. Until then,
 security and correctness upgrades must rebase the patch explicitly and retain
 upstream provenance, license, and the original source checksum manifest.
+
+## Cryoglyph 0.1.0
+
+`cryoglyph/` preserves the crates.io source at upstream revision
+`bb8f59f9f075267f44448e271c867b1278bfd849`, from
+[iced-rs/cryoglyph](https://github.com/iced-rs/cryoglyph).
+`cryoglyph-upstream.sha256` records the archive and 29 original file checksums.
+The sole manifest change in `cryoglyph.patch` selects `lru >=0.18.2, <0.19`,
+backporting [the upstream dependency update](https://github.com/iced-rs/cryoglyph/commit/a7a4b4b5a9fe9bf621c5c858489520fe0661ae5f).
+The application lockfile selects 0.18.5, which repairs
+[RUSTSEC-2026-0253](https://rustsec.org/advisories/RUSTSEC-2026-0253.html).
+Renderer source, WGPU and cosmic-text versions are unchanged.
+
+The upstream MIT, Apache-2.0 and Zlib licenses are retained. The example Inter Bold
+3.019 font is upstream test material, not an application font; its
+[SIL license](cryoglyph/examples/Inter-LICENSE.txt) was added from
+[Inter v3.19](https://github.com/rsms/inter/blob/v3.19/LICENSE.txt).
+Remove this override when an Iced-compatible cryoglyph release includes the fixed
+LRU dependency. Validate the release build, native rendering and editor profiles
+when changing it.
+
+## Iced highlighter 0.14.0
+
+`iced_highlighter/` preserves the crates.io source at Iced revision
+`3997291f318a8bc06fa522f5579836fb3feb94df`, path `highlighter` in
+[iced-rs/iced](https://github.com/iced-rs/iced).
+`iced_highlighter-upstream.sha256` records the archive and five original files.
+The MIT license was added from that exact upstream revision. The original example
+lockfile is retained for provenance; the application uses the root lockfile.
+
+`iced_highlighter.patch` changes only feature selection: two-face's fancy-regex
+parser and syntect's embedded default themes remain enabled, while unused YAML,
+plist, HTML and grammar-building features are omitted. Syntax definitions are
+loaded from two-face's embedded dumps; runtime highlighting source is unchanged.
+This removes `yaml-rust` and `plist` from the application graph without changing
+the theme palette or grammar corpus. Application syntax snapshot/Unicode/theme
+regressions cover the consumer. Remove the override when a compatible Iced release
+provides equivalent minimal features or maintained replacements.
+
+All three patches were reversed in temporary copies and verified against their
+original checksum manifests during this review. Root `[patch.crates-io]` entries
+select the imports; do not update these directories without preserving provenance,
+licenses, a reviewable patch, and relevant validation.

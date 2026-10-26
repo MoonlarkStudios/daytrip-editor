@@ -1,6 +1,11 @@
 # Preserve upstream source, valid patch context, and raw tool output verbatim.
 vendor/yrs/** -whitespace
 vendor/yrs.patch -whitespace
+vendor/cryoglyph/** -whitespace
+vendor/cryoglyph.patch -whitespace
+vendor/iced_highlighter/** -whitespace
+vendor/iced_highlighter.patch -whitespace
 docs/performance/utf16/*.txt -whitespace
 docs/performance/offline-imports/*.txt -whitespace
 docs/performance/outline/*.txt -whitespace
+docs/validation/dependencies/*.txt -whitespace

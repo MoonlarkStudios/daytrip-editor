@@ -16,35 +16,48 @@ The publication review updated three compatible transitive dependencies:
 | `webpki-roots` | 1.0.9 | 1.0.10 | [RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381.html): remove the affected trust root |
 | `clipboard-win` | 5.4.1 | 5.4.3 | Replace the yanked Windows clipboard release used by Arboard and Iced |
 
-The repaired application lockfile has no vulnerability or yanked-package findings
-in this audit. The warnings below remain visible; there is no advisory ignore list.
-`mise run audit` fails on vulnerabilities and yanked releases. Review informational
-warnings when changing dependencies; a zero exit status does not dismiss them.
+## Follow-up repairs
 
-## Transitive warnings
+The follow-up review reduced nine audit findings to four maintenance notices:
 
-| Dependency | Introduced through | Follow-up |
+| Change | Result |
+| --- | --- |
+| `rfd 0.16.0 → 0.17.2` | Removes ashpd/zbus and the three notices for `zbus_names`, `zvariant`, and `zvariant_derive` |
+| Cryoglyph 0.1.0 manifest backport; `lru 0.16.4 → 0.18.5` | Repairs [the panic-safety unsoundness advisory](https://rustsec.org/advisories/RUSTSEC-2026-0253.html) |
+| Iced highlighter 0.14.0 minimal features | Removes unused YAML/plist loaders, including unmaintained `yaml-rust`; preserves embedded syntax/theme loading |
+
+The [vendor policy](../vendor/README.md) records source revisions, checksums,
+licenses, patch scope and removal criteria. No renderer or highlighter implementation
+was changed. RFD 0.17 uses the native `libdbus` portal path on Linux with a Zenity
+fallback; packaging needs those runtime components and a supported desktop portal.
+See [RFD's platform requirements](https://docs.rs/rfd/0.17.2/rfd/#linux--bsd-backends).
+
+## Reviewed maintenance exceptions
+
+The current application lockfile has no vulnerability, unsoundness or yanked-package
+findings in this audit. Four transitive maintenance notices remain because the
+current compatible upstream stack has no released replacement:
+
+| Dependency | Advisory | Consumer and review trigger |
 | --- | --- | --- |
-| `bincode`, `yaml-rust` | Iced highlighter → two-face → syntect | Track maintained serialization/grammar dependencies in upstream highlighting |
-| `paste` | Iced WGPU → wgpu-hal → metal | Track the graphics backend's macro dependency |
-| `smallstr` | Vendored Yrs | Review alongside the next explicit Yrs rebase |
-| `ttf-parser` | Iced font/shaping dependencies | Track upstream font parser migration |
-| `zbus_names`, `zvariant`, `zvariant_derive` | Linux portal/D-Bus dependencies | Track upstream migration to the consolidated zbus API |
+| `bincode 1.3.3` | [RUSTSEC-2025-0141](https://rustsec.org/advisories/RUSTSEC-2025-0141.html) | Syntect's embedded dumps require this serialization format; recheck Iced/two-face/syntect upgrades |
+| `paste 1.0.15` | [RUSTSEC-2024-0436](https://rustsec.org/advisories/RUSTSEC-2024-0436.html) | Build-time token generation in metal through WGPU; recheck backend upgrades |
+| `smallstr 0.3.1` | [RUSTSEC-2026-0215](https://rustsec.org/advisories/RUSTSEC-2026-0215.html) | Yrs text storage and API types; recheck each explicit Yrs rebase |
+| `ttf-parser 0.25.1` | [RUSTSEC-2026-0192](https://rustsec.org/advisories/RUSTSEC-2026-0192.html) | fontdb and owned_ttf_parser/ab_glyph; recheck font and windowing stack upgrades |
 
-These are maintenance notices, not vulnerability findings. They are not direct
-application dependencies that can simply be deleted or substituted in `Cargo.toml`.
-Use `mise exec -- cargo tree --locked --target all -i PACKAGE` to inspect a path.
+These are approved scope exceptions, not claims that maintenance is unnecessary.
+[The policy file](../.cargo/audit-exceptions.json) binds each exception to the exact
+advisory, package and version, with a rationale and **2027-01-23** review deadline.
+`mise run audit` prints each finding and fails on new or changed findings, expired
+or stale exceptions, vulnerabilities, unsoundness, notices and yanked releases.
+External cargo-audit ignore lists also fail. Keep the exception list narrow;
+changing a dependency version requires another review. Seven synthetic policy tests
+cover allowed findings and rejection boundaries in `mise run check-repo`.
 
-The additional [LRU panic-safety advisory](https://rustsec.org/advisories/RUSTSEC-2026-0253.html)
-affects `lru 0.16.4`, through `iced_wgpu → cryoglyph 0.1.0`. RustSec classifies it
-as an informational unsoundness warning. The documented trigger needs a key whose
-destructor panics during `pop`, followed by reuse after catching the panic.
-The locked cryoglyph glyph atlas uses cosmic-text's `Copy` `CacheKey` and evicts
-with `pop_lru`; that key cannot implement `Drop`. This inspection does not identify
-the advisory's trigger in this consumer. The warning remains visible, and the
-patched `lru >=0.18.2` requires an upstream compatible dependency change. Recheck
-the consumer when updating Iced/cryoglyph rather than forcing an unreviewed major
-dependency override.
+[Audit output](validation/dependencies/audit.txt) records the review. RustSec database
+revision was `21d909e4c8bd4e14c7aea58bf980c881a0053ab1`; future advisory updates can
+change this result. Inspect the full-platform path with
+`mise exec -- cargo tree --locked --target all -i PACKAGE`.
 
 ## Vendored Yrs validation
 
@@ -53,3 +66,40 @@ patch. The [Yrs repair report](yrs-pending-updates.md) explains the deterministi
 reproduction, before/after result and ten passing full-suite runs. Original
 [diagnostics](validation/repository/yrs-array.txt) remain as historical evidence.
 The array test is still enabled and the existing asset exclusions are unchanged.
+
+## Application validation
+
+The macOS/aarch64 run passed 184 application tests (16 opt-in profiles ignored),
+strict Clippy, formatting, the release build, repository checks and the audit
+policy. Existing syntax tests cover fresh/cached highlighting, Unicode and all
+application themes. A fresh native window with isolated preferences rendered the
+welcome document and opened/cancelled both native Open and Save As dialogs.
+No user document was loaded or written. Linux and Windows builds and native dialog
+behavior remain to be verified by CI/platform testing; no remote is configured.
+
+Release CRDT churn/reopen, 10k/50k-block interactions, and collaboration profiles
+passed. Raw outputs: [before interactions](validation/dependencies/before-profile.txt),
+[after interactions](validation/dependencies/after-profile.txt),
+[before collaboration](validation/dependencies/before-collaboration.txt),
+[after collaboration](validation/dependencies/after-collaboration.txt), and
+[CRDT benchmark](validation/dependencies/after-bench.txt).
+
+Measurements used Apple M2 Max / 32 GiB, macOS 26.7.1, Rust 1.95.0, release thin LTO,
+one codegen unit, and the same fixtures with 10 interaction samples per size
+(400 churn steps). Baseline was `15d8baf`; the successor includes the Yrs retry fix,
+RFD update and two manifest overrides. No application or fixture code changed.
+
+| 50k-block operation | Before p50 / p95 (ms) | After p50 / p95 (ms) |
+| --- | --- | --- |
+| Middle typing, total | 6.112 / 9.577 | 6.732 / 9.852 |
+| Distant jump, total | 16.213 / 16.989 | 14.992 / 19.172 |
+| Remote eight-edit batch, total | 45.542 / 93.917 | 40.463 / 86.311 |
+| Application churn, total | 5.667 / 11.422 | 4.929 / 5.692 |
+
+Cold 50k load was 203.2 → 206.5 ms (one sample each). The 2,000-transaction CRDT
+benchmark completed in 426.2 ms at 50k, with 89.9 ms reopen. These small, mixed
+samples are regression smoke checks, not evidence of a general speedup. Ten samples
+provide weak tail estimates; background host work and allocator history vary.
+The profile uses software rasterization and does not measure the upgraded GPU
+cache, OS input latency or presentation. The native smoke check exercises rendering
+but is not a GPU performance benchmark.

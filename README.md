@@ -18,8 +18,8 @@ Rust **1.95.0**, rustfmt, and Clippy are pinned in `mise.toml`. No separate glob
 
 ```sh
 mise run check                 # rustfmt, Clippy with -D warnings, tests
-mise run check-repo            # documentation links, unused dependencies, CI syntax
-mise run audit                 # current RustSec advisories for Cargo.lock
+mise run check-repo            # documentation links, unused dependencies, CI and audit policy
+mise run audit                 # current RustSec findings and reviewed exceptions (Python 3.9+)
 mise run check-secrets         # credential scan of full reachable Git history
 mise run release               # optimized desktop executable
 mise run bench                 # optimized model and layout benchmarks
@@ -30,7 +30,7 @@ mise exec -- bash scripts/bundle-macos.sh  # target/Daytrip.app
 
 Set `STILL_CONFIG_DIR` to use an isolated preferences directory when testing multiple builds. The internal Cargo package and build executable retain the name `still`; existing configuration locations and collaboration formats remain compatible with earlier builds.
 
-macOS requires Xcode Command Line Tools. Linux needs a C toolchain and the X11/Wayland development libraries (on Debian/Ubuntu: `build-essential pkg-config libxkbcommon-dev libwayland-dev libx11-xcb-dev`). Windows needs the MSVC C++ build tools. Only macOS has been exercised locally; the CI matrix is configured for all three.
+macOS requires Xcode Command Line Tools. Linux needs a C toolchain and the X11/Wayland development libraries (on Debian/Ubuntu: `build-essential pkg-config libxkbcommon-dev libwayland-dev libx11-xcb-dev`). Linux file dialogs require `libdbus`, a GTK/GNOME/KDE desktop portal backend, and Zenity for fallback. Windows needs the MSVC C++ build tools. Only macOS has been exercised locally; the CI matrix is configured for all three.
 
 ## Write
 

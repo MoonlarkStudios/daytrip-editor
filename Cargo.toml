@@ -16,7 +16,7 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 percent-encoding = "2.3"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.9"
-rfd = "0.16"
+rfd = "0.17.2"
 tokio = { version = "1", features = ["fs", "rt-multi-thread", "macros", "sync"] }
 tempfile = "3"
 directories = "6"
@@ -51,6 +51,8 @@ lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
 
-# Narrow UTF-16 traversal fix; provenance and removal policy in vendor/README.md.
+# Narrow dependency fixes; provenance and removal policy in vendor/README.md.
 [patch.crates-io]
 yrs = { path = "vendor/yrs" }
+cryoglyph = { path = "vendor/cryoglyph" }
+iced_highlighter = { path = "vendor/iced_highlighter" }

@@ -1,0 +1,23 @@
+    Blocking waiting for file lock on artifact directory
+   Compiling iced_renderer v0.14.0
+   Compiling iced_widget v0.14.2
+   Compiling iced v0.14.0
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 56.89s
+     Running unittests src/lib.rs (target/release/deps/still-c4be7f42979956b0)
+
+running 1 test
+test app::application::performance::performance_crdt_churn ... crdt/churn blocks=10000 transactions=2000 locations=1000 cold=16.964792ms total=252.4165ms crdt=213.971759ms source_cache=37.770213ms initial_state_bytes=910476 churn_state_bytes=989430 source_bytes=910450
+crdt/reopen blocks=10000 total=17.754125ms checkpoint_bytes=989494
+crdt/churn blocks=50000 transactions=2000 locations=1000 cold=80.908208ms total=426.192375ms crdt=241.132652ms source_cache=184.784127ms initial_state_bytes=4574477 churn_state_bytes=4655078 source_bytes=4574450
+crdt/reopen blocks=50000 total=89.863084ms checkpoint_bytes=4655142
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 199 filtered out; finished in 0.91s
+
+     Running unittests src/main.rs (target/release/deps/still-410da1613e6b98e4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

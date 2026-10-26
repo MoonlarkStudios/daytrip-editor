@@ -1,0 +1,19 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -41,9 +41,15 @@
+ [dependencies.iced_core]
+ version = "0.14.0"
+ 
++# Keep embedded theme loading without enabling YAML/plist grammar loaders.
++[dependencies.syntect]
++version = "5.3"
++features = ["default-themes"]
++default-features = false
++
+ [dependencies.two-face]
+ version = "0.4"
+-features = ["syntect-default-fancy"]
++features = ["syntect-fancy"]
+ default-features = false
+ 
+ [lints.clippy]

@@ -25,12 +25,16 @@ description = "Profile 10k/50k-block interactions through software rasterization
 run = "cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1"
 
 [tasks.check-yrs]
-description = "Test the pinned Yrs traversal patch (upstream external-asset tests excluded)"
+description = "Test the pinned Yrs correctness and traversal patches (external-asset tests excluded)"
 run = "cargo test --manifest-path vendor/yrs/Cargo.toml --locked --features sync --lib -- --test-threads=1 --skip tests::edit_traces_tests --skip tests::compatibility_tests::test_small_data_set --skip tests::compatibility_tests::test_medium_data_set"
 
 [tasks.check-repo]
 description = "Check documentation links, unused dependencies, and CI syntax"
-depends = ["check-links", "check-deps", "check-workflows"]
+depends = ["check-links", "check-deps", "check-workflows", "check-audit-policy"]
+
+[tasks.check-audit-policy]
+description = "Test the dependency audit policy boundaries (Python 3 required)"
+run = "python3 -m unittest discover -s scripts -p 'test_*.py'"
 
 [tasks.check-links]
 description = "Check repository documentation paths and heading anchors offline"
@@ -55,4 +59,4 @@ run = "gitleaks git --redact --no-banner --log-opts=--all"
 [tasks.audit]
 description = "Check the locked dependency graph against current RustSec advisories"
 tools."cargo:cargo-audit" = "0.22.2"
-run = "cargo audit --deny yanked"
+run = "python3 scripts/audit.py"

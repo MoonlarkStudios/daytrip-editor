@@ -16,7 +16,8 @@ describe the remaining platform, accessibility, and durability work.
 | [Code editing](code-editing.md) | Fences, indentation, clipboard behavior and bounded highlighting |
 | [Appearance](design-system.md) | Semantic tokens, typography, presets and UI validation |
 | [Brand kit](../branding/daytrip/README.md) | Asset sources, generated exports and platform icons |
-| [Dependency health](dependency-health.md) | Audit findings, transitive warnings and vendor test limits |
+| [Yrs pending-update repair](yrs-pending-updates.md) | Sparse-clock retry bug, regression and repeated upstream tests |
+| [Dependency health](dependency-health.md) | Dependency repairs, enforced maintenance exceptions and validation |
 
 Update behavior descriptions alongside code. Keep dated validation sections tied
 to the implementation they measured; old test counts are historical observations.

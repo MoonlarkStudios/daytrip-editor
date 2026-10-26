@@ -30,6 +30,8 @@ The [dependency health report](docs/dependency-health.md) records known transiti
 warnings and their scope. Audit warnings stay visible; a passing audit is not a
 claim that every dependency is maintained or free from defects.
 
-The [vendored Yrs patch](vendor/README.md) has its own provenance and validation
-requirements. Review its upstream releases manually; automated dependency updates
-must not silently replace that patch.
+The [vendored dependency patches](vendor/README.md) have their own provenance and validation
+requirements. Review their upstream releases manually; automated dependency updates
+must not silently replace those patches.
+
+Maintenance exceptions are exact-version reviews with deadlines, not blanket advisory ignores. See the [policy](.cargo/audit-exceptions.json); all unapproved findings fail `mise run audit`.

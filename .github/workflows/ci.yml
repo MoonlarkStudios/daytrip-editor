@@ -43,5 +43,6 @@ jobs:
         with:
           version: 2026.9.12
       - run: mise run check-repo
+      - run: mise run check-yrs
       - run: mise run check-secrets
       - run: mise run audit

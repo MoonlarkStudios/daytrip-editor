@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -49,7 +49,7 @@
+ version = "0.2"
+ 
+ [dependencies.lru]
+-version = "0.16"
++version = "0.18.2"
+ default-features = false
+ 
+ [dependencies.rustc-hash]
