@@ -2,9 +2,10 @@
 
 use std::ops::Range;
 
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag};
 
 use super::Document;
+use super::block_parser::MARKDOWN_OPTIONS;
 use super::collaboration::SourceEdit;
 use super::selection::Selection;
 
@@ -217,7 +218,7 @@ fn separator(before: &str, newline: &str) -> String {
 fn heading_positions(source: &str) -> Vec<(usize, usize)> {
     let mut depth = 0usize;
     let mut headings = Vec::new();
-    for (event, range) in Parser::new_ext(source, Options::all()).into_offset_iter() {
+    for (event, range) in Parser::new_ext(source, MARKDOWN_OPTIONS).into_offset_iter() {
         match event {
             Event::Start(tag) => {
                 if depth == 0

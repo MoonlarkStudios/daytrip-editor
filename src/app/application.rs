@@ -15,6 +15,7 @@ use iced::{Alignment, Element, Event, Fill, Font, Shrink, Subscription, Task, Th
 use crate::app::brand;
 use crate::app::icon::{self, Icon};
 use crate::document::Document;
+use crate::document::block_parser::MARKDOWN_OPTIONS;
 use crate::document::collaboration::{AgentProposal, CompositionTarget, EditOrigin, ReplicaState};
 use crate::document::projection::{self, Projection};
 use crate::document::selection::Selection;
@@ -659,7 +660,7 @@ impl App {
                 let start = source_block.range.start;
                 let marker = pulldown_cmark::Parser::new_ext(
                     self.document.block_source(block),
-                    pulldown_cmark::Options::all(),
+                    MARKDOWN_OPTIONS,
                 )
                 .into_offset_iter()
                 .filter_map(|(event, range)| {

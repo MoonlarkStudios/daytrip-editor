@@ -1,9 +1,10 @@
 //! Self-contained HTML export. Files and decoding stay on a blocking worker.
 
 use base64::Engine;
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag};
 use std::path::Path;
 
+use crate::document::block_parser::MARKDOWN_OPTIONS;
 use crate::document::writing::{heading_slug, safe_destination};
 use crate::io::{assets, storage};
 use storage::FileError;
@@ -14,12 +15,12 @@ pub fn html(source: &str, base: Option<&Path>) -> Result<String, FileError> {
     let mut embedded = 0;
     let mut cache = std::collections::HashMap::new();
     let mut heading_ids = std::collections::HashMap::<String, usize>::new();
-    for (event, range) in Parser::new_ext(source, Options::all()).into_offset_iter() {
+    for (event, range) in Parser::new_ext(source, MARKDOWN_OPTIONS).into_offset_iter() {
         events.push(match event {
             Event::Start(Tag::Heading {
                 level, id, classes, ..
             }) => {
-                let label = Parser::new_ext(&source[range], Options::all())
+                let label = Parser::new_ext(&source[range], MARKDOWN_OPTIONS)
                     .filter_map(|event| match event {
                         Event::Text(text) | Event::Code(text) => Some(text.into_string()),
                         _ => None,
@@ -117,6 +118,15 @@ pub fn html(source: &str, base: Option<&Path>) -> Result<String, FileError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn parser_upgrade_keeps_wikilinks_and_superscripts_literal_in_export() {
+        let source = include_str!("../../tests/fixtures/parser-compatibility.md").trim_end();
+        let exported = html(source, None).unwrap();
+        assert!(exported.contains(&format!("<p>{source}</p>")));
+        let legacy_strike = html("~deleted~", None).unwrap();
+        assert!(legacy_strike.contains("<p><del>deleted</del></p>"));
+    }
+
     #[test]
     fn exported_document_keeps_local_images_credits_and_safe_links_without_script_execution() {
         let dir = tempfile::tempdir().unwrap();
