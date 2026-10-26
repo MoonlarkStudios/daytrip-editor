@@ -16,6 +16,19 @@ run = ["cargo fmt --all -- --check", "cargo clippy --locked --all-targets -- -D 
 description = "Build an optimized desktop binary"
 run = "cargo build --locked --release"
 
+[tasks.prepare-release]
+description = "Set a manually chosen release version (pass it after --; Python 3.11+)"
+run = "python3 scripts/release.py prepare"
+
+[tasks.release-notices]
+description = "Generate notices for all release targets, including vendored patches"
+tools."cargo:cargo-about" = { version = "0.9.3", features = ["cli"], locked = true }
+run = ["python3 -c \"from pathlib import Path; Path('target').mkdir(exist_ok=True)\"", "cargo about generate --locked --fail --config packaging/licenses/about.toml --output-file target/release-notices.html packaging/licenses/about.hbs"]
+
+[tasks.check-release]
+description = "Check release version metadata and packaging policy"
+run = "python3 scripts/release.py metadata"
+
 [tasks.bench]
 description = "Measure parsing and continuous editing"
 run = "cargo test --locked --release performance_ -- --ignored --nocapture"
@@ -30,7 +43,7 @@ run = "cargo test --manifest-path vendor/yrs/Cargo.toml --locked --features sync
 
 [tasks.check-repo]
 description = "Check documentation links, unused dependencies, and CI syntax"
-depends = ["check-links", "check-deps", "check-workflows", "check-audit-policy"]
+depends = ["check-links", "check-deps", "check-workflows", "check-audit-policy", "check-release"]
 
 [tasks.check-audit-policy]
 description = "Test the dependency audit policy boundaries (Python 3 required)"

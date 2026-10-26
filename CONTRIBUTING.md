@@ -32,13 +32,20 @@ mise run dev
 | `mise run audit` | Check locked dependencies against current RustSec data, rejecting unapproved findings and expired exceptions |
 | `mise run check-yrs` | Validate the pinned Yrs dependency patch when changing it |
 | `mise run release` | Build the optimized application |
+| `mise run prepare-release -- VERSION` | Set the manually chosen application version and refresh its lockfile entry |
+| `mise run release-notices` | Generate third-party notices for native packages |
 | `mise run bench` | Run the ignored model and layout benchmarks |
 | `mise run profile` | Profile 10k/50k-block interactions through software rasterization |
 | `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Dosty.app` on macOS |
 
 Set `DOSTY_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
 
-Repository checks use task-scoped tool versions pinned in `mise.toml`; mise installs them on first use. They do not add application dependencies. Audit and policy tests also require Python 3.9 or newer. Link checks are offline and cover repository documentation, including heading anchors; Markdown regression fixtures and runtime sample paths are not documentation links. Advisory checks need network access and leave informational warnings visible. See [dependency health](docs/dependency-health.md) for the current review.
+Release scripts require Python 3.11 or newer. See [releases](docs/releases.md) for
+manual versioning, native packages and the GitHub workflow, which creates drafts
+only. Packaging changes build on pull requests; creating a release requires an
+existing matching tag whose commit has reached `main`.
+
+Repository checks use task-scoped tool versions pinned in `mise.toml`; mise installs them on first use. They do not add application dependencies. Repository and release scripts require Python 3.11 or newer. Link checks are offline and cover repository documentation, including heading anchors; Markdown regression fixtures and runtime sample paths are not documentation links. Advisory checks need network access and leave informational warnings visible. See [dependency health](docs/dependency-health.md) for the current review.
 
 ## Source layout and API
 

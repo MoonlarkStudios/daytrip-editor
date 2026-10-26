@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Dosty third-party notices</title>
+<style>body { max-width: 70rem; margin: 2rem auto; padding: 0 1rem; font-family: sans-serif; } pre { white-space: pre-wrap; }</style>
+<h1>Dosty third-party notices</h1>
+<p>Dependencies for the supported release targets. Bundled font licenses accompany this file.</p>
+{{#each licenses}}
+<h2>{{name}}</h2>
+<ul>{{#each used_by}}<li>{{crate.name}} {{crate.version}}</li>{{/each}}</ul>
+<pre>{{text}}</pre>
+{{/each}}
+</html>
