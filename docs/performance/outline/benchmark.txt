@@ -1,0 +1,27 @@
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 58.73s
+     Running unittests src/lib.rs (target/release/deps/still-ff9e53293a28590a)
+
+running 1 test
+test app::application::outline::tests::performance_outline_sections ... blocks=10000 bytes=926010 headings=2000 load=154.756ms
+collapse-all: n=1 p50=0.538ms max=0.538ms
+expand-all: n=1 p50=0.012ms max=0.012ms
+quick-query: n=10 p50=0.276ms max=0.397ms
+move-section: n=5 p50=20.924ms max=42.302ms
+undo-section: n=5 p50=17.227ms max=19.348ms
+blocks=50000 bytes=4670010 headings=10000 load=173.374ms
+collapse-all: n=1 p50=2.276ms max=2.276ms
+expand-all: n=1 p50=0.060ms max=0.060ms
+quick-query: n=10 p50=1.407ms max=1.478ms
+move-section: n=5 p50=127.454ms max=138.560ms
+undo-section: n=5 p50=108.950ms max=111.230ms
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 194 filtered out; finished in 1.92s
+
+     Running unittests src/main.rs (target/release/deps/still-50180676c3bc2d49)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

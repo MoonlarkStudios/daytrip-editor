@@ -30,6 +30,8 @@ use crate::io::storage::{self, FileError, LoadedFile, Preferences};
 use crate::theme::styles::{self, Button};
 use crate::theme::{Preset, ResolvedTheme};
 
+#[path = "outline.rs"]
+pub(crate) mod outline;
 #[path = "recovery.rs"]
 pub(crate) mod recovery;
 #[path = "writing.rs"]
@@ -90,10 +92,12 @@ pub struct App {
     zoom: f32,
     writing: writing::State,
     recovery: recovery::State,
+    outline: outline::State,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Outline(outline::Message),
     Writing(writing::Message),
     Recovery(recovery::Message),
     Edit(text_editor::Action),
@@ -208,6 +212,7 @@ pub enum SidebarTab {
 
 #[derive(Debug, Clone, Copy)]
 enum Overlay {
+    QuickJump,
     Settings,
     Collaboration,
     Unsaved,
@@ -285,6 +290,7 @@ impl App {
             zoom: 1.0,
             writing: writing::State::default(),
             recovery: recovery::State::default(),
+            outline: outline::State::default(),
         };
         app.sync_editor();
         app.selection = app.projection.normalize_caret(app.selection);
@@ -345,16 +351,7 @@ impl App {
             } else {
                 Subscription::none()
             },
-            iced::event::listen_with(|event, status, id| match event {
-                Event::Window(window::Event::CloseRequested) => Some(Message::CloseRequested(id)),
-                Event::Window(window::Event::FileDropped(path)) => Some(Message::Dropped(path)),
-                Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. })
-                    if status == iced::event::Status::Ignored =>
-                {
-                    shortcut(&key, modifiers)
-                }
-                _ => None,
-            }),
+            iced::event::listen_with(event_message),
         ])
     }
 
@@ -435,6 +432,7 @@ impl App {
             return Task::none();
         }
         match message {
+            Message::Outline(message) => return self.update_outline(message),
             Message::Writing(message) => return self.update_writing(message),
             Message::Recovery(message) => return self.update_recovery(message),
             Message::CommitComposition { target, text } => {
@@ -895,6 +893,8 @@ impl App {
                 self.overlay = Some(Overlay::Settings);
             }
             Message::CloseOverlay => {
+                let quick_jump = matches!(self.overlay, Some(Overlay::QuickJump));
+                drop(self.update_outline(outline::Message::CancelDrag));
                 if !self.busy {
                     if self.overlay.is_none() {
                         if self.search_open {
@@ -906,6 +906,9 @@ impl App {
                     self.overlay = None;
                     self.writing.close_details();
                     self.pending = None;
+                    if quick_jump {
+                        return operation::focus(EDITOR);
+                    }
                 }
             }
             Message::Theme(preset) => {
@@ -1347,6 +1350,7 @@ impl App {
     /// Updates the existing native buffer with a minimal splice, keeping its
     /// widget state (including drag selection and IME preedit) alive.
     fn sync_editor(&mut self) {
+        self.sync_outline();
         if let Some(selection) = self.edit_rollback.take() {
             self.selection = selection;
         }
@@ -1753,6 +1757,7 @@ impl App {
     fn install_document(&mut self, document: Document, path: Option<PathBuf>, name: String) {
         self.recovery.retire();
         self.writing = writing::State::default();
+        self.outline = outline::State::default();
         self.images.clear_history();
         self.overlay = None;
         self.document = document;
@@ -1900,6 +1905,7 @@ impl App {
                     Overlay::Unsaved => self.unsaved_view(),
                     Overlay::Writing => self.writing_view(),
                     Overlay::Recovery => self.recovery_view(),
+                    Overlay::QuickJump => self.quick_jump_view(),
                 };
                 container(
                     scrollable(container(modal).padding(16))
@@ -2008,42 +2014,7 @@ impl App {
         .spacing(6);
         let mut list = column![].spacing(4);
         if self.sidebar_tab == SidebarTab::Outline {
-            for (index, block) in self.document.blocks.iter().enumerate() {
-                if let Some((level, label)) = &block.heading {
-                    let label = text(label).size(13).color(if self.active == Some(index) {
-                        tokens.accent
-                    } else {
-                        tokens.muted
-                    });
-                    list = list.push(
-                        button(container(label).padding(
-                            iced::Padding::new(7.0).left(8.0 + (*level as f32 - 1.0) * 12.0),
-                        ))
-                        .width(Fill)
-                        .on_press(Message::JumpTo(index))
-                        .style(styles::button_style(
-                            tokens,
-                            if self.active == Some(index) {
-                                Button::Selected
-                            } else {
-                                Button::Quiet
-                            },
-                        )),
-                    );
-                }
-            }
-            if !self
-                .document
-                .blocks
-                .iter()
-                .any(|block| block.heading.is_some())
-            {
-                list = list.push(
-                    text("Headings will appear here.")
-                        .size(12)
-                        .color(tokens.muted),
-                );
-            }
+            list = list.push(self.outline_list());
         } else {
             list = list.push(text("WORKSPACE").size(10).color(tokens.faint));
             list = list.push(self.file_button(&self.display_name, None, true));
@@ -2528,6 +2499,9 @@ impl App {
             ("Live preview / source", "⌘/Ctrl Shift M"),
             ("Focus mode", "⌘/Ctrl Shift F"),
             ("Previous / next block", "Alt ↑ / ↓"),
+            ("Quick jump to heading", "⌘/Ctrl Shift J"),
+            ("Move section up / down", "⌘/Ctrl Alt ↑ / ↓"),
+            ("Collapse / expand section", "⌘/Ctrl Alt ← / →"),
             ("Close find or dialog", "Escape"),
             ("Undo / Redo", "⌘/Ctrl Z / Shift Z"),
             ("Text size", "⌘/Ctrl + / −"),
@@ -2849,7 +2823,7 @@ fn editor_binding(press: text_editor::KeyPress) -> Option<text_editor::Binding<M
     if !matches!(press.status, text_editor::Status::Focused { .. }) {
         return None;
     }
-    if press.modifiers.macos_command() {
+    if press.modifiers.macos_command() && !press.modifiers.alt() {
         let motion = match press.key {
             Key::Named(key::Named::ArrowUp) => Some(text_editor::Motion::DocumentStart),
             Key::Named(key::Named::ArrowDown) => Some(text_editor::Motion::DocumentEnd),
@@ -2888,9 +2862,54 @@ fn editor_binding(press: text_editor::KeyPress) -> Option<text_editor::Binding<M
     text_editor::Binding::from_key_press(press)
 }
 
+fn event_message(event: Event, status: iced::event::Status, id: window::Id) -> Option<Message> {
+    match event {
+        Event::Window(window::Event::CloseRequested) => Some(Message::CloseRequested(id)),
+        Event::Window(window::Event::FileDropped(path)) => Some(Message::Dropped(path)),
+        Event::Keyboard(keyboard::Event::KeyPressed {
+            key: Key::Named(key::Named::Escape),
+            ..
+        }) if status == iced::event::Status::Captured => {
+            Some(Message::Outline(outline::Message::CancelQuickJump))
+        }
+        Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. })
+            if status == iced::event::Status::Ignored =>
+        {
+            shortcut(&key, modifiers).or_else(|| match key {
+                Key::Named(key::Named::ArrowUp) if modifiers.is_empty() => {
+                    Some(Message::Outline(outline::Message::Step(-1)))
+                }
+                Key::Named(key::Named::ArrowDown) if modifiers.is_empty() => {
+                    Some(Message::Outline(outline::Message::Step(1)))
+                }
+                _ => None,
+            })
+        }
+        Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left)) => {
+            Some(Message::Outline(outline::Message::CancelDrag))
+        }
+        Event::Window(window::Event::Unfocused) => {
+            Some(Message::Outline(outline::Message::CancelDrag))
+        }
+        _ => None,
+    }
+}
+
 fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
     match key.as_ref() {
         Key::Named(key::Named::Escape) => Some(Message::CloseOverlay),
+        Key::Named(key::Named::ArrowUp) if modifiers.command() && modifiers.alt() => {
+            Some(Message::Outline(outline::Message::Move(-1)))
+        }
+        Key::Named(key::Named::ArrowDown) if modifiers.command() && modifiers.alt() => {
+            Some(Message::Outline(outline::Message::Move(1)))
+        }
+        Key::Named(key::Named::ArrowLeft) if modifiers.command() && modifiers.alt() => {
+            Some(Message::Outline(outline::Message::FoldCurrent(true)))
+        }
+        Key::Named(key::Named::ArrowRight) if modifiers.command() && modifiers.alt() => {
+            Some(Message::Outline(outline::Message::FoldCurrent(false)))
+        }
         Key::Named(key::Named::ArrowUp) if modifiers.alt() => Some(Message::Navigate(-1)),
         Key::Named(key::Named::ArrowDown) if modifiers.alt() => Some(Message::Navigate(1)),
         Key::Character(character) if modifiers.command() => {
@@ -2910,6 +2929,7 @@ fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
                 "b" => Some(Message::Format(Format::Bold)),
                 "i" => Some(Message::Format(Format::Italic)),
                 "k" => Some(Message::Format(Format::Link)),
+                "j" if modifiers.shift() => Some(Message::Outline(outline::Message::QuickJump)),
                 "m" if modifiers.shift() => Some(Message::ToggleSource),
                 "z" => Some(if modifiers.shift() {
                     Message::Redo

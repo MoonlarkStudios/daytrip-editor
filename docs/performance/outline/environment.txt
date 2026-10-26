@@ -1,0 +1,15 @@
+Darwin arm64
+ProductName:		macOS
+ProductVersion:		26.7.1
+BuildVersion:		25G241
+rustc 1.95.0 (59807616e 2026-04-14)
+binary: rustc
+commit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860
+commit-date: 2026-04-14
+host: aarch64-apple-darwin
+release: 1.95.0
+LLVM version: 22.1.2
+CPU: Apple M2 Max
+RAM: 34359738368 bytes (32 GiB)
+Build: release, thin LTO, codegen-units=1
+Measured: 2026-10-25

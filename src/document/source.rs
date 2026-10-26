@@ -526,7 +526,11 @@ fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
     let mut heading = None;
     let mut level = None;
     let mut heading_text = String::new();
-    for event in Parser::new_ext(source, Options::all()) {
+    for (index, event) in Parser::new_ext(source, Options::all()).enumerate() {
+        // A heading inside a quote/list is not a document section.
+        if index == 0 && !matches!(event, Event::Start(Tag::Heading { .. })) {
+            break;
+        }
         match event {
             Event::Start(Tag::Heading {
                 level: heading_level,
@@ -535,6 +539,7 @@ fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
             Event::Text(text) | Event::Code(text) if level.is_some() => {
                 heading_text.push_str(&text)
             }
+            Event::SoftBreak | Event::HardBreak if level.is_some() => heading_text.push(' '),
             Event::End(pulldown_cmark::TagEnd::Heading(_)) => {
                 heading = level.map(|level| (level, heading_text.clone()));
                 break;

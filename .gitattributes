@@ -3,3 +3,4 @@ vendor/yrs/** -whitespace
 vendor/yrs.patch -whitespace
 docs/performance/utf16/*.txt -whitespace
 docs/performance/offline-imports/*.txt -whitespace
+docs/performance/outline/*.txt -whitespace

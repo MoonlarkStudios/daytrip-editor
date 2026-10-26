@@ -9,12 +9,14 @@ Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` ca
 | `app/startup.rs` | Native startup, fonts, Iced event-loop configuration |
 | `app/application.rs` | Application state, messages, commands, native buffer, file guards, views |
 | `app/icon.rs` | Canvas icons consuming the resolved tokens |
+| `app/outline.rs` | Session-local outline disclosure, heading search, and section commands |
 | `app/performance.rs` | Private ignored large-document event/layout/software-render profiles |
 | `document/source.rs` | CRDT transaction boundary, incremental source cache and cached blocks |
 | `document/collaboration.rs` | Yrs ownership, coordinate bridge, stable intent, scoped undo and proposals |
 | `document/collaboration_wire.rs` | Bounded admission of plain-text Yjs update V1 |
 | `document/block_parser.rs` | Top-level ranges, independent block candidates, conservative reparse windows |
 | `document/selection.rs` | UTF-8 byte selections and line/column conversion |
+| `document/outline.rs` | Heading hierarchy, section boundaries, and validated source move plans |
 | `document/projection.rs` | Markdown-to-display projection, source mapping, caret affinity, edit translation |
 | `document/projection_update.rs` | Conservative incremental projection of word edits |
 | `document/projection_blocks.rs` | Local block projection, retained metadata, styles and mapping splices |
@@ -29,6 +31,7 @@ Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` ca
 | `editor/native_buffer.rs` | Standard Iced buffer ownership, deferred loading, physical line index and reusable text snapshot |
 | `editor/rich_editor.rs` | One live widget: focus, clipboard, mouse/keyboard selection, scrolling, IME |
 | `editor/source_editor.rs` | Native Source widget delegation with stable IME commit targets |
+| `editor/outline_row.rs` | Outline drag handles and measured drop indicators |
 | `editor/markdown_view.rs` | Full Markdown layout in optional Read view |
 | `editor/viewport.rs` | Measured block navigation in Read view |
 | `theme/definition.rs` | Strict theme schema, validation, semantic tokens, resolved Iced theme |
@@ -72,6 +75,8 @@ Bold, italic, and inline-code formatting operate separately on selected lines an
 Yrs owns the authoritative text and scoped human/agent undo. Source ranges are UTF-8 bytes translated through an incremental UTF-16 index. Local source edits, rich repair, accepted proposals and imported operations enter one document transaction path. Source/projection/native/layout caches remain derived; local generations are distinct from document identity and causal versions. Stable positions preserve intent through intervening edits. See [collaboration](collaboration.md) for transaction, undo, IME and proposal contracts.
 
 ## Parsing and performance
+
+The outline derives a cached hierarchy from top-level heading metadata on source revisions. Headings inside lists, quotes, and fences are not document sections. Collapse state stays outside Markdown; a heading range ends at the next heading of equal or lower level. Section moves use one validated delete/insert transaction with explicit source selection remapping and one human undo group. Fold anchors retain original and moved CRDT positions so disclosure follows undo/redo. Quick Jump searches all headings and their parent context, with a bounded result window. See [outline behavior](outline.md).
 
 Pulldown-cmark establishes top-level document ranges on load. After an edit inside an eligible block, the source model reparses that block's isolated window (at most 64 KiB), splices replacement blocks and adjusts suffix offsets and statistics. Candidates are unindented paragraphs, headings, tables and rules with unchanged blank-line barriers and safe neighbors. Containers, HTML, fences, definitions, footnotes, uncertain boundaries and large windows use the full parser. Documents containing reference definitions or footnotes retain the full source-parsing path. Overlapping parser offsets are kept as one non-incremental range. Undo/redo applies the same change path once; it does not reparse a second time on commit.
 
