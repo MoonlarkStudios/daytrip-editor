@@ -1,5 +1,6 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
     Finished `release` profile [optimized] target(s) in 0.49s
-     Running unittests src/lib.rs (target/release/deps/still-35e744cf781c72f6)
+     Running unittests src/lib.rs (target/release/deps/daytrip-35e744cf781c72f6)
 
 running 1 test
 test app::application::performance::large_document_collaboration ... remote/batch-8/10000 n=10 input=0.000/0.000/0.000ms update=8.848/35.607/35.607ms crdt=6.297/30.184/30.184ms source=0.172/0.418/0.418ms adapters=2.696/6.705/6.705ms layout=0.088/0.145/0.145ms draw=0.004/0.007/0.007ms raster=1.325/4.394/4.394ms total=11.014/36.943/36.943ms (p50/p95/max)
@@ -12,7 +13,7 @@ ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 199 filtered out; finished in 5.04s
 
-     Running unittests src/main.rs (target/release/deps/still-30abc983659a637b)
+     Running unittests src/main.rs (target/release/deps/daytrip-30abc983659a637b)
 
 running 0 tests
 

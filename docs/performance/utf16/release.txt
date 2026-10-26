@@ -1,3 +1,4 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [release] $ cargo build --locked --release
 warning: unused imports: `BlockRange` and `Block`
  --> vendor/yrs/src/transaction.rs:1:20
@@ -584,5 +585,5 @@ help: use `'_` for type paths
     |                                        ++++
 
 warning: `yrs` (lib) generated 58 warnings (run `cargo fix --lib -p yrs` to apply 27 suggestions)
-   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+   Compiling daytrip v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
     Finished `release` profile [optimized] target(s) in 47.44s

@@ -79,8 +79,8 @@ mise exec -- cargo test --locked --release --lib --no-run
 Run the emitted library test executable directly, replacing `<hash>` with its actual filename:
 
 ```sh
-/usr/bin/time -l target/release/deps/still-<hash> large_document_interactions --ignored --nocapture --test-threads=1
-target/release/deps/still-<hash> performance_native_snapshots --ignored --nocapture --test-threads=1
+/usr/bin/time -l target/release/deps/daytrip-<hash> large_document_interactions --ignored --nocapture --test-threads=1
+target/release/deps/daytrip-<hash> performance_native_snapshots --ignored --nocapture --test-threads=1
 ```
 
 The baseline was profiled before edits. To reproduce it, archive `10507ff` to a temporary directory and build through mise from the trusted repository with `--manifest-path` pointing to the archive. A shared `CARGO_TARGET_DIR` reuses dependencies; run the baseline executable before rebuilding the current version because the filename can be identical. The interaction sequence is unchanged; the current harness adds complete native/snapshot equality checks after timing. The load-component diagnostic now includes the mirror and index. The older 2k continuous-edit benchmark keeps correctness reads outside its edit timer as well.

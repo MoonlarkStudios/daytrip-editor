@@ -5,7 +5,7 @@
  [dev-dependencies.uuid]
  version = "1.26"
 +
-+# Still: retain upstream source while quieting its known Rust 1.95 warnings.
++# Daytrip: retain upstream source while quieting its known Rust 1.95 warnings.
 +# Keep this list specific to observed lints; application checks remain strict.
 +# Rationale and removal policy: ../README.md.
 +[lints.rust]
@@ -47,7 +47,7 @@
      use crate::doc::OffsetKind;
      use std::ops::Deref;
  
-+    // Still regression: compare cached lengths with a fresh count after every
++    // Daytrip regression: compare cached lengths with a fresh count after every
 +    // valid Unicode split and squash. Byte indexing must keep its old behavior.
 +    #[test]
 +    fn cached_item_lengths_survive_unicode_splits_and_squashes() {

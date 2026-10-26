@@ -1,7 +1,8 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [profile] $ cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1
-   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+   Compiling daytrip v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
     Finished `release` profile [optimized] target(s) in 21.83s
-     Running unittests src/main.rs (target/release/deps/still-b525043e86079c66)
+     Running unittests src/main.rs (target/release/deps/daytrip-b525043e86079c66)
 
 running 1 test
 test app::performance::large_document_interactions ...

@@ -114,11 +114,11 @@ icon uses the approved plum, limestone, and mauve artwork. The bundled PNG is de
 entering the UI event loop.
 
 `scripts/bundle-macos.sh` builds `target/Daytrip.app` with the Daytrip name
-and ICNS icon. The Cargo package and build output remain `still`; the
-bundle identifier remains `app.still.editor`. Existing `STILL_CONFIG_DIR`,
-configuration locations, recovery copies, and `.still` collaboration
-formats are retained for continuity. This branding change does not migrate
-or discard existing user data.
+and ICNS icon. The Cargo package and executable are `daytrip`, and the bundle
+identifier is `app.daytrip.editor`. `DAYTRIP_CONFIG_DIR` overrides the native
+Daytrip configuration directory. Earlier development data needs the documented
+[manual migration](../../docs/identity-migration.md); no automatic migration or
+legacy environment-variable aliases remain.
 
 This self-contained kit is the source of truth for the Daytrip identity.
 All exports are generated from its SVG masters and palette.

@@ -1,6 +1,6 @@
 # macOS clipboard, drop, and input-method validation
 
-Validated on 2026-10-23 with macOS 26.7.1 (25G241), Apple silicon, mise Rust 1.95.0 and Iced 0.14. The starting commit was `e73e4c0`; the native PNG drop follow-up used `901cc60`. Both sessions used separate `STILL_CONFIG_DIR` directories and temporary copies of **The quiet hour**. Existing documents were not closed or reloaded. The initial scratch process was terminated only after saving; the follow-up document was left saved and open.
+Validated on 2026-10-23 with macOS 26.7.1 (25G241), Apple silicon, mise Rust 1.95.0 and Iced 0.14. The starting commit was `e73e4c0`; the native PNG drop follow-up used `901cc60`. Both sessions used separate `DAYTRIP_CONFIG_DIR` directories and temporary copies of **The quiet hour**. Existing documents were not closed or reloaded. The initial scratch process was terminated only after saving; the follow-up document was left saved and open.
 
 ## Fixed composition lifetime
 
@@ -33,9 +33,9 @@ Initial native testing stopped when the user confirmed other desktop work was ac
 
 ## Native PNG drop follow-up
 
-The follow-up ran the `901cc60` release executable in a separate, ad-hoc-signed **Still Drop Validation** app with bundle identifier `app.still.editor.drop-validation`, its own configuration, and a temporary `Drop workflow.md`. Only the new test windows were arranged. The other Finder windows and existing writing sessions were preserved.
+The follow-up ran the `901cc60` release executable in a separate, ad-hoc-signed **Daytrip Drop Validation** app with bundle identifier `app.daytrip.editor.drop-validation`, its own configuration, and a temporary `Drop workflow.md`. Only the new test windows were arranged. The other Finder windows and existing writing sessions were preserved.
 
-The automation successfully moved a disposable PNG into a disposable folder within Finder, but its cross-application drag attempts did not produce a Still insertion. The user then performed the Finder-to-Still PNG gesture and confirmed release. The assistant verified the resulting native UI and files; this result is not attributed to a successful automated cross-application gesture.
+The automation successfully moved a disposable PNG into a disposable folder within Finder, but its cross-application drag attempts did not produce a Daytrip insertion. The user then performed the Finder-to-Daytrip PNG gesture and confirmed release. The assistant verified the resulting native UI and files; this result is not attributed to a successful automated cross-application gesture.
 
 - The live editor displayed one new photograph at the existing source caret. The original Markdown remained an exact prefix, with two image references total (the sample image and the drop).
 - Exactly one asset was published in `Drop workflow.assets/`. Its bytes matched the input PNG exactly. The caption and credit the user added were saved as ordinary Markdown.
@@ -64,8 +64,8 @@ Run serially from the repository root:
 ```sh
 mise run check
 mise run release
-STILL_PROFILE_BLOCKS=10000 STILL_PROFILE_SAMPLES=30 mise run profile
-STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_SAMPLES=30 mise run profile
+DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
+DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
 ```
 
 The profiles exercise keyboard input, disclosure, selection/dragging, scrolling, IME, Undo/Redo and derived-state oracles through software rendering. They exclude OS delivery, candidate windows and GPU presentation. Other desktop work was active, so these are regression runs, not a controlled performance comparison. No speedup or input-to-photon claim is made.

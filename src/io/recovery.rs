@@ -32,7 +32,7 @@ pub struct Entry {
     pub modified: u64,
 }
 fn path(root: &Path, id: Uuid) -> PathBuf {
-    root.join(format!("{id}.stilldraft"))
+    root.join(format!("{id}.daytripdraft"))
 }
 fn invalid(message: &str) -> FileError {
     FileError::Io(message.into())
@@ -131,7 +131,7 @@ pub fn list(root: &Path) -> Result<Vec<Entry>, FileError> {
         if entry
             .path()
             .extension()
-            .is_none_or(|ext| ext != "stilldraft")
+            .is_none_or(|ext| ext != "daytripdraft")
             || entry.path().is_symlink()
         {
             continue;

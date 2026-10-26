@@ -15,8 +15,8 @@ The [viewport virtualization report](virtualization.md) records the first implem
 ```sh
 mise run check
 mise run profile
-STILL_PROFILE_BLOCKS=10000 STILL_PROFILE_SAMPLES=60 mise run profile
-STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_SAMPLES=30 mise run profile
+DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_SAMPLES=60 mise run profile
+DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
 ```
 
 The ignored profile runs serially and defaults to 30 samples at 10,000 and 50,000 blocks. Fixtures contain headings, styled paragraphs, links, lists/tasks, quotes, code fences, tables, and atomic image placeholders. Their sizes are 910,450 and 4,574,450 source bytes. No network requests or image decoding run; image tasks are dropped. The harness asserts block counts and that real keyboard events actually insert the expected characters.

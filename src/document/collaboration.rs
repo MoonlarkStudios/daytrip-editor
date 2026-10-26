@@ -58,8 +58,8 @@ pub enum EditOrigin {
 impl EditOrigin {
     fn key(self) -> &'static str {
         match self {
-            Self::Human => "still/human",
-            Self::Agent => "still/agent",
+            Self::Human => "daytrip/human",
+            Self::Agent => "daytrip/agent",
         }
     }
 }
@@ -222,7 +222,7 @@ fn new_doc(id: Uuid) -> Doc {
 fn observe(text: &TextRef) -> Arc<Mutex<Observed>> {
     let observed = Arc::new(Mutex::new(Observed::default()));
     let sink = Arc::clone(&observed);
-    text.observe("still/cache", move |txn, event| {
+    text.observe("daytrip/cache", move |txn, event| {
         let mut sink = sink
             .lock()
             .expect("text observer never panics while holding its lock");
@@ -274,7 +274,7 @@ impl Collaboration {
         let id = Uuid::new_v4();
         let doc = new_doc(id);
         let text = doc.get_or_insert_text(ROOT);
-        text.insert(&mut doc.transact_mut_with("still/bootstrap"), 0, source);
+        text.insert(&mut doc.transact_mut_with("daytrip/bootstrap"), 0, source);
         Self::attach(id, doc, text, source, source.len())
     }
     fn attach(id: Uuid, doc: Doc, text: TextRef, source: &str, retained_bytes: usize) -> Self {
@@ -522,7 +522,7 @@ impl Collaboration {
         let staged_cost = if large {
             let state = self.state();
             let (candidate, text) = decode_state(&state)?;
-            let mut txn = candidate.transact_mut_with("still/admission");
+            let mut txn = candidate.transact_mut_with("daytrip/admission");
             edit_text(&mut txn, &text, &self.index, edits);
             txn.commit();
             drop(txn);
@@ -1103,7 +1103,7 @@ fn apply_encoded(doc: &Doc, bytes: &[u8]) -> Result<(), CollaborationError> {
     crate::document::collaboration_wire::validate(bytes)?;
     let update = Update::decode_v1(bytes)
         .map_err(|error| CollaborationError::InvalidData(error.to_string()))?;
-    doc.transact_mut_with("still/remote")
+    doc.transact_mut_with("daytrip/remote")
         .apply_update(update)
         .map_err(|error| CollaborationError::InvalidData(error.to_string()))
 }
@@ -1122,7 +1122,7 @@ fn decode_state(state: &ReplicaState) -> Result<(Doc, TextRef), CollaborationErr
         }
     };
     let text = doc.get_or_insert_text(ROOT);
-    doc.transact_mut_with("still/load")
+    doc.transact_mut_with("daytrip/load")
         .apply_update(update)
         .map_err(|error| CollaborationError::InvalidData(error.to_string()))?;
     validate_schema(&doc, &text)?;

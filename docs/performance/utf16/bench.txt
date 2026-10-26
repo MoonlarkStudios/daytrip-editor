@@ -1,3 +1,4 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
 warning: unused imports: `BlockRange` and `Block`
  --> vendor/yrs/src/transaction.rs:1:20
@@ -584,9 +585,9 @@ help: use `'_` for type paths
     |                                        ++++
 
 warning: `yrs` (lib) generated 58 warnings (run `cargo fix --lib -p yrs` to apply 27 suggestions)
-   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+   Compiling daytrip v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
     Finished `release` profile [optimized] target(s) in 26.82s
-     Running unittests src/lib.rs (target/release/deps/still-508656e959175f01)
+     Running unittests src/lib.rs (target/release/deps/daytrip-508656e959175f01)
 
 running 7 tests
 test app::application::performance::performance_crdt_churn ... crdt/churn blocks=10000 transactions=2000 locations=1000 cold=164.142458ms total=260.7535ms crdt=210.827932ms source_cache=49.711758ms initial_state_bytes=910476 churn_state_bytes=989430 source_bytes=910450
@@ -617,7 +618,7 @@ ok
 
 test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 131 filtered out; finished in 7.96s
 
-     Running unittests src/main.rs (target/release/deps/still-f9dfd1ad2f5b2dee)
+     Running unittests src/main.rs (target/release/deps/daytrip-f9dfd1ad2f5b2dee)
 
 running 0 tests
 

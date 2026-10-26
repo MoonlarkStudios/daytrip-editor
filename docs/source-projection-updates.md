@@ -83,8 +83,8 @@ mise exec -- cargo test --locked --release --lib --no-run
 Run the emitted executable directly with its actual hash to exclude compilation:
 
 ```sh
-/usr/bin/time -l target/release/deps/still-<hash> large_document_interactions --ignored --nocapture --test-threads=1
-target/release/deps/still-<hash> performance_source_projection_updates --ignored --nocapture --test-threads=1
+/usr/bin/time -l target/release/deps/daytrip-<hash> large_document_interactions --ignored --nocapture --test-threads=1
+target/release/deps/daytrip-<hash> performance_source_projection_updates --ignored --nocapture --test-threads=1
 ```
 
 The baseline was measured before edits. To reproduce it, archive `740fc00` into a temporary directory, build through mise from the trusted repository with `--manifest-path` pointing there, and run its executable before rebuilding the current version. A shared `CARGO_TARGET_DIR` reuses dependencies; executable filenames can be identical. The interaction fixture, input sequence and sample count are unchanged. The component diagnostic is new; `mise run bench` runs all six benchmarks concurrently by default, so its component timings are retained separately from the serial diagnostic.

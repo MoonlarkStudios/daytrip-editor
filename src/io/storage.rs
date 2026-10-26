@@ -25,7 +25,7 @@ pub enum FileError {
     )]
     MissingCheckpoint,
     #[error(
-        "An interrupted save conflicts with external changes. Preserve the Markdown, .still, and .still-journal files for recovery."
+        "An interrupted save conflicts with external changes. Preserve the Markdown, .daytrip, and .daytrip-journal files for recovery."
     )]
     RecoveryConflict,
     #[error("This file exceeds Daytrip's current 16 MiB document limit.")]
@@ -54,11 +54,11 @@ pub struct Preferences {
 }
 
 pub fn preferences_path() -> Option<PathBuf> {
-    if let Some(directory) = std::env::var_os("STILL_CONFIG_DIR") {
+    if let Some(directory) = std::env::var_os("DAYTRIP_CONFIG_DIR") {
         return Some(PathBuf::from(directory).join("preferences.toml"));
     }
-    // Keep the original location so existing preferences, samples, and recovery copies survive.
-    ProjectDirs::from("app", "Still", "Still")
+    // Native platform paths follow the public application identity.
+    ProjectDirs::from("app", "Daytrip", "Daytrip")
         .map(|dirs| dirs.config_dir().join("preferences.toml"))
 }
 

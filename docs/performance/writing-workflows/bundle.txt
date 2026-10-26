@@ -1,3 +1,4 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 warning: unused imports: `BlockRange` and `Block`
  --> vendor/yrs/src/transaction.rs:1:20
   |
@@ -584,7 +585,7 @@ help: use `'_` for type paths
 
 warning: `yrs` (lib) generated 58 warnings (run `cargo fix --lib -p yrs` to apply 27 suggestions)
     Finished `release` profile [optimized] target(s) in 0.85s
-target/Still.app: replacing existing signature
-Built target/Still.app
-target/Still.app: valid on disk
-target/Still.app: satisfies its Designated Requirement
+target/Daytrip.app: replacing existing signature
+Built target/Daytrip.app
+target/Daytrip.app: valid on disk
+target/Daytrip.app: satisfies its Designated Requirement

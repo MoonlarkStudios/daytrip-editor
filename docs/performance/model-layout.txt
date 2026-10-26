@@ -1,6 +1,7 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
     Finished `release` profile [optimized] target(s) in 0.46s
-     Running unittests src/main.rs (target/release/deps/still-b525043e86079c66)
+     Running unittests src/main.rs (target/release/deps/daytrip-b525043e86079c66)
 
 running 3 tests
 Rich 2000 blocks: 100 syntax disclosure + cached layouts=29.930792ms, mean=299.308µs

@@ -1,7 +1,8 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [bench] $ cargo test --locked --release performance_ -- --ignored --nocapture
-   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+   Compiling daytrip v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
     Finished `release` profile [optimized] target(s) in 30.06s
-     Running unittests src/lib.rs (target/release/deps/still-1e7d549fdb02224e)
+     Running unittests src/lib.rs (target/release/deps/daytrip-1e7d549fdb02224e)
 
 running 5 tests
 6000 blocks: parse=17.46875ms, 1000 source edits=6.371917ms, per edit=6.371µs
@@ -20,7 +21,7 @@ test app::application::performance::performance_incremental_block_parsing ... ok
 
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 1.46s
 
-     Running unittests src/main.rs (target/release/deps/still-8d7c581f591337ea)
+     Running unittests src/main.rs (target/release/deps/daytrip-8d7c581f591337ea)
 
 running 0 tests
 

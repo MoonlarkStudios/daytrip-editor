@@ -59,8 +59,8 @@ mise run check
 mise run release
 mise run bench
 mise exec -- cargo test --locked --release performance_code_editor -- --ignored --nocapture --test-threads=1
-STILL_PROFILE_BLOCKS=10000 STILL_PROFILE_SAMPLES=10 mise run profile
-STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_SAMPLES=10 mise run profile
+DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_SAMPLES=10 mise run profile
+DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=10 mise run profile
 mise exec -- cargo test --locked --lib code_surface_previews -- --ignored --nocapture --test-threads=1
 ```
 

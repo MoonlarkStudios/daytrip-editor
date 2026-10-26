@@ -2,9 +2,9 @@
 
 The subsequent [offline import optimization](offline-imports.md) supersedes the remote-batch costs below.
 
-Still pins Yrs 0.28.0 with a narrow dependency patch that reuses existing item lengths. `Item.len` already records UTF-16 clock length. Previously `content_len(Utf16)` recounted every scalar of the retained string while traversing text, including retained suffixes in edit deltas and prefixes in stable-position capture/resolution. Successful item merging also recounted the concatenated text. The patch returns the cached length for UTF-16 and adds the two cached lengths on merge. Byte lengths keep their original path. Construction, splitting, trimming, and GC already maintain this invariant.
+Daytrip pins Yrs 0.28.0 with a narrow dependency patch that reuses existing item lengths. `Item.len` already records UTF-16 clock length. Previously `content_len(Utf16)` recounted every scalar of the retained string while traversing text, including retained suffixes in edit deltas and prefixes in stable-position capture/resolution. Successful item merging also recounted the concatenated text. The patch returns the cached length for UTF-16 and adds the two cached lengths on merge. Byte lengths keep their original path. Construction, splitting, trimming, and GC already maintain this invariant.
 
-This removes repeated **scalar counting**, not traversal of the item list, conversion within an item during splitting, or copying split string contents. It adds no fields or per-position metadata. Still keeps its UTF-16 Yrs configuration and incremental Ropey byte bridge. Stable positions, origin-scoped undo, history-selection restoration, transient preedit/exactly-once IME commit, persistence format, replica identity, and offline admission paths are unchanged.
+This removes repeated **scalar counting**, not traversal of the item list, conversion within an item during splitting, or copying split string contents. It adds no fields or per-position metadata. Daytrip keeps its UTF-16 Yrs configuration and incremental Ropey byte bridge. Stable positions, origin-scoped undo, history-selection restoration, transient preedit/exactly-once IME commit, persistence format, replica identity, and offline admission paths are unchanged.
 
 The registry version has no equivalent length reuse, so the exact source is retained under `vendor/yrs`, selected by Cargo's `[patch.crates-io]`. The complete [patch](../vendor/yrs.patch), registry archive/original source checksums, MIT license, upstream revision, and upgrade/removal policy are retained in [vendor/README.md](../vendor/README.md). There is one application package and one CRDT backend. The third-party source keeps upstream formatting and existing unsafe internals; the patch and application add no unsafe code. Dependency compilation now exposes upstream warnings that Cargo normally caps for registry dependencies; application Clippy still passes with warnings denied.
 
@@ -97,13 +97,13 @@ mise run check-yrs
 mise run release
 mise exec -- cargo test --locked --release --lib --no-run
 # Use the executable emitted above; this checkout emitted:
-still_profile_exe=target/release/deps/still-508656e959175f01
-/usr/bin/time -l "$still_profile_exe" large_document_interactions --ignored --nocapture --test-threads=1
-/usr/bin/time -l "$still_profile_exe" large_document_collaboration --ignored --nocapture --test-threads=1
+daytrip_profile_exe=target/release/deps/daytrip-508656e959175f01
+/usr/bin/time -l "$daytrip_profile_exe" large_document_interactions --ignored --nocapture --test-threads=1
+/usr/bin/time -l "$daytrip_profile_exe" large_document_collaboration --ignored --nocapture --test-threads=1
 RUST_TEST_THREADS=1 mise run bench
 mise run profile
 ```
 
-The fresh baseline used `target/release/deps/still-0360e0d741012cb4` built at 81d1f1c. Its core profile, remote/app churn and all component benchmarks were captured before rebuilding. `initial-optimized.txt` retains an exploratory optimized run before restoring Cargo's unrelated tempfile/getrandom lockfile resolution to match baseline; the final comparison uses `after.txt`. No timing thresholds were added to regression tests. Existing windows and unsaved documents were preserved; no editor was launched or restarted. Actual platform CJK IME delivery, GPU presentation and accessibility remain manual validation.
+The fresh baseline used `target/release/deps/daytrip-0360e0d741012cb4` built at 81d1f1c. Its core profile, remote/app churn and all component benchmarks were captured before rebuilding. `initial-optimized.txt` retains an exploratory optimized run before restoring Cargo's unrelated tempfile/getrandom lockfile resolution to match baseline; the final comparison uses `after.txt`. No timing thresholds were added to regression tests. Existing windows and unsaved documents were preserved; no editor was launched or restarted. Actual platform CJK IME delivery, GPU presentation and accessibility remain manual validation.
 
 The later [pending-update repair](yrs-pending-updates.md) adds a separate correctness fix and regression to the same vendor patch; the measurements above predate it.

@@ -17,7 +17,7 @@ bundle="target/Daytrip.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 executable_tmp="$(mktemp "$bundle/Contents/MacOS/.daytrip.XXXXXX")"
 trap 'rm -f "$executable_tmp"' EXIT
-cp "target/$profile/still" "$executable_tmp"
+cp "target/$profile/daytrip" "$executable_tmp"
 chmod 755 "$executable_tmp"
 mv -f "$executable_tmp" "$bundle/Contents/MacOS/Daytrip"
 trap - EXIT
@@ -28,8 +28,7 @@ cat > "$bundle/Contents/Info.plist" <<'PLIST'
 <plist version="1.0"><dict>
   <key>CFBundleName</key><string>Daytrip</string>
   <key>CFBundleDisplayName</key><string>Daytrip</string>
-  <!-- Retain the existing identity so the branding rename preserves OS continuity. -->
-  <key>CFBundleIdentifier</key><string>app.still.editor</string>
+  <key>CFBundleIdentifier</key><string>app.daytrip.editor</string>
   <key>CFBundleExecutable</key><string>Daytrip</string>
   <key>CFBundleIconFile</key><string>daytrip.icns</string>
   <key>CFBundlePackageType</key><string>APPL</string>

@@ -1,3 +1,4 @@
-8a6874d3a3e9622877f6163ded9a11416436f987850b10b87dbbab4d54504917  target/release/deps/still-508656e959175f01
-45e2bcb02463c0f46d0ab6a0a17c592673020a45e5a1cae1f817290d8da48a10  target/release/deps/still-bddeb829fed6fef7
-933ccdfabe4c4ad740df94d0cdc8fb0fadaa9418ab8d71184c21fafd0c8c0db5  target/release/still
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
+8a6874d3a3e9622877f6163ded9a11416436f987850b10b87dbbab4d54504917  target/release/deps/daytrip-508656e959175f01
+45e2bcb02463c0f46d0ab6a0a17c592673020a45e5a1cae1f817290d8da48a10  target/release/deps/daytrip-bddeb829fed6fef7
+933ccdfabe4c4ad740df94d0cdc8fb0fadaa9418ab8d71184c21fafd0c8c0db5  target/release/daytrip

@@ -107,10 +107,10 @@ mise run check
 mise run release
 mise exec -- cargo test --locked --release --lib --no-run
 # Use the executable path emitted above. This checkout emitted:
-still_profile_exe=target/release/deps/still-0360e0d741012cb4
-/usr/bin/time -l "$still_profile_exe" large_document_interactions --ignored --nocapture --test-threads=1
+daytrip_profile_exe=target/release/deps/daytrip-0360e0d741012cb4
+/usr/bin/time -l "$daytrip_profile_exe" large_document_interactions --ignored --nocapture --test-threads=1
 RUST_TEST_THREADS=1 mise run bench
-/usr/bin/time -l "$still_profile_exe" large_document_collaboration --ignored --nocapture --test-threads=1
+/usr/bin/time -l "$daytrip_profile_exe" large_document_collaboration --ignored --nocapture --test-threads=1
 mise run profile
 ```
 

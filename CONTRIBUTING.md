@@ -1,6 +1,6 @@
 # Contributing to Daytrip
 
-Daytrip is a native Rust/Iced application in one Cargo package. Prefer direct code, clear ownership, and changes whose behavior and cost can be reviewed independently. The internal Cargo package remains `still` for this branding rename.
+Daytrip is a native Rust/Iced application in one Cargo package. Prefer direct code, clear ownership, and changes whose behavior and cost can be reviewed independently. The Cargo package and executable are named `daytrip`.
 
 ## Development environment
 
@@ -27,7 +27,7 @@ mise run dev
 | `mise run profile` | Profile 10k/50k-block interactions through software rasterization |
 | `mise exec -- bash scripts/bundle-macos.sh` | Build and ad-hoc sign `target/Daytrip.app` on macOS |
 
-Set `STILL_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
+Set `DAYTRIP_CONFIG_DIR` to a temporary directory for isolated manual testing. Preserve existing windows and unsaved documents when testing another build.
 
 Repository checks use task-scoped tool versions pinned in `mise.toml`; mise installs them on first use. They do not add application dependencies. Audit and policy tests also require Python 3.9 or newer. Link checks are offline and cover repository documentation, including heading anchors; Markdown regression fixtures and runtime sample paths are not documentation links. Advisory checks need network access and leave informational warnings visible. See [dependency health](docs/dependency-health.md) for the current review.
 
@@ -35,7 +35,7 @@ Repository checks use task-scoped tool versions pinned in `mise.toml`; mise inst
 
 ```text
 src/
-  main.rs       Thin executable calling still::run()
+  main.rs       Thin executable calling daytrip::run()
   lib.rs        Module declarations and deliberate public exports
   app/          State, messages, commands, views, native startup
   document/     Source, selection, projection, rich metadata, table edits
@@ -92,8 +92,8 @@ Run `mise run check` before each commit and `mise run check-repo` for repository
 For performance changes, run the relevant release benchmarks and the large-document profile. For example:
 
 ```sh
-STILL_PROFILE_BLOCKS=10000 STILL_PROFILE_SAMPLES=60 mise run profile
-STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_SAMPLES=30 mise run profile
+DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_SAMPLES=60 mise run profile
+DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
 ```
 
 Use the same fixture, toolchain, build settings, and sample count when comparing changes. Record hardware/platform, cold load separately from warm interactions, median/tail values, and the measured phases. Distinguish CPU/software rendering from OS/GPU presentation. Keep timing observations out of ordinary regression assertions. Retain raw evidence and explain interruptions or exclusions; see [the current baseline](docs/performance.md).

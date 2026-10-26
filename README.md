@@ -28,7 +28,7 @@ mise exec -- cargo run --locked -- /path/to/note.md
 mise exec -- bash scripts/bundle-macos.sh  # target/Daytrip.app
 ```
 
-Set `STILL_CONFIG_DIR` to use an isolated preferences directory when testing multiple builds. The internal Cargo package and build executable retain the name `still`; existing configuration locations and collaboration formats remain compatible with earlier builds.
+Set `DAYTRIP_CONFIG_DIR` to use an isolated preferences directory when testing multiple builds. The Cargo package and executable are `daytrip`. Earlier development installations require the [manual data migration](docs/identity-migration.md) before opening shared documents.
 
 macOS requires Xcode Command Line Tools. Linux needs a C toolchain and the X11/Wayland development libraries (on Debian/Ubuntu: `build-essential pkg-config libxkbcommon-dev libwayland-dev libx11-xcb-dev`). Linux file dialogs require `libdbus`, a GTK/GNOME/KDE desktop portal backend, and Zenity for fallback. Windows needs the MSVC C++ build tools. Only macOS has been exercised locally; the CI matrix is configured for all three.
 
@@ -77,6 +77,6 @@ Current support includes headings, inline styles, links, nested lists, tasks, bl
 
 MIT licensed. The bundled font has its own [license](assets/fonts/OFL.txt).
 
-Offline replicas and versioned agent proposals are available under **Appearance → Collaboration…**. Markdown stays an ordinary `.md` file; keep its hidden `.still` checkpoint alongside it to retain shared history. See [collaboration and recovery](docs/collaboration.md) and [CRDT measurements](docs/crdt-performance.md).
+Offline replicas and versioned agent proposals are available under **Appearance → Collaboration…**. Markdown stays an ordinary `.md` file; keep its hidden `.daytrip` checkpoint alongside it to retain shared history. See [collaboration and recovery](docs/collaboration.md) and [CRDT measurements](docs/crdt-performance.md).
 
 The **daytrip · open book** identity is available in the [branding kit](branding/daytrip/README.md), including editable SVG masters, logo variants without a tagline, platform app icons, palette, and typography guidance. The application and macOS bundle use the Daytrip name and book symbol.

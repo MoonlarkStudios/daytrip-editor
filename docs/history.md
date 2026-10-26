@@ -5,7 +5,7 @@ to John Slaughter <john@moonlarkstudios.com> on 2026-10-25. Every rewritten comm
 retains its original file tree, timestamp, message and parent ordering. No source
 or benchmark output was changed by that metadata operation.
 
-Narrative documentation now uses the public commit IDs. Raw validation logs retain
+Narrative documentation now uses the public commit IDs. Validation logs retain
 the IDs recorded at measurement time; use this table to resolve those references.
 File checksums and executable hashes are independent of this mapping.
 
@@ -32,3 +32,19 @@ File checksums and executable hashes are independent of this mapping.
 | `9ed6f5647f45e5618438ad241be12ebe2ff14cb5` | `b63cc86ac896d3a9dd10fbd8e7b2340d40c6c3dd` | build(vendor): scope upstream diagnostics and record test limits |
 | `882d340195c595692b203dcee85f9e49e9932d2b` | `31ea05beac359f119d06382d7fd36d2abbc6272b` | fix(deps): update TLS trust and Windows clipboard dependencies |
 | `e852803074030bb3cd8dc361123abf6e2b5522f6` | `73dbdd55291f130c9d83c01d106411bef5d08e6c` | build(repo): enforce publication checks and refresh documentation |
+
+## Application identity in retained evidence
+
+During publication preparation, application-name labels in historical text logs
+were normalized to Daytrip at the repository owner's request. Each edited log
+has a notice at the top. Measurements, test results, commit IDs and recorded hashes
+were preserved. Package names, executable paths, environment variables and trace
+module labels now use the public identity, so these files are edited evidence,
+not byte-for-byte terminal captures. A recorded executable hash describes the
+original binary, not a newly built binary with the normalized filename.
+
+The unedited evidence is recoverable from commit `29ebbe2`, immediately before
+the identity cleanup. Reproduction commands in narrative documentation use the
+current package/environment names; historical revisions used their own build
+configuration. The data-path transition is described in
+[manual migration](identity-migration.md).

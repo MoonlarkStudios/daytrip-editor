@@ -134,10 +134,10 @@ Reproduce from the repository root:
 mise run check
 mise run release
 RUST_TEST_THREADS=1 mise run bench
-STILL_PROFILE_BLOCKS=10000 STILL_PROFILE_SAMPLES=30 mise run profile
-STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_SAMPLES=30 mise run profile
-STILL_PROFILE_SAMPLES=30 mise exec -- cargo test --locked --release large_document_collaboration -- --ignored --nocapture --test-threads=1
-STILL_PROFILE_SAMPLES=10 mise exec -- cargo test --locked --release large_offline_import_shapes -- --ignored --nocapture --test-threads=1
+DAYTRIP_PROFILE_BLOCKS=10000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
+DAYTRIP_PROFILE_BLOCKS=50000 DAYTRIP_PROFILE_SAMPLES=30 mise run profile
+DAYTRIP_PROFILE_SAMPLES=30 mise exec -- cargo test --locked --release large_document_collaboration -- --ignored --nocapture --test-threads=1
+DAYTRIP_PROFILE_SAMPLES=10 mise exec -- cargo test --locked --release large_offline_import_shapes -- --ignored --nocapture --test-threads=1
 ```
 
 Final validation: **152 ordinary tests**, **7 serial release benchmarks**, both interaction profiles and both import/churn profiles passed. [Check log](performance/writing-workflows/check.txt), [release build](performance/writing-workflows/release.txt), and [signed bundle validation](performance/writing-workflows/bundle.txt) are retained. macOS native smoke testing verified the sample's visual layout, double-click image details, caption editing, Cmd+K details and saving. It exposed the modal focus loop now covered by the full-widget regression. Desktop activity changed during testing, so further UI input was stopped and only the isolated saved test process was closed. Native clipboard/file-list paste, drag/drop delivery, real CJK candidate windows, export chooser completion, and small-window visual behavior still need platform QA; automated tests cover their model/IO paths.

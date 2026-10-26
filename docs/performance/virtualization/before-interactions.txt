@@ -1,7 +1,8 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [profile] $ cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1
-   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+   Compiling daytrip v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
     Finished `release` profile [optimized] target(s) in 30.02s
-     Running unittests src/lib.rs (target/release/deps/still-1e7d549fdb02224e)
+     Running unittests src/lib.rs (target/release/deps/daytrip-1e7d549fdb02224e)
 
 running 1 test
 test app::application::performance::large_document_interactions ... memory/source-load rss_kib=305632
@@ -31,7 +32,7 @@ memory/cold rss_kib=2354416
 error: test failed, to rerun pass `--lib`
 
 Caused by:
-  process didn't exit successfully: `/Users/johnslaughter/Development/iced-md-editor/target/release/deps/still-1e7d549fdb02224e large_document_interactions --ignored --nocapture --test-threads=1` (signal: 2, SIGINT: terminal interrupt signal)
+  process didn't exit successfully: `/Users/johnslaughter/Development/iced-md-editor/target/release/deps/daytrip-1e7d549fdb02224e large_document_interactions --ignored --nocapture --test-threads=1` (signal: 2, SIGINT: terminal interrupt signal)
 [profile] ERROR task failed
       426.95 real       465.41 user         8.42 sys
           2430287872  maximum resident set size

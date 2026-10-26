@@ -625,6 +625,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "daytrip"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "base64 0.22.1",
+ "blake3",
+ "directories",
+ "iced",
+ "iced_runtime",
+ "iced_tiny_skia",
+ "image",
+ "open",
+ "percent-encoding",
+ "pulldown-cmark",
+ "reqwest",
+ "rfd",
+ "ropey",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tiny-skia",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "unicode-segmentation",
+ "uuid",
+ "yrs",
+]
+
+[[package]]
 name = "directories"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3496,38 +3528,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "still"
-version = "0.1.0"
-dependencies = [
- "arboard",
- "base64 0.22.1",
- "blake3",
- "directories",
- "iced",
- "iced_runtime",
- "iced_tiny_skia",
- "image",
- "open",
- "percent-encoding",
- "pulldown-cmark",
- "reqwest",
- "rfd",
- "ropey",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tiny-skia",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
- "unicode-segmentation",
- "uuid",
- "yrs",
-]
 
 [[package]]
 name = "str_indices"

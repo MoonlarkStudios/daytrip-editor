@@ -487,7 +487,7 @@ impl App {
                             .set_file_name(if agent {
                                 "agent-snapshot.json"
                             } else {
-                                "document.stillreplica"
+                                "document.daytripreplica"
                             })
                             .save_file()
                             .await
@@ -512,7 +512,7 @@ impl App {
                 return Task::perform(
                     async {
                         let file = rfd::AsyncFileDialog::new()
-                            .add_filter("Daytrip replica", &["stillreplica"])
+                            .add_filter("Daytrip replica", &["daytripreplica"])
                             .pick_file()
                             .await
                             .ok_or_else(|| FileError::Io("Import cancelled".into()))?;
@@ -1734,7 +1734,7 @@ impl App {
                 return Task::perform(
                     async {
                         rfd::AsyncFileDialog::new()
-                            .add_filter("Daytrip replica", &["stillreplica"])
+                            .add_filter("Daytrip replica", &["daytripreplica"])
                             .pick_file()
                             .await
                             .map(|file| file.path().to_owned())

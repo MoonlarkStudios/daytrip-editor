@@ -15,7 +15,7 @@
   "native_saved_source_sha256": "4d7052935251a3ed198c1d140ba334323df192586807f1dcbe16fdb9f6817b91",
   "native_cut_paste_byte_identity": true,
   "executable_sha256": {
-    "target/release/still": "7aefc1b4a9fc70ae4e3ab2b3b855cdd075f9ed857b1defc8ce815866c51af3b5",
-    "target/release/deps/still-ff9e53293a28590a": "9e65807942055e32674c6605a94ea119d390233a3f3054cf7f7bc2c845842541"
+    "target/release/daytrip": "7aefc1b4a9fc70ae4e3ab2b3b855cdd075f9ed857b1defc8ce815866c51af3b5",
+    "target/release/deps/daytrip-ff9e53293a28590a": "9e65807942055e32674c6605a94ea119d390233a3f3054cf7f7bc2c845842541"
   }
 }

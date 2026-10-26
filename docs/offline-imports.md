@@ -90,11 +90,11 @@ mise run check
 mise run release
 mise exec -- cargo test --locked --release --lib --no-run
 # Use the executable emitted above; this checkout emitted:
-still_profile_exe=target/release/deps/still-508656e959175f01
-/usr/bin/time -l "$still_profile_exe" large_document_collaboration --ignored --nocapture --test-threads=1
-/usr/bin/time -l "$still_profile_exe" large_document_interactions --ignored --nocapture --test-threads=1
-/usr/bin/time -l "$still_profile_exe" large_offline_import_shapes --ignored --nocapture --test-threads=1
-# STILL_IMPORT_SAMPLES controls the extended profile (default 10).
+daytrip_profile_exe=target/release/deps/daytrip-508656e959175f01
+/usr/bin/time -l "$daytrip_profile_exe" large_document_collaboration --ignored --nocapture --test-threads=1
+/usr/bin/time -l "$daytrip_profile_exe" large_document_interactions --ignored --nocapture --test-threads=1
+/usr/bin/time -l "$daytrip_profile_exe" large_offline_import_shapes --ignored --nocapture --test-threads=1
+# DAYTRIP_IMPORT_SAMPLES controls the extended profile (default 10).
 RUST_TEST_THREADS=1 mise run bench
 mise run profile
 ```

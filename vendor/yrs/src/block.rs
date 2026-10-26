@@ -2388,7 +2388,7 @@ mod test {
     use crate::doc::OffsetKind;
     use std::ops::Deref;
 
-    // Still regression: compare cached lengths with a fresh count after every
+    // Daytrip regression: compare cached lengths with a fresh count after every
     // valid Unicode split and squash. Byte indexing must keep its old behavior.
     #[test]
     fn cached_item_lengths_survive_unicode_splits_and_squashes() {

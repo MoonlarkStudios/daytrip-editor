@@ -52,7 +52,7 @@ Open **Appearance → Collaboration…**:
 
 - **Export agent snapshot…** writes immutable JSON containing source, document ID, encoded base state, and version digest. Encoded update bytes use base64.
 - **Accept agent proposal…** reads a JSON proposal and applies it only after validation. Choosing this action/file approves applying that proposal; there is no preview merge.
-- **Export replica…** writes a binary `.stillreplica` containing full compatible state.
+- **Export replica…** writes a binary `.daytripreplica` containing full compatible state.
 - **Open replica as offline copy…** opens that state with a fresh active writer identity, using the ordinary unsaved-document guard. Save a separate Markdown copy and export its approved state to merge later.
 - **Merge approved replica…** admits a compatible replica; **Undo agent / Redo agent** operate on accepted local proposals.
 
@@ -76,7 +76,7 @@ A **mergeable fork** is a full encoded state loaded with a new writer identity. 
 
 ## Persistence and recovery
 
-For `note.md`, Daytrip stores a hidden `.note.md.still` checkpoint beside the physical Markdown target, plus a transient `.note.md.still-journal` and an advisory `.note.md.still-lock`. Symlinks resolve to their target. Preserve/copy the Markdown and checkpoint together to retain compatible history across cloning and offline use.
+For `note.md`, Daytrip stores a hidden `.note.md.daytrip` checkpoint beside the physical Markdown target, plus a transient `.note.md.daytrip-journal` and an advisory `.note.md.daytrip-lock`. Symlinks resolve to their target. Preserve/copy the Markdown and checkpoint together to retain compatible history across cloning and offline use.
 
 A checkpoint has a versioned binary frame, UUID, length, BLAKE3 checksum, and complete Yrs update V1. The active writer ID is never stored as a reusable writer configuration. Each open/fork gets an OS-random-derived 53-bit identity excluded from the encoded state's known clients, including pending structs. Historical operation IDs remain unchanged. Document identity remains stable across reopen/copy; new ordinary Markdown imports get a new UUID.
 

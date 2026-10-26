@@ -1,7 +1,8 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [profile] $ cargo test --locked --release performance_large_interactions -- --ignored --nocapture --test-threads=1
-   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+   Compiling daytrip v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
     Finished `release` profile [optimized] target(s) in 23.97s
-     Running unittests src/main.rs (target/release/deps/still-b525043e86079c66)
+     Running unittests src/main.rs (target/release/deps/daytrip-b525043e86079c66)
 
 running 1 test
 test app::performance::performance_large_interactions ...
@@ -14,8 +15,8 @@ disclosure n=30 input=0.000/0.000/0.000ms update=6.014/6.546/6.627ms layout=42.3
 selection/local n=30 input=0.000/0.000/0.000ms update=1.084/1.206/1.207ms layout=0.028/0.042/0.044ms draw=0.516/0.598/0.604ms raster=1.041/1.284/1.316ms total=2.711/3.048/3.116ms (p50/p95/max)
 selection/half-document n=30 input=0.000/0.000/0.000ms update=1.113/1.252/1.254ms layout=0.029/0.038/0.040ms draw=1.670/2.118/2.291ms raster=1.352/1.629/1.731ms total=4.213/4.887/4.916ms (p50/p95/max)
 scroll n=30 input=0.019/0.027/0.070ms update=0.000/0.000/0.000ms layout=0.012/0.015/0.019ms draw=1.672/2.147/2.154ms raster=1.478/1.932/1.997ms total=3.124/4.061/4.073ms (p50/p95/max)
-error: test failed, to rerun pass `--bin still`
+error: test failed, to rerun pass `--bin daytrip`
 
 Caused by:
-  process didn't exit successfully: `/Users/johnslaughter/Development/iced-md-editor/target/release/deps/still-b525043e86079c66 performance_large_interactions --ignored --nocapture --test-threads=1` (signal: 2, SIGINT: terminal interrupt signal)
+  process didn't exit successfully: `/Users/johnslaughter/Development/iced-md-editor/target/release/deps/daytrip-b525043e86079c66 performance_large_interactions --ignored --nocapture --test-threads=1` (signal: 2, SIGINT: terminal interrupt signal)
 [profile] ERROR task failed

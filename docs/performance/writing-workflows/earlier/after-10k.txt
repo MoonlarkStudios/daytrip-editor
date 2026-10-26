@@ -1,3 +1,4 @@
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
 [profile] $ cargo test --locked --release large_document_interactions -- --ignored --nocapture --test-threads=1
 warning: unused imports: `BlockRange` and `Block`
  --> vendor/yrs/src/transaction.rs:1:20
@@ -585,7 +586,7 @@ help: use `'_` for type paths
 
 warning: `yrs` (lib) generated 58 warnings (run `cargo fix --lib -p yrs` to apply 27 suggestions)
     Finished `release` profile [optimized] target(s) in 0.80s
-     Running unittests src/lib.rs (target/release/deps/still-bddeb829fed6fef7)
+     Running unittests src/lib.rs (target/release/deps/daytrip-bddeb829fed6fef7)
 
 running 1 test
 test app::application::performance::large_document_interactions ...
@@ -611,7 +612,7 @@ ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 160 filtered out; finished in 0.98s
 
-     Running unittests src/main.rs (target/release/deps/still-036c994250f1fb9b)
+     Running unittests src/main.rs (target/release/deps/daytrip-036c994250f1fb9b)
 
 running 0 tests
 

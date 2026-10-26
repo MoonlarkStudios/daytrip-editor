@@ -98,7 +98,7 @@ impl Paths {
         let sibling = |suffix: &str| {
             let mut name = OsString::from(".");
             name.push(filename);
-            name.push(".still");
+            name.push(".daytrip");
             name.push(suffix);
             markdown.with_file_name(name)
         };

@@ -42,7 +42,7 @@ HTML exports use Paper's resolved palette for a consistent, portable reading pag
 mise run check
 mise run release
 python3 branding/daytrip/export.py --check
-STILL_CONFIG_DIR=/tmp/daytrip-theme-preview mise exec -- cargo test --locked theme_ui_previews -- --ignored --nocapture
+DAYTRIP_CONFIG_DIR=/tmp/daytrip-theme-preview mise exec -- cargo test --locked theme_ui_previews -- --ignored --nocapture
 ```
 
 The private preview test renders the real application through Iced's software renderer at 1180×820 and the minimum 760×520 window size. It covers all presets, appearance settings, focus mode, find/replace, long titles, source and reading modes, code blocks, and the unsaved dialog. PNGs are written to `target/theme-validation/`. It does not open a native window or modify the user's preferences. Theme-switch regression coverage preserves document source, reverse selection, and undo availability. Native OS presentation and assistive technology behavior require separate platform validation.

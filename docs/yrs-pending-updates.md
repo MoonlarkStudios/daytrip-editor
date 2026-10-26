@@ -49,3 +49,11 @@ The application restricts imported updates to bounded plain-text state, so this
 generic upstream reproduction does not establish a user-visible data-loss case
 in Daytrip. Keep the regression when rebasing Yrs and remove the local retry patch
 when a compatible upstream release includes the repair.
+
+A final clean-build verification repeated all ten full-suite runs successfully
+following the identity cleanup. The intentionally unfixed reproduction must use
+its own Cargo target directory: sharing the dependency target directory between
+the two same-version source trees reused the reproduction executable in one
+intermediate check. Its stack trace identified the temporary unpatched source.
+Cleaning the vendor artifacts and rebuilding from the patched source removed
+that validation-cache collision; the clean-run results are retained above.

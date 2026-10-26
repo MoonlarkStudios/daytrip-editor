@@ -1,6 +1,7 @@
-   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+# Application-name labels normalized for publication; measurements unchanged. See docs/history.md.
+   Compiling daytrip v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
     Finished `release` profile [optimized] target(s) in 58.73s
-     Running unittests src/lib.rs (target/release/deps/still-ff9e53293a28590a)
+     Running unittests src/lib.rs (target/release/deps/daytrip-ff9e53293a28590a)
 
 running 1 test
 test app::application::outline::tests::performance_outline_sections ... blocks=10000 bytes=926010 headings=2000 load=154.756ms
@@ -19,7 +20,7 @@ ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 194 filtered out; finished in 1.92s
 
-     Running unittests src/main.rs (target/release/deps/still-50180676c3bc2d49)
+     Running unittests src/main.rs (target/release/deps/daytrip-50180676c3bc2d49)
 
 running 0 tests
 
