@@ -76,7 +76,7 @@ PNG sizes are 16, 24, 32, 48, 64, 128, 256, 512, and 1024 px. The ICO
 contains 16–256 px frames. The ICNS contains standard and Retina resources
 up to 1024 px. Compact geometry is selected by actual raster dimensions.
 
-The logo artwork follows the repository's [MIT license](../../LICENSE).
+The logo artwork follows the repository's [GPLv3-or-later license](../../LICENSE).
 The separate Newsreader license applies to the font files.
 
 ## Regenerate and verify

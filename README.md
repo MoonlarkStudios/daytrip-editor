@@ -27,4 +27,5 @@ The [documentation](docs/README.md) covers editing, architecture, and design.
 Report bugs and suggest features through [GitHub issues](https://github.com/MoonlarkStudios/daytrip-editor/issues).
 Report vulnerabilities [privately](SECURITY.md).
 
-[MIT licensed](LICENSE). Bundled fonts use the [SIL Open Font License](assets/fonts/OFL.txt).
+Copyright © 2026 Daytrip contributors. Licensed under [GPLv3 or later](LICENSE).
+Bundled fonts use the [SIL Open Font License](assets/fonts/OFL.txt).

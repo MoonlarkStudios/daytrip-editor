@@ -158,3 +158,10 @@ Keep the [documentation index](docs/README.md), README, bundled guide and archit
 CI runs the locked Rust checks and release build on macOS, Linux and Windows, plus repository hygiene, full-history secret scanning and dependency auditing on Linux. GitHub Actions use full commit IDs, a read-only token, no persisted checkout credentials, cancellation of superseded runs and bounded job durations. Follow [GitHub's workflow security guidance](https://docs.github.com/en/actions/reference/security/secure-use) when changing them. Dependabot proposes weekly compatible Cargo and action updates; review changes and validation before merging. Yrs, cryoglyph and Iced highlighter upgrades follow the explicit vendor rebase policy.
 
 The public repository enables private vulnerability reporting, secret scanning/push protection and Dependabot alerts/security updates. Preserve these hosting settings alongside the branch protections above; checked-in files alone cannot activate them. Review commit author identities and retained logs before publishing; do not rewrite published history or remove evidence casually. Publish the intended branch explicitly rather than pushing every local ref.
+
+## Licensing
+
+Daytrip is licensed under the GNU General Public License, version 3 or (at your
+option) any later version (`GPL-3.0-or-later`); see [LICENSE](LICENSE).
+Contributions to Daytrip are accepted under these terms. Vendored dependencies
+and bundled fonts retain their own licenses and notices.
