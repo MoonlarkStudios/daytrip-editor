@@ -82,9 +82,12 @@ macOS images contain an ad-hoc-signed `Dosty.app` and Applications shortcut.
 The Windows installer installs per user, adds a Start menu shortcut, and registers
 an uninstaller without requiring administrator access. It does not launch or
 close Dosty during installation. Packages include the application license,
-font notices and third-party notices generated with pinned `cargo-about`,
-including local vendored dependencies. This is release tooling, not an additional
-application dependency. Missing/unidentified licenses fail generation.
+font notices and third-party notices generated once on Linux with pinned
+`cargo-about`, including local vendored dependencies. Every native package uses
+that same report covering all release targets. The tool installs from pinned
+Cargo source so local Intel Mac packaging does not require an upstream prebuilt
+binary. This is release tooling, not an additional application dependency.
+Missing/unidentified licenses fail generation.
 
 Linux packages install the application, desktop launcher, icon and licenses.
 Dependencies include X11/Wayland runtime libraries, D-Bus, `xdg-utils`, the

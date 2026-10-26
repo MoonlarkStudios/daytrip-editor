@@ -22,7 +22,7 @@ run = "python3 scripts/release.py prepare"
 
 [tasks.release-notices]
 description = "Generate notices for all release targets, including vendored patches"
-tools."github:EmbarkStudios/cargo-about" = "0.9.3"
+tools."cargo:cargo-about" = { version = "0.9.3", features = ["cli"], locked = true }
 run = ["python3 -c \"from pathlib import Path; Path('target').mkdir(exist_ok=True)\"", "cargo about generate --locked --fail --config packaging/licenses/about.toml --output-file target/release-notices.html packaging/licenses/about.hbs"]
 
 [tasks.check-release]
