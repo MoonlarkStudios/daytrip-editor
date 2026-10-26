@@ -268,48 +268,52 @@ mod tests {
 
     #[test]
     fn section_moves_preserve_every_byte_and_reverse_selection_with_one_undo() {
-        let source = include_str!("../../tests/fixtures/outline.md");
-        let mut document = Document::new(source.into());
-        let sections = sections(&document);
-        let before = Selection {
-            anchor: source.find("## Second child").unwrap(),
-            head: source.find("café").unwrap(),
-        };
-        let movement = prepare(
-            source,
-            &sections,
-            0,
-            DropTarget {
-                section: 4,
-                after: true,
-            },
-        )
-        .unwrap()
-        .unwrap();
-        let after = movement.selection(before);
-        document
-            .transact(
-                &movement.edits,
-                EditOrigin::Human,
-                Some((before, after)),
-                true,
+        for newline in ["\n", "\r\n"] {
+            let source = include_str!("../../tests/fixtures/outline.md")
+                .replace("\r\n", "\n")
+                .replace('\n', newline);
+            let mut document = Document::new(source.clone());
+            let sections = sections(&document);
+            let before = Selection {
+                anchor: source.find("## Second child").unwrap(),
+                head: source.find("café").unwrap(),
+            };
+            let movement = prepare(
+                &source,
+                &sections,
+                0,
+                DropTarget {
+                    section: 4,
+                    after: true,
+                },
             )
+            .unwrap()
             .unwrap();
-        assert_eq!(
-            document.source(),
-            format!(
-                "{}{}\n{}",
-                &source[..sections[0].range.start],
-                &source[sections[4].range.clone()],
-                &source[sections[0].range.clone()]
-            )
-        );
-        assert!(after.anchor > after.head);
-        assert_eq!(&document.source()[after.range()], &source[before.range()]);
-        assert_eq!(document.undo(), Some(before));
-        assert_eq!(document.source(), source);
-        assert_eq!(document.redo(), Some(after));
-        assert_eq!(document.source(), document.collaboration.materialize());
+            let after = movement.selection(before);
+            document
+                .transact(
+                    &movement.edits,
+                    EditOrigin::Human,
+                    Some((before, after)),
+                    true,
+                )
+                .unwrap();
+            assert_eq!(
+                document.source(),
+                format!(
+                    "{}{}{newline}{}",
+                    &source[..sections[0].range.start],
+                    &source[sections[4].range.clone()],
+                    &source[sections[0].range.clone()]
+                )
+            );
+            assert!(after.anchor > after.head);
+            assert_eq!(&document.source()[after.range()], &source[before.range()]);
+            assert_eq!(document.undo(), Some(before));
+            assert_eq!(document.source(), source);
+            assert_eq!(document.redo(), Some(after));
+            assert_eq!(document.source(), document.collaboration.materialize());
+        }
     }
 
     #[test]

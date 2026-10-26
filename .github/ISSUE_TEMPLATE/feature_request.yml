@@ -1,0 +1,22 @@
+name: Feature request
+description: Describe a writing workflow that Daytrip could support better.
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Writing workflow
+      description: What are you trying to accomplish, and what gets in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful change and any alternatives you considered.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Examples and context
+      description: Use synthetic Markdown and omit private document contents.

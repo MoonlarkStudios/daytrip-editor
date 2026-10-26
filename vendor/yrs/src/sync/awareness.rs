@@ -746,8 +746,10 @@ mod test {
 
     #[test]
     fn awareness_summary() -> Result<(), Box<dyn std::error::Error>> {
-        let mut local = Awareness::new(Doc::with_client_id(1));
-        let mut remote = Awareness::new(Doc::with_client_id(2));
+        // Daytrip: compare complete states at one controlled instant. Network
+        // delivery may cross a millisecond boundary on the system clock.
+        let mut local = Awareness::with_clock(Doc::with_client_id(1), || 1000);
+        let mut remote = Awareness::with_clock(Doc::with_client_id(2), || 1000);
 
         local.set_local_state(json!({"x":3})).unwrap();
         let update = local.update_with_clients([local.client_id()])?;

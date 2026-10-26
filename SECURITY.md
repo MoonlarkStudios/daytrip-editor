@@ -3,8 +3,8 @@
 Daytrip is pre-release software. Security fixes target the current development
 branch; there are no maintained release branches yet.
 
-Use the repository's **Security → Report a vulnerability** form for a private
-report when enabled. If that form is unavailable, open an issue asking for a
+Use the repository's [private vulnerability report](https://github.com/MoonlarkStudios/daytrip-editor/security/advisories/new)
+form. If that form is unavailable, open an issue asking for a
 private reporting channel without including exploit details, credentials, or
 private documents. Include a minimal synthetic reproduction, affected revision,
 platform, expected behavior and observed impact in the private report.

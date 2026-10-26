@@ -74,8 +74,9 @@ strict Clippy, formatting, the release build, repository checks and the audit
 policy. Existing syntax tests cover fresh/cached highlighting, Unicode and all
 application themes. A fresh native window with isolated preferences rendered the
 welcome document and opened/cancelled both native Open and Save As dialogs.
-No user document was loaded or written. Linux and Windows builds and native dialog
-behavior remain to be verified by CI/platform testing; no remote is configured.
+No user document was loaded or written. Hosted macOS, Linux and Windows build/test
+results are available in [the public CI workflow](https://github.com/MoonlarkStudios/daytrip-editor/actions/workflows/ci.yml).
+Native Linux and Windows dialog behavior still requires manual platform testing.
 
 Release CRDT churn/reopen, 10k/50k-block interactions, and collaboration profiles
 passed. Raw outputs: [before interactions](validation/dependencies/before-profile.txt),

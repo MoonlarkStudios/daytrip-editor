@@ -62,6 +62,13 @@ requiring unpublished upstream assets are excluded. See the
 and retained evidence. The upstream test harness still emits seven test-only
 `assert_matches2` deprecation warnings; no new lint allowances were added.
 
+The first hosted Linux run also exposed a test-only timestamp assumption in
+`awareness_summary`: local and remote processing crossed a millisecond boundary.
+That test now injects a fixed clock through upstream's existing `with_clock` API,
+retaining all complete-state and event-summary assertions. No awareness production
+logic or test exclusions change. The initial failure is visible in
+[the bootstrap CI run](https://github.com/MoonlarkStudios/daytrip-editor/actions/runs/40254551635).
+
 Keep this a narrow, reviewable patch. On an upstream release containing an
 equivalent fix, remove the vendor override and directory, pin the new version,
 then repeat the invariant tests and comparable editor profiles. Until then,
