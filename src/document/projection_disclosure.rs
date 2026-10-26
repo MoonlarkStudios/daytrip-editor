@@ -126,6 +126,7 @@ mod tests {
     #[test]
     fn line_disclosure_matches_full_styles_and_structure_at_every_caret() {
         for source in [
+            "Before `inline`\n\n````rust\nfn main() {\n\n    let café = \"🦀\";\n}\n````\n\nAfter",
             "### A **bold *nested* title** ###\n\nA **span** and [a **label**](https://example.com) and `code`.\n\nOther *words*.",
             "| **Heading** | [Label](url) |\n|:---|---:|\n| *words* | `code` |\n\n![**alt**](image.png)",
             "Setext **title**\r\n================\r\n\r\nA **strong\r\nmultiline** span with `code\r\nwords`.",

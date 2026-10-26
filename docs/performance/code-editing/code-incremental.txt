@@ -1,0 +1,7 @@
+
+running 1 test
+test app::application::performance::performance_code_editor ... code/typing-middle-2000-lines n=20 input=0.002/0.010/0.012ms update=0.411/0.554/1.038ms crdt=0.014/0.067/0.074ms source=0.157/0.194/0.506ms adapters=0.239/0.306/0.505ms layout=5.585/6.992/7.128ms draw=0.004/0.006/0.015ms raster=2.166/2.833/4.883ms total=7.981/10.085/11.175ms (p50/p95/max)
+code/layout_counts=(111, 111)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 179 filtered out; finished in 0.42s

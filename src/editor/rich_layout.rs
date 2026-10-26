@@ -11,6 +11,8 @@ use iced::advanced::text::{self, Paragraph as _};
 use iced::{Font, Point, Rectangle, Size};
 use unicode_segmentation::UnicodeSegmentation;
 
+use super::code_highlight;
+
 use crate::document::projection::{
     Affinity, HighlightLines, OffsetMap, Projection, Style, TextChange,
 };
@@ -28,11 +30,14 @@ struct ParagraphKey {
     line_height: u32,
     alignment: u8,
     bold: bool,
+    code: bool,
+    syntax: Vec<code_highlight::Run>,
 }
 
 struct CachedParagraph {
     paragraph: Paragraph,
     rows: Vec<CachedRow>,
+    inline_code: Vec<Rectangle>,
 }
 
 struct CachedRow {
@@ -181,6 +186,7 @@ pub struct RichLayout {
     highlights: Option<Arc<HighlightLines>>,
     metrics: Option<LayoutMetrics>,
     patches: usize,
+    code_cache: code_highlight::Cache,
 }
 
 pub struct Fragment {
@@ -190,6 +196,9 @@ pub struct Fragment {
 }
 
 pub enum FragmentKind {
+    CodeHeader {
+        block: usize,
+    },
     Text {
         paragraph: Paragraph,
         origin: Point,
@@ -206,6 +215,8 @@ pub enum FragmentKind {
 pub enum Decoration {
     Header,
     Border,
+    Code { first: bool, last: bool },
+    InlineCode,
 }
 
 pub struct VisualRow {
@@ -262,6 +273,7 @@ impl RichLayout {
         let mut previous = std::mem::take(&mut self.cache);
         if self.tokens != Some(theme.tokens) {
             previous.clear();
+            self.code_cache.clear();
         }
         self.tokens = Some(theme.tokens);
         self.mapping = Some(Arc::clone(&projection.mapping));
@@ -283,6 +295,7 @@ impl RichLayout {
             base,
             images,
             zoom,
+            syntax: HashMap::new(),
         };
         let heights = units
             .iter()
@@ -336,6 +349,7 @@ impl RichLayout {
         let mut previous = std::mem::take(&mut self.cache);
         if self.tokens != Some(theme.tokens) {
             previous.clear();
+            self.code_cache.clear();
         }
         self.tokens = Some(theme.tokens);
         self.fragments.clear();
@@ -355,6 +369,7 @@ impl RichLayout {
             base,
             images,
             zoom,
+            syntax: HashMap::new(),
         };
         let mut start = 0;
         let mut table_index = 0;
@@ -501,6 +516,9 @@ impl RichLayout {
         {
             return false;
         }
+        if projection.rich.code_line(&range).is_some() {
+            return false;
+        }
         // The fragment must still be an entire physical paragraph. This also
         // excludes edits which remove a newline just outside its old range.
         if range.start > 0 && projection.text.as_bytes()[range.start - 1] != b'\n'
@@ -544,6 +562,7 @@ impl RichLayout {
             base: metrics.base.as_deref(),
             images,
             zoom: metrics.zoom,
+            syntax: HashMap::new(),
         };
         let height = builder.paragraph(
             range,
@@ -580,11 +599,17 @@ impl RichLayout {
                 *display_start = shifted(*display_start);
             }
         }
+        self.decorations.retain(|(rect, kind)| {
+            !matches!(kind, Decoration::InlineCode)
+                || rect.y + rect.height <= bounds.y
+                || rect.y >= bounds.y + bounds.height
+        });
         for (rect, _) in &mut self.decorations {
             if rect.y >= bounds.y + bounds.height - 0.01 {
                 rect.y += dy;
             }
         }
+        self.decorations.extend(part.decorations);
         self.fragments[i] = part
             .fragments
             .pop()
@@ -697,6 +722,7 @@ impl RichLayout {
             return 0;
         };
         match &fragment.kind {
+            FragmentKind::CodeHeader { .. } => fragment.range.start,
             FragmentKind::Text {
                 paragraph,
                 origin,
@@ -900,10 +926,50 @@ struct Builder<'a> {
     base: Option<&'a Path>,
     images: &'a ImageStore,
     zoom: f32,
+    syntax: HashMap<usize, Option<usize>>,
 }
 
 impl Builder<'_> {
     fn line(&mut self, range: Range<usize>, size: f32, bold: bool) {
+        if let Some((index, block)) = self.projection.rich.code_line(&range) {
+            let first = range.start <= block.range.start;
+            let last = block.last_line(&range);
+            let top = self.y;
+            if first {
+                self.layout.fragments.push(Fragment {
+                    range: range.start..range.start,
+                    bounds: Rectangle::new(
+                        Point::new(0.0, self.y),
+                        Size::new(self.width, 34.0 * self.zoom),
+                    ),
+                    kind: FragmentKind::CodeHeader { block: index },
+                });
+                self.y += 34.0 * self.zoom;
+            }
+            let fence =
+                block.fenced && (range.end < block.body.start || range.start >= block.body.end);
+            let empty_body = block.body.is_empty() && range.start == block.body.start;
+            let size = if fence && range.is_empty() && !empty_body {
+                4.0 * self.zoom
+            } else {
+                styles::code_size(self.size)
+            };
+            let padding = 16.0 * self.zoom;
+            let height = self.paragraph(
+                range,
+                Point::new(padding, self.y),
+                (self.width - 2.0 * padding).max(1.0),
+                size,
+                false,
+                0,
+            );
+            self.y += height + if last { 10.0 * self.zoom } else { 0.0 };
+            self.layout.decorations.push((
+                Rectangle::new(Point::new(0.0, top), Size::new(self.width, self.y - top)),
+                Decoration::Code { first, last },
+            ));
+            return;
+        }
         let height = self.flow(range, Point::new(0.0, self.y), self.width, size, bold, 0);
         self.y += height;
     }
@@ -1035,14 +1101,48 @@ impl Builder<'_> {
         } else {
             size
         };
+        let code = self.projection.rich.code_line(&range);
+        let syntax = if let Some((index, block)) = code
+            && block.body.start <= range.start
+            && range.start < block.body.end
+        {
+            let entry = self.syntax.entry(index).or_insert_with(|| {
+                self.layout.code_cache.prepare(
+                    &block.language,
+                    &self.projection.text[block.body.clone()],
+                    self.tokens,
+                )
+            });
+            let first = self
+                .line_starts
+                .partition_point(|&at| at <= block.body.start)
+                .saturating_sub(1);
+            entry
+                .map(|entry| {
+                    self.layout
+                        .code_cache
+                        .line(entry, line_index - first, self.tokens)
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        let code = code.is_some();
+        let line_height = if code {
+            styles::CODE_LINE_HEIGHT
+        } else {
+            self.line_height
+        };
         let key = ParagraphKey {
             text: self.projection.text[range.clone()].to_owned(),
             marks,
             width: width.to_bits(),
             size: size.to_bits(),
-            line_height: self.line_height.to_bits(),
+            line_height: line_height.to_bits(),
             alignment,
             bold,
+            code,
+            syntax,
         };
         let cached = self
             .layout
@@ -1052,8 +1152,18 @@ impl Builder<'_> {
             .or_else(|| self.previous.remove(&key))
             .unwrap_or_else(|| {
                 let mut spans = Vec::<text::Span<'_>>::new();
+                let mut inline_spans = Vec::new();
                 let mut start = 0;
-                for (mark, style) in &key.marks {
+                for run in &key.syntax {
+                    let [r, g, b, a] = run.color;
+                    spans.push(
+                        text::Span::new(&key.text[run.range.clone()])
+                            .font(run.font)
+                            .color(iced::Color::from_rgba8(r, g, b, a as f32 / 255.0)),
+                    );
+                    start = run.range.end;
+                }
+                for (mark, style) in key.marks.iter().filter(|_| key.syntax.is_empty()) {
                     if mark.start > start {
                         spans.push(text::Span::new(&key.text[start..mark.start]));
                     }
@@ -1061,12 +1171,17 @@ impl Builder<'_> {
                         Style(style.0 | if bold { Style::BOLD } else { 0 }),
                         self.tokens,
                     );
+                    if style.contains(Style::CODE) && !style.contains(Style::SYNTAX) {
+                        inline_spans.push(spans.len());
+                    }
                     spans.push(
                         text::Span::new(&key.text[mark.clone()])
                             .font_maybe(format.font)
                             .color_maybe(format.color)
                             .size(if style.contains(Style::SYNTAX) {
                                 self.size * 0.8
+                            } else if style.contains(Style::CODE) {
+                                styles::code_size(size)
                             } else {
                                 size
                             }),
@@ -1080,18 +1195,18 @@ impl Builder<'_> {
                     content: spans.as_slice(),
                     bounds: Size::new(width.max(1.0), f32::INFINITY),
                     size: size.into(),
-                    line_height: text::LineHeight::Relative(if bold {
-                        1.3
-                    } else {
-                        self.line_height
-                    }),
+                    line_height: text::LineHeight::Relative(if bold { 1.3 } else { line_height }),
                     font: Font {
                         weight: if bold {
                             iced::font::Weight::Bold
                         } else {
                             iced::font::Weight::Normal
                         },
-                        ..styles::BODY_FONT
+                        ..if code {
+                            Font::MONOSPACE
+                        } else {
+                            styles::BODY_FONT
+                        }
                     },
                     align_x: match alignment {
                         1 => text::Alignment::Center,
@@ -1140,17 +1255,30 @@ impl Builder<'_> {
                         height: run.line_height,
                     });
                 }
-                Arc::new(CachedParagraph { paragraph, rows })
+                let inline_code = inline_spans
+                    .into_iter()
+                    .flat_map(|index| paragraph.span_bounds(index))
+                    .collect();
+                Arc::new(CachedParagraph {
+                    paragraph,
+                    rows,
+                    inline_code,
+                })
             });
         let paragraph = &cached.paragraph;
         let height = paragraph
             .min_height()
-            .max(size * if bold { 1.3 } else { self.line_height });
+            .max(size * if bold { 1.3 } else { line_height });
         let origin = Rectangle::new(position, Size::new(width, height)).anchor(
             paragraph.min_bounds(),
             paragraph.align_x(),
             paragraph.align_y(),
         );
+        for bounds in &cached.inline_code {
+            self.layout
+                .decorations
+                .push((*bounds + (origin - Point::ORIGIN), Decoration::InlineCode));
+        }
         for row in &cached.rows {
             self.layout.rows.push(VisualRow {
                 display_range: range.start + row.range.start..range.start + row.range.end,
@@ -1232,6 +1360,82 @@ mod tests {
     use super::*;
     use crate::io::image_store::ImageStore;
     use crate::theme::Preset;
+
+    #[test]
+    fn code_rows_keep_blank_line_height_wrapping_and_source_hits() {
+        let source = "Before `inline`\n\n```rust\nlet café = \"a long string that wraps over several rows\";\n\nnext();\n```\n\nAfter";
+        let (projection, layout) = layout(source, 210.0);
+        let block = &projection.rich.code_blocks[0];
+        assert_eq!(
+            layout
+                .fragments
+                .iter()
+                .filter(|fragment| matches!(fragment.kind, FragmentKind::CodeHeader { .. }))
+                .count(),
+            1
+        );
+        let blank = source.find("\n\nnext").unwrap() + 1;
+        let blank = layout.source_caret(blank, None);
+        let next = layout.source_caret(source.find("next").unwrap(), None);
+        assert!((blank.height - next.height).abs() < 0.01);
+        assert!((blank.height - styles::code_size(18.0) * styles::CODE_LINE_HEIGHT).abs() < 0.01);
+        assert!(
+            layout
+                .rows
+                .iter()
+                .filter(|row| block.body.start <= row.display_range.start
+                    && row.display_range.end <= block.body.end)
+                .count()
+                > 4
+        );
+        for word in ["let", "café", "string", "several", "next"] {
+            let at = source.find(word).unwrap();
+            let caret = layout.source_caret(at, None);
+            assert_eq!(
+                layout
+                    .hit_source_with_row(Point::new(caret.x + 0.1, caret.center_y()))
+                    .0,
+                at,
+                "{word}"
+            );
+        }
+        let selected = Selection {
+            anchor: block.source_body.start,
+            head: block.source_body.end,
+        };
+        assert_eq!(
+            layout.source_selection_rects(selected),
+            layout.source_selection_rects(Selection {
+                anchor: selected.head,
+                head: selected.anchor
+            })
+        );
+        assert!(
+            layout
+                .decorations
+                .iter()
+                .any(|(_, kind)| matches!(kind, Decoration::InlineCode))
+        );
+    }
+
+    #[test]
+    fn empty_code_has_a_full_height_content_row_inside_its_surface() {
+        let (projection, layout) = layout("Before\n\n```rust\n```\n\nAfter", 400.0);
+        let block = &projection.rich.code_blocks[0];
+        let row = layout
+            .rows
+            .iter()
+            .find(|row| row.display_range.start == block.body.start)
+            .unwrap();
+        assert!(
+            (row.bounds.height - styles::code_size(18.0) * styles::CODE_LINE_HEIGHT).abs() < 0.01
+        );
+        assert!(layout.decorations.iter().any(|(bounds, kind)| matches!(
+            kind,
+            Decoration::Code { last: true, .. }
+        )
+            && bounds.contains(row.bounds.center())));
+    }
 
     fn layout(source: &str, width: f32) -> (Projection, RichLayout) {
         let projection = Projection::new(source);

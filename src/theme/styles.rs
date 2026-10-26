@@ -10,6 +10,25 @@ pub const BODY_FONT: Font = Font {
     ..Font::DEFAULT
 };
 
+pub const CODE_LINE_HEIGHT: f32 = 1.5;
+
+pub fn code_size(body_size: f32) -> f32 {
+    body_size * 0.82
+}
+
+pub fn code_surface(tokens: Tokens) -> container::Style {
+    container::Style {
+        background: Some(tokens.code.into()),
+        text_color: Some(tokens.text),
+        border: Border {
+            color: tokens.border,
+            width: 1.0,
+            radius: 8.0.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
 pub fn heading_size(body_size: f32, level: u8) -> f32 {
     body_size
         * match level {
@@ -183,7 +202,7 @@ pub fn markdown_settings(theme: &ResolvedTheme) -> markdown::Settings {
     let mut style = markdown::Style::from(&theme.iced);
     style.font = BODY_FONT;
     style.link_color = tokens.accent;
-    style.inline_code_color = tokens.accent;
+    style.inline_code_color = tokens.text;
     style.inline_code_highlight = markdown::Highlight {
         background: tokens.code.into(),
         border: Border {
@@ -199,7 +218,7 @@ pub fn markdown_settings(theme: &ResolvedTheme) -> markdown::Settings {
     settings.h4_size = heading_size(theme.typography.body_size, 4).into();
     settings.h5_size = heading_size(theme.typography.body_size, 5).into();
     settings.h6_size = heading_size(theme.typography.body_size, 6).into();
-    settings.code_size = 14.0.into();
+    settings.code_size = code_size(theme.typography.body_size).into();
     settings.spacing = 12.0.into();
     settings
 }
@@ -210,7 +229,10 @@ pub fn inline_format(
 ) -> iced::advanced::text::highlighter::Format<Font> {
     use crate::document::projection::Style;
     use iced::advanced::text::highlighter::Format;
-    let base = if style.contains(Style::CODE) || style.contains(Style::SYNTAX) {
+    let base = if style.contains(Style::CODE)
+        || style.contains(Style::CODE_BLOCK)
+        || style.contains(Style::SYNTAX)
+    {
         Font::MONOSPACE
     } else {
         BODY_FONT
@@ -231,7 +253,7 @@ pub fn inline_format(
         }),
         color: Some(if style.contains(Style::SYNTAX) {
             tokens.muted
-        } else if style.contains(Style::LINK) || style.contains(Style::CODE) {
+        } else if style.contains(Style::LINK) {
             tokens.accent
         } else if style.contains(Style::MUTED) {
             tokens.muted

@@ -3,6 +3,7 @@
 use crate::document::collaboration::{
     AgentProposal, Collaboration, CollaborationError, EditOrigin, ReplicaState, SourceEdit,
 };
+use std::cell::OnceCell;
 use std::collections::VecDeque;
 use std::ops::Range;
 
@@ -15,7 +16,7 @@ use crate::document::selection::Selection;
 #[derive(Debug)]
 pub struct Block {
     pub range: Range<usize>,
-    pub rendered: Vec<markdown::Item>,
+    rendered: OnceCell<Vec<markdown::Item>>,
     pub heading: Option<(usize, String)>,
     words: usize,
     characters: usize,
@@ -67,6 +68,14 @@ impl Document {
 
     pub fn block_source(&self, index: usize) -> &str {
         &self.source[self.blocks[index].range.clone()]
+    }
+
+    /// Read view has its own syntax highlighter. Build it only on demand and
+    /// invalidate it together with the parsed block containing the source edit.
+    pub fn rendered(&self, index: usize) -> &[markdown::Item] {
+        self.blocks[index]
+            .rendered
+            .get_or_init(|| markdown::parse(self.block_source(index)).collect())
     }
 
     pub fn from_state(state: &ReplicaState) -> Result<Self, CollaborationError> {
@@ -551,7 +560,7 @@ fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
     }
     Block {
         range,
-        rendered: markdown::parse(source).collect(),
+        rendered: OnceCell::new(),
         heading,
         words: plain.split_whitespace().count(),
         characters: source.chars().count(),
@@ -562,6 +571,27 @@ fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
 #[cfg(test)]
 mod tests {
     use super::Document;
+
+    #[test]
+    fn reading_cache_is_lazy_retains_unchanged_blocks_and_invalidates_code_edits() {
+        let mut document = Document::new("Before\n\n```rust\nlet value = 1;\n```\n\nAfter".into());
+        assert!(
+            document
+                .blocks
+                .iter()
+                .all(|block| block.rendered.get().is_none())
+        );
+        let index = document.block_at(document.source().find("let value").unwrap());
+        let cached = document.rendered(index).as_ptr();
+        document.replace(1..1, "x").unwrap();
+        assert_eq!(document.rendered(index).as_ptr(), cached);
+        let at = document.source().find("value").unwrap();
+        document.replace(at..at + 5, "changed").unwrap();
+        assert!(document.blocks[index].rendered.get().is_none());
+        assert!(
+            matches!(&document.rendered(index)[0], iced::widget::markdown::Item::CodeBlock { code, .. } if code.contains("let changed"))
+        );
+    }
 
     fn assert_full(document: &Document) {
         let full = Document::new(document.source().into());
@@ -679,7 +709,8 @@ mod tests {
             document
                 .blocks
                 .iter()
-                .any(|block| !block.rendered.is_empty())
+                .enumerate()
+                .any(|(index, _)| !document.rendered(index).is_empty())
         );
     }
 

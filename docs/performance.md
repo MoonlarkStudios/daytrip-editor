@@ -1,5 +1,7 @@
 # Large-document performance baseline
 
+The [code editing and rendering report](code-editing.md) records the later code surfaces, lazy Read parsing, incremental syntax highlighting, and matched 10k/50k-block validation.
+
 Measured locally on 2026-10-22 with Rust 1.95.0, Iced 0.14, macOS/Apple silicon, release optimization, and the bundled Newsreader fonts. This records the current validated editor before organizational refactoring.
 
 The latest stage is [incremental offline imports](offline-imports.md), following [cached Yrs UTF-16 traversal](utf16-performance.md) and [the CRDT foundation](crdt-performance.md). Earlier stages remain below for historical comparison.

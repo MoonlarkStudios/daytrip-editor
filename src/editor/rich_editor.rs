@@ -193,6 +193,8 @@ impl<'a> RichEditor<'a> {
                     selected.start <= image.range.start && selected.end >= image.range.end
                 }) || self.projection.rich.tables.iter().any(|table| {
                     selected.start <= table.range.start && selected.end >= table.range.end
+                }) || self.projection.rich.code_blocks.iter().any(|block| {
+                    selected.start <= block.range.start && selected.end >= block.range.end
                 });
                 let copied = if has_object && !selected.is_empty() {
                     let mut range = if selected == (0..self.projection.text.len()) {
@@ -204,6 +206,12 @@ impl<'a> RichEditor<'a> {
                         if selected.start <= table.range.start && selected.end >= table.range.end {
                             range.start = range.start.min(table.source_range.start);
                             range.end = range.end.max(table.source_range.end);
+                        }
+                    }
+                    for block in &self.projection.rich.code_blocks {
+                        if selected.start <= block.range.start && selected.end >= block.range.end {
+                            range.start = range.start.min(block.source_range.start);
+                            range.end = range.end.max(block.source_range.end);
                         }
                     }
                     Some(self.source[range].to_owned())
@@ -339,6 +347,7 @@ struct State {
     last_selection: Option<Selection>,
     blink_started: Option<Instant>,
     now: Option<Instant>,
+    copied_code: Option<(usize, Instant)>,
 }
 
 struct LayoutKey {
@@ -637,6 +646,21 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if let Some(position) = cursor.position_in(bounds) {
+                    if let Some(block) =
+                        code_copy_at(state, position + Vector::new(0.0, state.scroll), self.zoom)
+                    {
+                        if let Some(block) = self.projection.rich.code_blocks.get(block) {
+                            clipboard.write(
+                                iced::advanced::clipboard::Kind::Standard,
+                                block.text.as_ref().clone(),
+                            );
+                            state.copied_code = Some((block.source_range.start, Instant::now()));
+                            shell.request_redraw();
+                            shell.request_redraw_at(Instant::now() + Duration::from_secs(2));
+                        }
+                        shell.capture_event();
+                        return;
+                    }
                     if state.preedit.as_ref().is_none_or(|p| p.content.is_empty()) {
                         state.composition_target = None;
                     }
@@ -655,10 +679,31 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         return;
                     }
                     let click = mouse::Click::new(position, mouse::Button::Left, state.last_click);
-                    let (head, y) = state
+                    let (mut head, y) = state
                         .rich
                         .resident()
                         .hit_source_with_row(position + Vector::new(0.0, state.scroll));
+                    let point = position + Vector::new(0.0, state.scroll);
+                    if let Some(block) = state
+                        .rich
+                        .resident()
+                        .visible_fragments(point.y..point.y)
+                        .find_map(|fragment| {
+                            self.projection
+                                .rich
+                                .code_line(&fragment.range)
+                                .map(|(_, block)| block)
+                                .filter(|block| {
+                                    block.fenced
+                                        && block.source_body.is_empty()
+                                        && fragment.range.start == block.body.start
+                                        && fragment.bounds.contains(point)
+                                        && matches!(fragment.kind, FragmentKind::Text { .. })
+                                })
+                        })
+                    {
+                        head = block.source_body.start;
+                    }
                     state.set_visual_cursor(head, y);
                     let anchor = if state.modifiers.shift() {
                         self.source_selection.anchor
@@ -897,7 +942,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         _theme: &Theme,
         _style: &renderer::Style,
         layout: Layout<'_>,
-        _cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
         let state = tree.state.downcast_ref::<State>();
@@ -916,6 +961,25 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     continue;
                 }
                 let (background, border) = match kind {
+                    Decoration::Code { first, last } => (
+                        tokens.code,
+                        iced::Border {
+                            radius: iced::border::Radius {
+                                top_left: if *first { 8.0 } else { 0.0 },
+                                top_right: if *first { 8.0 } else { 0.0 },
+                                bottom_left: if *last { 8.0 } else { 0.0 },
+                                bottom_right: if *last { 8.0 } else { 0.0 },
+                            },
+                            ..iced::Border::default()
+                        },
+                    ),
+                    Decoration::InlineCode => (
+                        tokens.code,
+                        iced::Border {
+                            radius: 3.0.into(),
+                            ..iced::Border::default()
+                        },
+                    ),
                     Decoration::Header => (tokens.surface, iced::Border::default()),
                     Decoration::Border => (
                         iced::Color::TRANSPARENT,
@@ -933,6 +997,30 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         ..renderer::Quad::default()
                     },
                     background,
+                );
+            }
+            if state.focused
+                && self.source_selection.is_caret()
+                && self
+                    .projection
+                    .rich
+                    .source_code_at(self.source_selection.head)
+                    .is_some_and(|block| block.source_body.contains(&self.source_selection.head))
+            {
+                let caret = state.caret(self.source_selection.head);
+                renderer.fill_quad(
+                    renderer::Quad {
+                        bounds: Rectangle::new(
+                            Point::new(8.0 * self.zoom, caret.y),
+                            Size::new((bounds.width - 16.0 * self.zoom).max(1.0), caret.height),
+                        ) + translation,
+                        border: iced::Border {
+                            radius: 3.0.into(),
+                            ..iced::Border::default()
+                        },
+                        ..renderer::Quad::default()
+                    },
+                    tokens.accent_soft.scale_alpha(0.5),
                 );
             }
             if state.focused {
@@ -956,10 +1044,125 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     continue;
                 }
                 match &fragment.kind {
+                    FragmentKind::CodeHeader { block } => {
+                        if let Some(block) = self.projection.rich.code_blocks.get(*block) {
+                            let copied = state.copied_code.is_some_and(|(at, time)| {
+                                at == block.source_range.start
+                                    && time.elapsed() < Duration::from_secs(2)
+                            });
+                            let button = code_copy_bounds(rect, self.zoom);
+                            let hovered = cursor
+                                .position()
+                                .is_some_and(|point| button.contains(point));
+                            if hovered || copied {
+                                renderer.fill_quad(
+                                    renderer::Quad {
+                                        bounds: button,
+                                        border: iced::Border {
+                                            radius: 5.0.into(),
+                                            ..iced::Border::default()
+                                        },
+                                        ..renderer::Quad::default()
+                                    },
+                                    tokens.accent_soft,
+                                );
+                            }
+                            for (label, point, color) in [
+                                (
+                                    if block.language.is_empty() {
+                                        "Plain text"
+                                    } else {
+                                        &block.language
+                                    },
+                                    Point::new(rect.x + 16.0 * self.zoom, rect.y + 9.0 * self.zoom),
+                                    tokens.muted,
+                                ),
+                                (
+                                    if copied { "Copied" } else { "Copy" },
+                                    Point::new(
+                                        button.x + 12.0 * self.zoom,
+                                        rect.y + 9.0 * self.zoom,
+                                    ),
+                                    if hovered || copied {
+                                        tokens.accent
+                                    } else {
+                                        tokens.muted
+                                    },
+                                ),
+                            ] {
+                                renderer.fill_text(
+                                    text::Text {
+                                        content: label.into(),
+                                        bounds: Size::new(
+                                            (button.x - rect.x - 24.0 * self.zoom).max(1.0),
+                                            rect.height,
+                                        ),
+                                        size: (11.0 * self.zoom).into(),
+                                        font: iced::Font::MONOSPACE,
+                                        line_height: text::LineHeight::Relative(1.2),
+                                        align_x: text::Alignment::Default,
+                                        align_y: iced::alignment::Vertical::Top,
+                                        shaping: text::Shaping::Advanced,
+                                        wrapping: text::Wrapping::None,
+                                    },
+                                    point,
+                                    color,
+                                    clip,
+                                );
+                            }
+                            renderer.fill_quad(
+                                renderer::Quad {
+                                    bounds: Rectangle::new(
+                                        Point::new(
+                                            rect.x + 12.0 * self.zoom,
+                                            rect.y + rect.height - 1.0,
+                                        ),
+                                        Size::new((rect.width - 24.0 * self.zoom).max(1.0), 1.0),
+                                    ),
+                                    ..renderer::Quad::default()
+                                },
+                                tokens.border.scale_alpha(0.5),
+                            );
+                        }
+                    }
                     FragmentKind::Text {
                         paragraph, origin, ..
                     } => {
-                        renderer.fill_paragraph(paragraph, *origin + translation, tokens.text, clip)
+                        renderer.fill_paragraph(
+                            paragraph,
+                            *origin + translation,
+                            tokens.text,
+                            clip,
+                        );
+                        if self.projection.rich.code_line(&fragment.range).is_some_and(
+                            |(_, block)| {
+                                block.fenced
+                                    && block.source_body.is_empty()
+                                    && fragment.range.start == block.body.start
+                            },
+                        ) {
+                            renderer.fill_text(
+                                text::Text {
+                                    content: "Start coding…".into(),
+                                    bounds: rect.size(),
+                                    size: crate::theme::styles::code_size(
+                                        self.theme.typography.body_size * self.zoom,
+                                    )
+                                    .into(),
+                                    font: iced::Font::MONOSPACE,
+                                    line_height: text::LineHeight::Relative(
+                                        crate::theme::styles::CODE_LINE_HEIGHT,
+                                    ),
+                                    align_x: text::Alignment::Default,
+                                    align_y: iced::alignment::Vertical::Top,
+                                    shaping: text::Shaping::Advanced,
+                                    wrapping: text::Wrapping::None,
+                                },
+                                *origin + translation,
+                                tokens.muted,
+                                clip,
+                            );
+                        }
                     }
                     FragmentKind::Image { handle, label } => {
                         renderer.fill_quad(
@@ -1073,7 +1276,9 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         _renderer: &Renderer,
     ) -> mouse::Interaction {
         let state = tree.state.downcast_ref::<State>();
-        if state.scroll_drag.is_some()
+        if cursor.position_in(layout.bounds()).is_some_and(|position| {
+            code_copy_at(state, position + Vector::new(0.0, state.scroll), self.zoom).is_some()
+        }) || state.scroll_drag.is_some()
             || cursor
                 .position_in(layout.bounds())
                 .is_some_and(|p| p.x >= layout.bounds().width - 10.0)
@@ -1086,6 +1291,29 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             mouse::Interaction::None
         }
     }
+}
+
+fn code_copy_bounds(header: Rectangle, zoom: f32) -> Rectangle {
+    Rectangle::new(
+        Point::new(header.x + header.width - 78.0 * zoom, header.y + 4.0 * zoom),
+        Size::new(66.0 * zoom, header.height - 8.0 * zoom),
+    )
+}
+
+fn code_copy_at(state: &State, point: Point, zoom: f32) -> Option<usize> {
+    state
+        .rich
+        .resident()
+        .visible_fragments(point.y..point.y)
+        .find_map(|fragment| {
+            if let FragmentKind::CodeHeader { block } = fragment.kind
+                && code_copy_bounds(fragment.bounds, zoom).contains(point)
+            {
+                Some(block)
+            } else {
+                None
+            }
+        })
 }
 
 impl<'a> From<RichEditor<'a>> for Element<'a, Message> {
@@ -1111,13 +1339,61 @@ mod tests {
                 self.0 = text;
             }
         }
-        let source = "# Heading\n\n| **A** | B |\n|---|---|\n| x | y |\n\n![alt](room.png)";
+        for source in [
+            "# Heading\n\n| **A** | B |\n|---|---|\n| x | y |\n\n![alt](room.png)",
+            "# Heading\n\n```rust\nlet café = 1;\n```\n\nAfter",
+        ] {
+            let projection = Projection::new(source);
+            let mut content = native_buffer::with_text(&projection.text);
+            content.perform(Action::SelectAll);
+            let theme = Preset::Paper.resolve();
+            let images = ImageStore::default();
+            let editor = RichEditor::new(
+                &content,
+                &projection,
+                source,
+                &theme,
+                &images,
+                Binding::from_key_press,
+            )
+            .selection(Selection {
+                anchor: 0,
+                head: source.len(),
+            });
+            let mut clipboard = ClipboardText(String::new());
+            editor.apply_binding(
+                Binding::Copy,
+                &mut State::default(),
+                &mut clipboard,
+                &mut Shell::new(&mut Vec::new()),
+                Size::new(640.0, 600.0),
+            );
+            assert_eq!(clipboard.0, source);
+        }
+    }
+
+    #[test]
+    fn code_copy_button_uses_normalized_content_without_moving_selection() {
+        #[derive(Default)]
+        struct CodeClipboard(String);
+        impl Clipboard for CodeClipboard {
+            fn read(&self, _: iced::advanced::clipboard::Kind) -> Option<String> {
+                None
+            }
+            fn write(&mut self, _: iced::advanced::clipboard::Kind, text: String) {
+                self.0 = text;
+            }
+        }
+        let source = "Before\n\n```rust\r\nlet café = \"🦀\";\r\n```\r\n\nAfter";
         let projection = Projection::new(source);
-        let mut content = native_buffer::with_text(&projection.text);
-        content.perform(Action::SelectAll);
+        let content = native_buffer::with_text(&projection.text);
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
-        let editor = RichEditor::new(
+        let selection = Selection {
+            anchor: source.len(),
+            head: 0,
+        };
+        let mut editor = RichEditor::new(
             &content,
             &projection,
             source,
@@ -1125,19 +1401,43 @@ mod tests {
             &images,
             Binding::from_key_press,
         )
-        .selection(Selection {
-            anchor: 0,
-            head: source.len(),
-        });
-        let mut clipboard = ClipboardText(String::new());
-        editor.apply_binding(
-            Binding::Copy,
-            &mut State::default(),
+        .selection(selection);
+        let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+            iced::Font::DEFAULT,
+            18.0.into(),
+        ));
+        let mut tree = widget::Tree::new(&editor as &dyn Widget<Message, Theme, Renderer>);
+        let size = Size::new(640.0, 600.0);
+        let node = editor.layout(&mut tree, &renderer, &layout::Limits::new(Size::ZERO, size));
+        let header = tree
+            .state
+            .downcast_ref::<State>()
+            .rich
+            .resident()
+            .fragments
+            .iter()
+            .find(|fragment| matches!(fragment.kind, FragmentKind::CodeHeader { .. }))
+            .unwrap()
+            .bounds;
+        let mut clipboard = CodeClipboard::default();
+        let mut messages = Vec::new();
+        editor.update(
+            &mut tree,
+            &Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+            Layout::new(&node),
+            mouse::Cursor::Available(code_copy_bounds(header, 1.0).center()),
+            &renderer,
             &mut clipboard,
-            &mut Shell::new(&mut Vec::new()),
-            Size::new(640.0, 600.0),
+            &mut Shell::new(&mut messages),
+            &Rectangle::with_size(size),
         );
-        assert_eq!(clipboard.0, source);
+        assert_eq!(clipboard.0, "let café = \"🦀\";\n");
+        assert!(messages.is_empty());
+        assert_eq!(
+            tree.state.downcast_ref::<State>().last_selection,
+            Some(selection)
+        );
+        assert!(tree.state.downcast_ref::<State>().copied_code.is_some());
     }
 
     #[test]

@@ -94,9 +94,11 @@ impl Projection {
                 new: final_start..final_start + local.text.len(),
             };
             if local.rich.headings.is_empty()
+                && local.rich.code_blocks.is_empty()
                 && local.rich.tables.is_empty()
                 && local.rich.images.is_empty()
                 && parsed.rich.headings.is_empty()
+                && parsed.rich.code_blocks.is_empty()
                 && parsed.rich.tables.is_empty()
                 && parsed.rich.images.is_empty()
                 && self.text[display.clone()].ends_with('\n')

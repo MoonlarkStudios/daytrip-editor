@@ -1,0 +1,2 @@
+a64dd586a699c4cc7d335de301f442fb921fb67cc834d264a2054fd13b584ea3  target/release/still
+63250f151c4b143d0e24f10b82fa5d58e2e7b26797eaf88686d1adea3de6b3bc  target/release/deps/still-ff9e53293a28590a

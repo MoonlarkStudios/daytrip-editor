@@ -253,6 +253,112 @@ fn load_profile_fonts() {
 }
 
 #[test]
+#[ignore = "render code surfaces for visual inspection without opening user documents"]
+fn code_surface_previews() {
+    load_profile_fonts();
+    for preset in Preset::ALL {
+        let source = include_str!("../../tests/fixtures/code-editing.md");
+        let mut harness = Harness::new(source.into());
+        harness.app.resolved_theme = preset.resolve();
+        let at = source.find("let message").unwrap() + 4;
+        harness.message(Message::SelectSource(Selection::caret(at)));
+        image::save_buffer(
+            format!("/tmp/still-code-{}.png", preset.name()),
+            harness.pixels.data(),
+            harness.pixels.width(),
+            harness.pixels.height(),
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        let items = iced::widget::markdown::parse(source).collect::<Vec<_>>();
+        let viewer = crate::editor::markdown_view::MarkdownView {
+            tokens: harness.app.resolved_theme.tokens,
+            block: 0,
+            base: None,
+            line_height: harness.app.resolved_theme.typography.line_height,
+            task: std::cell::Cell::new(0),
+        };
+        let mut reader = iced::widget::markdown::view_with(
+            &items,
+            crate::theme::styles::markdown_settings(&harness.app.resolved_theme),
+            &viewer,
+        );
+        let mut tree = widget::Tree::new(reader.as_widget());
+        let size = Size::new(720.0, 800.0);
+        let clip = Rectangle::with_size(size);
+        let node = reader.as_widget_mut().layout(
+            &mut tree,
+            &harness.renderer,
+            &layout::Limits::new(Size::ZERO, size),
+        );
+        harness.renderer.reset(clip);
+        reader.as_widget().draw(
+            &tree,
+            &mut harness.renderer,
+            &harness.app.theme(),
+            &renderer::Style {
+                text_color: viewer.tokens.text,
+            },
+            Layout::new(&node),
+            mouse::Cursor::Unavailable,
+            &clip,
+        );
+        if let Renderer::Secondary(renderer) = &mut harness.renderer {
+            renderer.draw(
+                &mut harness.pixels.as_mut(),
+                &mut harness.mask,
+                &harness.viewport,
+                &[clip],
+                viewer.tokens.canvas,
+            );
+        }
+        image::save_buffer(
+            format!("/tmp/still-code-read-{}.png", preset.name()),
+            harness.pixels.data(),
+            harness.pixels.width(),
+            harness.pixels.height(),
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    }
+}
+
+#[test]
+#[ignore = "run with mise run bench; long code block editing through software rasterization"]
+fn performance_code_editor() {
+    load_profile_fonts();
+    let code = (0..2000)
+        .map(|i| format!("    let item_{i} = \"value 🦀\";\n"))
+        .collect::<String>();
+    let mut harness = Harness::new(format!(
+        "Before\n\n```rust\nfn main() {{\n{code}}}\n```\n\nAfter"
+    ));
+    let at = harness.app.document.source().find("item_1000").unwrap() + 5;
+    harness.message(Message::SelectSource(Selection::caret(at)));
+    harness.event(
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+        Point::new(100.0, 300.0),
+    );
+    harness.message(Message::SelectSource(Selection::caret(at)));
+    let mut samples = Vec::new();
+    for _ in 0..20 {
+        samples.push(harness.event(typing_event(), Point::new(100.0, 300.0)));
+    }
+    assert!(
+        harness
+            .app
+            .document
+            .source()
+            .contains(&format!("item_{}1000", "x".repeat(20)))
+    );
+    report("code/typing-middle-2000-lines", &samples);
+    println!(
+        "code/layout_counts={:?}",
+        RichEditor::profile_stats(&harness.tree)
+    );
+}
+
+#[test]
 #[ignore = "run with mise run profile; large documents and software rasterization"]
 fn large_document_interactions() {
     load_profile_fonts();

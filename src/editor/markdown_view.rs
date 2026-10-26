@@ -3,8 +3,10 @@
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
 
-use iced::widget::{checkbox, column, container, image, markdown, rich_text, row, rule, text};
-use iced::{Alignment, Border, Element, Fill, Font};
+use iced::widget::{
+    button, checkbox, column, container, image, markdown, rich_text, row, rule, space, text,
+};
+use iced::{Alignment, Element, Fill, Font};
 
 use crate::app::Message;
 use crate::theme::Tokens;
@@ -74,37 +76,75 @@ impl<'a> markdown::Viewer<'a, Message> for MarkdownView {
 
     fn code_block(
         &self,
-        _settings: markdown::Settings,
+        settings: markdown::Settings,
         language: Option<&'a str>,
         code: &'a str,
-        _lines: &'a [markdown::Text],
+        lines: &'a [markdown::Text],
     ) -> Element<'a, Message> {
         let tokens = self.tokens;
-        // Highlighting is cached by the Markdown parser. The source editor also
-        // supplies interactive syntax highlighting; a semantic monochrome code
-        // surface keeps custom themes fully in control of rendered contrast.
+        let mut content = column![].spacing(0);
+        if lines.is_empty() {
+            content = content.push(
+                text(code.strip_suffix('\n').unwrap_or(code))
+                    .font(Font::MONOSPACE)
+                    .size(settings.code_size),
+            );
+        } else {
+            for line in lines {
+                let spans = line
+                    .spans(settings.style)
+                    .iter()
+                    .cloned()
+                    .map(|mut span| {
+                        span.font = Some(span.font.unwrap_or(Font::MONOSPACE));
+                        span.color = Some(super::code_highlight::legible(
+                            span.color.unwrap_or(tokens.text),
+                            tokens,
+                        ));
+                        span
+                    })
+                    .collect::<Vec<_>>();
+                content = content.push(
+                    rich_text(spans)
+                        .font(Font::MONOSPACE)
+                        .size(settings.code_size)
+                        .line_height(iced::widget::text::LineHeight::Relative(
+                            styles::CODE_LINE_HEIGHT,
+                        )),
+                );
+            }
+        }
         container(
             column![
-                text(language.unwrap_or("code"))
-                    .size(10)
-                    .color(tokens.muted),
-                text(code.trim_end_matches('\n'))
+                row![
+                    text(
+                        language
+                            .filter(|lang| !lang.is_empty())
+                            .unwrap_or("Plain text")
+                    )
                     .font(Font::MONOSPACE)
-                    .size(14)
-                    .color(tokens.text)
+                    .size(11)
+                    .color(tokens.muted),
+                    space::horizontal(),
+                    button(text("Copy").size(11))
+                        .on_press(Message::CopyCode(code.into()))
+                        .padding([5, 12])
+                        .style(styles::button_style(tokens, styles::Button::Quiet))
+                ]
+                .align_y(Alignment::Center),
+                rule::horizontal(1).style(move |_| rule::Style {
+                    color: tokens.border.scale_alpha(0.5),
+                    snap: true,
+                    radius: 0.0.into(),
+                    fill_mode: rule::FillMode::Full
+                }),
+                content
             ]
-            .spacing(12),
+            .spacing(10),
         )
-        .padding(20)
+        .padding([12, 16])
         .width(Fill)
-        .style(move |_| container::Style {
-            background: Some(tokens.code.into()),
-            border: Border {
-                radius: 7.0.into(),
-                ..Border::default()
-            },
-            ..container::Style::default()
-        })
+        .style(move |_| styles::code_surface(tokens))
         .into()
     }
 

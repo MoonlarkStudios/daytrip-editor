@@ -391,6 +391,16 @@ fn shift_range(range: &mut Range<usize>, delta: isize) {
 fn height_key(unit: &LayoutUnit, input: LayoutInput<'_>) -> u64 {
     let mut hash = DefaultHasher::new();
     input.projection.text[unit.range.clone()].hash(&mut hash);
+    if let Some((_, block)) = input.projection.rich.code_line(&unit.range) {
+        block.language.hash(&mut hash);
+        (
+            unit.range.start <= block.range.start,
+            block.last_line(&unit.range),
+            block.fenced
+                && (unit.range.end < block.body.start || unit.range.start >= block.body.end),
+        )
+            .hash(&mut hash);
+    }
     match unit.kind {
         UnitKind::Line(level) => level.hash(&mut hash),
         UnitKind::TableRow { table, row } => {
@@ -422,6 +432,27 @@ fn height_key(unit: &LayoutUnit, input: LayoutInput<'_>) -> u64 {
 fn estimate(unit: &LayoutUnit, input: LayoutInput<'_>) -> f32 {
     let body = input.theme.typography.body_size * input.zoom;
     let line_height = input.theme.typography.line_height;
+    if matches!(unit.kind, UnitKind::Line(_))
+        && let Some((_, block)) = input.projection.rich.code_line(&unit.range)
+    {
+        let first = unit.range.start <= block.range.start;
+        let last = block.last_line(&unit.range);
+        let fence = block.fenced
+            && (unit.range.end < block.body.start || unit.range.start >= block.body.end);
+        let empty_body = block.body.is_empty() && unit.range.start == block.body.start;
+        let size = if fence && unit.range.is_empty() && !empty_body {
+            4.0 * input.zoom
+        } else {
+            styles::code_size(body)
+        };
+        let rows = (input.projection.text[unit.range.clone()].chars().count() as f32 * size * 0.6
+            / (input.width - 32.0 * input.zoom).max(1.0))
+        .ceil()
+        .max(1.0);
+        return rows * size * styles::CODE_LINE_HEIGHT
+            + if first { 34.0 * input.zoom } else { 0.0 }
+            + if last { 10.0 * input.zoom } else { 0.0 };
+    }
     let flow = |range: Range<usize>, size: f32, width: f32, bold: bool| {
         let characters = input.projection.text[range.clone()].chars().count();
         let rows = (characters as f32 * size * 0.5 / width.max(1.0))
@@ -502,7 +533,7 @@ mod tests {
     #[test]
     fn resident_geometry_and_selection_match_full_layout_after_distant_evictions() {
         let source = (0..150).map(|i| format!(
-            "## Heading {i}\n\nParagraph {i}: **bold words** and *café 🦀*, a [link](long/path), and enough words to wrap across a few rows.\n\n| Left | Right |\n|:---|---:|\n| word {i} | words which wrap over several lines |\n\n![image](missing.png)\n\n"
+            "## Heading {i}\n\nParagraph {i}: **bold words** and *café 🦀*, a [link](long/path), and enough words to wrap across a few rows.\n\n```rust\n/* comment\nstill comment */\n\nlet café = 42;\n```\n\n| Left | Right |\n|:---|---:|\n| word {i} | words which wrap over several lines |\n\n![image](missing.png)\n\n"
         )).collect::<String>();
         let projection = Projection::new(&source);
         let theme = Preset::Paper.resolve();

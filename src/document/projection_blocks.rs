@@ -127,9 +127,11 @@ impl Projection {
             display_length: self.text.len() - display.len() + local.text.len(),
         });
         let plain = local.rich.headings.is_empty()
+            && local.rich.code_blocks.is_empty()
             && local.rich.tables.is_empty()
             && local.rich.images.is_empty()
             && plan.rich.headings.is_empty()
+            && plan.rich.code_blocks.is_empty()
             && plan.rich.tables.is_empty()
             && plan.rich.images.is_empty();
         let mut region = shown.clone();
@@ -218,6 +220,7 @@ struct RichPlan {
     headings: Range<usize>,
     images: Range<usize>,
     tables: Range<usize>,
+    code_blocks: Range<usize>,
 }
 impl RichPlan {
     fn new(old: &RichDocument, c: &TextChange) -> Option<Self> {
@@ -225,6 +228,7 @@ impl RichPlan {
             headings: window(&old.headings, c, |h| h.range.clone())?,
             images: window(&old.images, c, |i| i.range.clone())?,
             tables: window(&old.tables, c, |t| t.range.clone())?,
+            code_blocks: window(&old.code_blocks, c, |b| b.range.clone())?,
         })
     }
     fn apply(
@@ -248,6 +252,23 @@ impl RichPlan {
             display,
             |i, a, b| translate(&mut i.range, a, b),
         );
+        let tail = self.code_blocks.start + local.code_blocks.len();
+        old.code_blocks.splice(
+            self.code_blocks,
+            local.code_blocks.into_iter().map(|mut block| {
+                translate(&mut block.range, 0, display.new.start);
+                translate(&mut block.body, 0, display.new.start);
+                translate(&mut block.source_range, 0, raw.new.start);
+                translate(&mut block.source_body, 0, raw.new.start);
+                block
+            }),
+        );
+        for block in &mut old.code_blocks[tail..] {
+            translate(&mut block.range, display.old.end, display.new.end);
+            translate(&mut block.body, display.old.end, display.new.end);
+            translate(&mut block.source_range, raw.old.end, raw.new.end);
+            translate(&mut block.source_body, raw.old.end, raw.new.end);
+        }
         // Table source cells and displayed cells use different coordinate systems.
         let tail = self.tables.start + local.tables.len();
         old.tables.splice(

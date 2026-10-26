@@ -1,6 +1,7 @@
 //! Authoritative source, selections, Markdown projection, and source edits.
 
 pub(crate) mod block_parser;
+pub(crate) mod code_edit;
 pub(crate) mod collaboration;
 mod collaboration_wire;
 pub(crate) mod projection;

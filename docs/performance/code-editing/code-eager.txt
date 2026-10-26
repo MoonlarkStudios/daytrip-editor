@@ -1,0 +1,16 @@
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 51.19s
+     Running unittests src/lib.rs (target/release/deps/still-ff9e53293a28590a)
+
+running 1 test
+test app::application::performance::performance_code_editor ... code/typing-middle-2000-lines n=20 input=0.004/0.006/0.007ms update=147.472/151.131/151.673ms crdt=0.028/0.042/0.120ms source=147.117/150.838/151.364ms adapters=0.276/0.301/0.321ms layout=145.676/147.098/147.406ms draw=0.005/0.009/0.010ms raster=2.166/2.349/2.458ms total=295.820/298.574/299.145ms (p50/p95/max)
+code/layout_counts=(111, 111)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 176 filtered out; finished in 6.38s
+
+     Running unittests src/main.rs (target/release/deps/still-50180676c3bc2d49)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

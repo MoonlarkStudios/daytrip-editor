@@ -22,7 +22,9 @@ Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` ca
 | `document/projection_disclosure.rs` | Line-scoped disclosure highlighting with shared unchanged styles |
 | `document/rich_document.rs` | Heading, table, and image metadata collected during projection parsing |
 | `document/table_edit.rs` | Cell-aware source edits and rectangular TSV paste |
+| `document/code_edit.rs` | Source-coordinate code indentation, newline handling, and fence-safe entry |
 | `editor/rich_layout.rs` | Cached shaped paragraphs and shared geometry for drawing, caret, hit testing, navigation |
+| `editor/code_highlight.rs` | Bounded, incremental grammar snapshots and theme-aware syntax runs |
 | `editor/virtual_layout.rs` | Lightweight height index, viewport materialization, geometry eviction, source jumps |
 | `editor/native_buffer.rs` | Standard Iced buffer ownership, deferred loading, physical line index and reusable text snapshot |
 | `editor/rich_editor.rs` | One live widget: focus, clipboard, mouse/keyboard selection, scrolling, IME |
@@ -36,6 +38,10 @@ Daytrip is one Cargo package, internally named `still`, with a thin `main.rs` ca
 | `io/collaboration_store.rs` | Checkpoints, recovery journal, file locks and offline interchange |
 
 Tests live beside private implementations. Shared Markdown inputs belong in `tests/fixtures/`; integration tests belong in `tests/` when they exercise a deliberate public API. Profiling remains a private application test so it can exercise the real event path without exporting editor internals.
+
+Code blocks retain source/display ranges, their language, and shared parser-normalized clipboard content. Fence boundaries come from CommonMark text events. Code controls stay outside the text buffer; code and surrounding prose retain one focus, selection, and undo history. Measured code paragraphs use monospace typography, soft wrapping, and full-height blank lines. Inline code backgrounds use the same shaped span bounds as caret geometry. The [code editing report](code-editing.md) describes editing behavior and validation.
+
+The optional Read representation is initialized lazily per parsed block. Unchanged blocks keep their cached Markdown widgets; editing a block invalidates its Read representation without running that renderer's syntax highlighter during Live editing. Live syntax highlighting retains grammar snapshots, rewinds around an edit, and parses through resident lines as needed. Bounded caches and input limits keep unusually large or long-line blocks editable with semantic monochrome text.
 
 ## Continuous editing
 

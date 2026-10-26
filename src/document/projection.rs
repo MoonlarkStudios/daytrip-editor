@@ -6,7 +6,7 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, Options, Parser, Tag};
 
 use crate::document::rich_document::RichDocument;
 use crate::document::selection::Selection;
@@ -21,6 +21,7 @@ impl Style {
     pub const LINK: u8 = 8;
     pub const MUTED: u8 = 16;
     pub const SYNTAX: u8 = 32;
+    pub const CODE_BLOCK: u8 = 64;
     pub fn contains(self, flag: u8) -> bool {
         self.0 & flag != 0
     }
@@ -111,6 +112,7 @@ struct Decoration {
 enum Concealment {
     Syntax,
     Heading,
+    CodeFence,
     Structural,
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -399,33 +401,11 @@ impl Projection {
                         style: Style::MUTED,
                     });
                 }
-                Event::Start(Tag::CodeBlock(kind)) => {
+                Event::Start(Tag::CodeBlock(_)) => {
                     in_code_block = true;
-                    if let CodeBlockKind::Fenced(_) = kind {
-                        let opening_end = raw.find('\n').unwrap_or(raw.len());
-                        hide(
-                            range.start
-                                ..range.start + raw[..opening_end].trim_end_matches('\r').len(),
-                            &mut decorations,
-                        );
-                        let trimmed = raw.trim_end_matches(['\r', '\n']);
-                        if let Some(last_line) = trimmed.rfind('\n') {
-                            let candidate = trimmed[last_line + 1..].trim();
-                            let marker =
-                                raw.trim_start().as_bytes().first().copied().unwrap_or(b'`');
-                            let count =
-                                candidate.bytes().take_while(|&byte| byte == marker).count();
-                            if count >= 3 && count == candidate.len() {
-                                hide(
-                                    range.start + last_line + 1..range.start + trimmed.len(),
-                                    &mut decorations,
-                                );
-                            }
-                        }
-                    }
                     marks.push(Mark {
                         range,
-                        style: Style::CODE,
+                        style: Style::CODE_BLOCK,
                     });
                 }
                 Event::Rule => decorations.push(Decoration {
@@ -433,7 +413,25 @@ impl Projection {
                     text: "────────────".into(),
                     kind: Concealment::Syntax,
                 }),
-                Event::End(pulldown_cmark::TagEnd::CodeBlock) => in_code_block = false,
+                Event::End(pulldown_cmark::TagEnd::CodeBlock) => {
+                    in_code_block = false;
+                    if let Some(block) = rich.code_blocks.last().filter(|block| block.fenced) {
+                        for fence in [
+                            block.source_range.start..block.source_body.start,
+                            block.source_body.end..block.source_range.end,
+                        ] {
+                            let end = fence.start
+                                + source[fence.clone()].trim_end_matches(['\r', '\n']).len();
+                            if fence.start < end {
+                                decorations.push(Decoration {
+                                    range: fence.start..end,
+                                    text: String::new(),
+                                    kind: Concealment::CodeFence,
+                                });
+                            }
+                        }
+                    }
+                }
                 Event::Start(Tag::Image { .. }) => link_depth += 1,
                 Event::End(pulldown_cmark::TagEnd::Link | pulldown_cmark::TagEnd::Image) => {
                     link_depth = link_depth.saturating_sub(1)
@@ -503,6 +501,21 @@ impl Projection {
             return Disclosure::default();
         };
         let mut ranges = Vec::new();
+        ranges.extend(
+            parsed
+                .decorations
+                .iter()
+                .filter(|decoration| {
+                    decoration.kind == Concealment::CodeFence
+                        && decoration.range.start <= caret
+                        && caret <= decoration.range.end
+                        && !parsed
+                            .rich
+                            .source_code_at(caret)
+                            .is_some_and(|block| block.fenced && block.source_body.end == caret)
+                })
+                .map(|decoration| decoration.range.clone()),
+        );
         let heading = parsed.rich.headings.iter().find(|heading| {
             let end = heading.range.start
                 + source[heading.range.clone()]

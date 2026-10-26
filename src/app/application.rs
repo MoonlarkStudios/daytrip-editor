@@ -97,6 +97,7 @@ pub enum Message {
     Writing(writing::Message),
     Recovery(recovery::Message),
     Edit(text_editor::Action),
+    CopyCode(String),
     CommitComposition {
         target: CompositionTarget,
         text: String,
@@ -613,6 +614,10 @@ impl App {
             }
 
             Message::Edit(action) => return self.edit(action),
+            Message::CopyCode(code) => {
+                self.notification = Some("Code copied".into());
+                return iced::clipboard::write(code);
+            }
             Message::Select(selection) => {
                 if self.mode == EditorMode::Live {
                     let selection = selection.clamp(&self.projection.text);
@@ -1101,6 +1106,40 @@ impl App {
             self.sync_editor();
         }
         let before = self.selection;
+        if let text_editor::Action::Edit(edit) = &action
+            && let Some(edit) = (self.mode == EditorMode::Live)
+                .then(|| {
+                    crate::document::code_edit::insert_at_fence(
+                        self.document.source(),
+                        &self.projection.rich,
+                        before,
+                        edit,
+                    )
+                })
+                .flatten()
+                .or_else(|| {
+                    crate::document::code_edit::edit(
+                        self.document.source(),
+                        &self.projection.rich,
+                        before,
+                        edit,
+                    )
+                })
+        {
+            if self.document.source().len() - edit.range.len() + edit.text.len()
+                <= storage::MAX_FILE_BYTES as usize
+            {
+                self.document.break_history_group();
+                self.commit_local(edit.range, &edit.text, before, edit.selection);
+                self.selection = edit.selection;
+                self.sync_editor();
+                self.changed();
+                self.document.break_history_group();
+            } else {
+                self.notification = Some("The editor supports documents up to 16 MiB.".into());
+            }
+            return Task::none();
+        }
         if self.mode == EditorMode::Live
             && let Some((table, row, column)) = table_edit::cell_at(&self.projection, before)
         {
@@ -1185,10 +1224,7 @@ impl App {
             let line_end = source[before.head..]
                 .find('\n')
                 .map_or(source.len(), |i| before.head + i);
-            let in_code = self.document.blocks[self.document.block_at(before.head)]
-                .rendered
-                .iter()
-                .any(|item| matches!(item, markdown::Item::CodeBlock { .. }));
+            let in_code = self.projection.rich.source_code_at(before.head).is_some();
             if !in_code && let Some(prefix) = block_prefix(&source[line_start..line_end]) {
                 let display = self.projection.to_display(before.head);
                 if matches!(
@@ -2112,8 +2148,10 @@ impl App {
         settings.h4_size = (settings.h4_size.0 * self.zoom).into();
         settings.h5_size = (settings.h5_size.0 * self.zoom).into();
         settings.h6_size = (settings.h6_size.0 * self.zoom).into();
-        for (index, block) in self.document.blocks.iter().enumerate() {
-            let rendered: Element<'_, Message> = if block.rendered.is_empty() {
+        settings.code_size = (settings.code_size.0 * self.zoom).into();
+        for (index, _) in self.document.blocks.iter().enumerate() {
+            let items = self.document.rendered(index);
+            let rendered: Element<'_, Message> = if items.is_empty() {
                 text(self.document.block_source(index))
                     .font(styles::BODY_FONT)
                     .size(18)
@@ -2121,7 +2159,7 @@ impl App {
                     .into()
             } else {
                 markdown::view_with(
-                    &block.rendered,
+                    items,
                     settings,
                     &MarkdownView {
                         tokens,
@@ -2900,6 +2938,62 @@ mod tests {
         let (mut app, _task) = App::new();
         app.set_document(source.into(), None, "Test.md".into());
         app
+    }
+    #[test]
+    fn code_edits_preserve_source_selection_and_atomic_history_in_both_modes() {
+        for mode in [EditorMode::Live, EditorMode::Source] {
+            let source = "Before\n\n```rust\nfn main() {}\n```\n\nAfter";
+            let mut app = app(source);
+            app.mode = mode;
+            let at = source.find('}').unwrap();
+            app.selection = Selection::caret(at);
+            app.sync_editor();
+            send(&mut app, Message::Edit(Action::Edit(Edit::Enter)));
+            assert_eq!(
+                app.document.source(),
+                "Before\n\n```rust\nfn main() {\n    \n}\n```\n\nAfter"
+            );
+            assert_eq!(app.selection, Selection::caret(at + 5));
+            send(&mut app, Message::Undo);
+            assert_eq!(app.document.source(), source);
+            assert_eq!(app.selection, Selection::caret(at));
+            send(&mut app, Message::Redo);
+            assert_eq!(app.selection, Selection::caret(at + 5));
+            send(&mut app, Message::Edit(Action::Edit(Edit::Backspace)));
+            assert_eq!(app.selection, Selection::caret(at + 1));
+            send(&mut app, Message::Undo);
+            assert_eq!(app.selection, Selection::caret(at + 5));
+        }
+    }
+    #[test]
+    fn empty_code_accepts_typing_paste_and_ime_without_consuming_its_fence() {
+        for text in ["x", "日本語", "one\ntwo", "one\n"] {
+            let source = "```rust\n```\n\nAfter";
+            let mut app = app(source);
+            let at = source.find('\n').unwrap() + 1;
+            send(&mut app, Message::SelectSource(Selection::caret(at)));
+            let target = app.document.collaboration.composition_target(app.selection);
+            send(
+                &mut app,
+                Message::CommitComposition {
+                    target,
+                    text: text.into(),
+                },
+            );
+            let separator = if text.ends_with('\n') { "" } else { "\n" };
+            assert_eq!(
+                app.document.source(),
+                format!("```rust\n{text}{separator}```\n\nAfter")
+            );
+            assert_eq!(app.selection, Selection::caret(at + text.len()));
+            assert_eq!(
+                app.projection.rich.code_blocks[0].text.as_str(),
+                format!("{text}{separator}")
+            );
+            send(&mut app, Message::Undo);
+            assert_eq!(app.document.source(), source);
+            assert_eq!(app.selection, Selection::caret(at));
+        }
     }
     #[test]
     fn distant_disclosure_splices_preserve_native_text_reverse_selection_and_history() {

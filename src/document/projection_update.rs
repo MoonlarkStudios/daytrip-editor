@@ -154,6 +154,10 @@ impl Projection {
                     }
                 }
             }
+            for block in &mut self.rich.code_blocks {
+                rebase(&mut block.source_range, &diff.old, inserted.len());
+                rebase(&mut block.source_body, &diff.old, inserted.len());
+            }
             self.mapping = Arc::new(OffsetMap {
                 pieces,
                 source_length: source.len(),
@@ -191,6 +195,14 @@ impl Projection {
 }
 
 fn rebase_rich(rich: &mut RichDocument, edit: &Range<usize>, inserted: usize, display: bool) {
+    for block in &mut rich.code_blocks {
+        rebase(&mut block.range, edit, inserted);
+        rebase(&mut block.body, edit, inserted);
+        if !display {
+            rebase(&mut block.source_range, edit, inserted);
+            rebase(&mut block.source_body, edit, inserted);
+        }
+    }
     let first = rich.headings.partition_point(|h| h.range.end < edit.end);
     for heading in &mut rich.headings[first..] {
         rebase(&mut heading.range, edit, inserted);

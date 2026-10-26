@@ -1,0 +1,3 @@
+[release] $ cargo build --locked --release
+   Compiling still v0.1.0 (/Users/johnslaughter/Development/iced-md-editor)
+    Finished `release` profile [optimized] target(s) in 46.31s
