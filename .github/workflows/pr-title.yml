@@ -1,0 +1,27 @@
+name: Pull request title
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: Pull request title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validate pull request title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          title = os.environ['PR_TITLE']
+          if not re.fullmatch(r'(feat|fix|refactor|perf|test|docs|build|ci|chore|revert)(\([a-z0-9_-]+\))?: [^\r\n]+', title):
+              sys.exit('Use a single-line PR title: type(scope): imperative summary')
+          PY
