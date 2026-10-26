@@ -122,8 +122,9 @@ above and fill out the PR template. Use the commit-message format below for the 
 title: squash merging uses that title as the public commit subject.
 
 `main` requires a pull request, up-to-date passing Rust checks on macOS, Linux and
-Windows, passing Repository hygiene, and resolved review conversations. Force pushes
-and deletion are disabled, and these protections include administrators. The current
+Windows, passing Repository hygiene and Pull request title checks, and resolved
+review conversations. Force pushes and deletion are disabled, and these protections
+include administrators. The current
 single-maintainer setup does not require an additional approving reviewer for the
 maintainer's own changes; the maintainer reviews outside contributions. Increase the
 required approval count when another maintainer is available. Merged branches are
@@ -155,7 +156,19 @@ Use an appropriate type such as `feat`, `fix`, `refactor`, `perf`, `test`, `docs
 
 Keep the [documentation index](docs/README.md), README, bundled guide and architecture map consistent with user-visible changes. Label historical measurements clearly and retain their evidence and limitations. Do not delete a benchmark, fixture, generated brand asset or upstream file merely because application code does not import it; check its documented purpose. Remove unused application code and dependencies instead of silencing warnings. Keep third-party lint exceptions confined to the documented vendor manifest.
 
-CI runs the locked Rust checks and release build on macOS, Linux and Windows, plus repository hygiene, full-history secret scanning and dependency auditing on Linux. GitHub Actions use full commit IDs, a read-only token, no persisted checkout credentials, cancellation of superseded runs and bounded job durations. Follow [GitHub's workflow security guidance](https://docs.github.com/en/actions/reference/security/secure-use) when changing them. Dependabot proposes weekly compatible Cargo and action updates; review changes and validation before merging. Yrs, cryoglyph and Iced highlighter upgrades follow the explicit vendor rebase policy.
+CI runs the locked Rust checks and release build on macOS, Linux and Windows, plus repository hygiene, full-history secret scanning and dependency auditing on Linux. GitHub Actions use full commit IDs, read-only or disabled token permissions, no persisted checkout credentials and bounded job durations. Follow [GitHub's workflow security guidance](https://docs.github.com/en/actions/reference/security/secure-use) when changing them. Dependabot proposes weekly compatible Cargo and action updates; review changes and validation before merging. Yrs, cryoglyph and Iced highlighter upgrades follow the explicit vendor rebase policy.
+
+New commits cancel superseded PR build runs. Running `main` builds finish so they
+can publish caches; GitHub retains only the latest pending run for that branch.
+Title and description edits run a separate title check with no checkout or token
+permissions, leaving the build matrix alone. Keep that check required alongside
+the four existing checks when changing branch protection.
+
+Only `main` writes the Cargo and mise caches. The repository job has a separate
+mise cache namespace and saves after its tasks finish, retaining installed tools
+such as cargo-audit and cargo-shear. Tool-version changes in `mise.toml` invalidate
+that cache; audits still refresh advisory data on every run. A new cache namespace
+is populated by a `main` run after merge, then restored by PRs.
 
 The public repository enables private vulnerability reporting, secret scanning/push protection and Dependabot alerts/security updates. Preserve these hosting settings alongside the branch protections above; checked-in files alone cannot activate them. Review commit author identities and retained logs before publishing; do not rewrite published history or remove evidence casually. Publish the intended branch explicitly rather than pushing every local ref.
 
