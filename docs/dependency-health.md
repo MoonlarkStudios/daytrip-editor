@@ -48,21 +48,8 @@ dependency override.
 
 ## Vendored Yrs validation
 
-The [vendor policy](../vendor/README.md) keeps imported implementation files and
-upstream licenses intact. Reversing `vendor/yrs.patch` reproduced all 65 original
-file checksums in `vendor/yrs-upstream.sha256` during this review. The checked-in
-test lockfile and license are intentional additions to the registry distribution.
-
-The additional upstream randomized array suite produced a pending-update assertion
-failure in `types::array::test::fuzzy_test_300`. This is separate from the passing
-application tests. A pristine copy with the patch reversed failed the same assertion
-in two of five full-suite runs (three passed), establishing that the upstream suite
-also has this intermittent failure. Original failed-run seeds were
-`1382735396790199516` and `3456677333682617693`; pristine failures reported
-`1405715979555105946` and `16638136266955145747`. Replaying the first seed alone
-passed 20 times in each version, so a seed alone was not sufficient to reproduce
-the failure. [Diagnostic excerpts](validation/repository/yrs-array.txt) retain the
-assertions. The test remains enabled; do not treat a subsequent random pass
-as proof that the failure is resolved. The application admits bounded plain-text
-collaboration updates rather than arbitrary shared arrays, but the upstream result
-still needs to be considered when maintaining the dependency patch.
+The intermittent array-suite failure is repaired by a narrow sparse-clock retry
+patch. The [Yrs repair report](yrs-pending-updates.md) explains the deterministic
+reproduction, before/after result and ten passing full-suite runs. Original
+[diagnostics](validation/repository/yrs-array.txt) remain as historical evidence.
+The array test is still enabled and the existing asset exclusions are unchanged.

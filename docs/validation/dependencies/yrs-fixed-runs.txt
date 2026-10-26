@@ -1,0 +1,57 @@
+Yrs 0.28.0 with sparse-clock retry repair; Rust 1.95.0, macOS aarch64.
+Extracts from ten consecutive `mise run check-yrs` runs.
+The same existing external-asset exclusions apply in every run.
+
+Run 1
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.82s
+
+Run 2
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 2.33s
+
+Run 3
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.69s
+
+Run 4
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.91s
+
+Run 5
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.76s
+
+Run 6
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.83s
+
+Run 7
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.55s
+
+Run 8
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.32s
+
+Run 9
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.74s
+
+Run 10
+test types::array::test::fuzzy_test_300 ... ok
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... ok
+test result: ok. 379 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.09s
+
+Optional feature command:
+mise exec -- cargo test --manifest-path vendor/yrs/Cargo.toml --locked --features sync,weak --lib pending_dependency_retries_after_filling_an_earlier_clock_hole
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 411 filtered out; finished in 0.00s

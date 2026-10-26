@@ -343,8 +343,7 @@ impl Update {
                     if let Some(missing) =
                         Self::missing_dependency(&mut stack_head, &mut txn.store)?
                     {
-                        next =
-                            picker.switch(stack_head, &missing, |c| txn.store.blocks.get_clock(c));
+                        next = picker.switch(stack_head, &missing);
                         continue;
                     } else {
                         // block has no missing dependencies, therefore we can integrate it right away
@@ -381,17 +380,17 @@ impl Update {
     fn missing_dependency(
         block: &mut Block,
         store: &mut Store,
-    ) -> Result<Option<ClientID>, UpdateError> {
+    ) -> Result<Option<ID>, UpdateError> {
         if let Block::Item(item) = block {
             if let Some(origin_left) = &item.origin {
                 if store.blocks.is_missing(origin_left) {
-                    return Ok(Some(origin_left.client));
+                    return Ok(Some(*origin_left));
                 }
             }
 
             if let Some(origin_right) = &item.right_origin {
                 if store.blocks.is_missing(origin_right) {
-                    return Ok(Some(origin_right.client));
+                    return Ok(Some(*origin_right));
                 }
             }
 
@@ -400,13 +399,13 @@ impl Update {
                     if let Some(block) = &parent.item {
                         let parent_id = block.id();
                         if store.blocks.is_missing(parent_id) {
-                            return Ok(Some(parent_id.client));
+                            return Ok(Some(*parent_id));
                         }
                     }
                 }
                 TypePtr::ID(parent_id) => {
                     if store.blocks.is_missing(parent_id) {
-                        return Ok(Some(parent_id.client));
+                        return Ok(Some(*parent_id));
                     }
                 }
                 _ => {}
@@ -420,13 +419,13 @@ impl Update {
                         let end = source.quote_end.id();
                         if let Some(start) = start {
                             if store.blocks.is_missing(start) {
-                                return Ok(Some(start.client));
+                                return Ok(Some(*start));
                             }
                         }
                         if start != end {
                             if let Some(end) = &source.quote_end.id() {
                                 if store.blocks.is_missing(end) {
-                                    return Ok(Some(end.client));
+                                    return Ok(Some(**end));
                                 }
                             }
                         }
@@ -900,23 +899,21 @@ impl<'a> BlockPicker<'a> {
     }
 
     /// Switch iterator to blocks belonging to `missing` client.
-    fn switch(
-        &mut self,
-        stack_head: Block,
-        missing: &ClientID,
-        missing_clock: impl Fn(&ClientID) -> u32,
-    ) -> Option<Block> {
+    fn switch(&mut self, stack_head: Block, missing: &ID) -> Option<Block> {
         self.stack.push(stack_head);
-        match self.store.clients.get_mut(missing) {
+        match self.store.clients.get_mut(&missing.client) {
             Some(struct_refs)
-                if !struct_refs.is_empty() && !self.stack.iter().any(|s| s.client() == missing) =>
+                if !struct_refs.is_empty()
+                    && !self.stack.iter().any(|s| s.client() == &missing.client) =>
             {
                 let stack_head = struct_refs.pop_front();
                 stack_head
             }
             _ => {
                 // This update message causally depends on another update message that doesn't exist yet
-                self.missing.set_min(*missing, missing_clock(missing));
+                // Sparse updates can fill an earlier hole without increasing
+                // the client's highest clock. Retain the actual dependency ID.
+                self.missing.set_min(missing.client, missing.clock);
                 for item in self.stack.drain(..) {
                     let client = *item.client();
                     let mut unapplicable_blocks = match self.store.clients.remove(&client) {
@@ -1081,6 +1078,64 @@ mod test {
         merge_updates_v1, Any, Doc, GetString, IdSet, Options, ReadTxn, StateVector, Text,
         Transact, WriteTxn, XmlFragment, XmlOut, ID,
     };
+
+    // Daytrip regression: filling a sparse clock hole must retry items that
+    // depend on it, even when the client's highest integrated clock is unchanged.
+    #[test]
+    fn pending_dependency_retries_after_filling_an_earlier_clock_hole() {
+        let source = Doc::with_client_id(1);
+        let first = source.get_or_insert_text("first");
+        let independent = source.get_or_insert_text("independent");
+        let before = {
+            let mut txn = source.transact_mut();
+            first.insert(&mut txn, 0, "a😀");
+            [txn.encode_update_v1(), txn.encode_update_v2()]
+        };
+        let later = {
+            let mut txn = source.transact_mut();
+            independent.insert(&mut txn, 0, "z");
+            [txn.encode_update_v1(), txn.encode_update_v2()]
+        };
+        let dependent = {
+            let mut txn = source.transact_mut();
+            let end = first.len(&txn);
+            first.insert(&mut txn, end, "b");
+            [txn.encode_update_v1(), txn.encode_update_v2()]
+        };
+        let updates = [before, later, dependent];
+        let orders = [[1, 2, 0], [0, 1, 2], [0, 2, 1], [1, 0, 2], [2, 0, 1], [2, 1, 0]];
+
+        for version in 0..2 {
+            for order in orders {
+                let replica = Doc::with_client_id(2);
+                for (step, index) in order.iter().copied().enumerate() {
+                    // Duplicate delivery must remain idempotent, including while pending.
+                    for _ in 0..2 {
+                        let bytes = &updates[index][version];
+                        let update = if version == 0 {
+                            Update::decode_v1(bytes).unwrap()
+                        } else {
+                            Update::decode_v2(bytes).unwrap()
+                        };
+                        replica.transact_mut().apply_update(update).unwrap();
+                    }
+                    if order == [1, 2, 0] && step == 1 {
+                        assert!(replica.transact().has_missing_updates());
+                    }
+                }
+                assert!(!replica.transact().has_missing_updates());
+                assert_eq!(
+                    replica.get_or_insert_text("first").get_string(&replica.transact()),
+                    "a😀b"
+                );
+                assert_eq!(
+                    replica.get_or_insert_text("independent").get_string(&replica.transact()),
+                    "z"
+                );
+                assert_eq!(replica.transact().state_vector(), source.transact().state_vector());
+            }
+        }
+    }
 
     #[test]
     fn update_decode() {

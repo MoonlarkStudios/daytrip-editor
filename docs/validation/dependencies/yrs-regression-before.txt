@@ -1,0 +1,82 @@
+   Compiling yrs v0.28.0 (/tmp/daytrip-yrs-hole-regression)
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1922:9
+     |
+1922 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1931:9
+     |
+1931 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1938:9
+     |
+1938 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1946:9
+     |
+1946 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:1955:9
+     |
+1955 |         assert_matches!(
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+    --> src/doc.rs:2071:9
+     |
+2071 |         assert_matches!(&block, &Block::GC(_));
+     |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated macro `assert_matches2::assert_matches`: use std::assert_matches, assert_matches::assert_matches or strass::assert_let, depending on your needs
+   --> src/doc.rs:652:26
+    |
+652 |     use assert_matches2::assert_matches;
+    |                          ^^^^^^^^^^^^^^
+
+warning: `yrs` (lib test) generated 7 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.94s
+     Running unittests src/lib.rs (vendor/yrs/target/debug/deps/yrs-2b58778fe0cfe227)
+
+running 1 test
+test update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole ... FAILED
+
+failures:
+
+---- update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole stdout ----
+
+thread 'update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole' (24661947) panicked at src/update.rs:1129:17:
+assertion failed: !replica.transact().has_missing_updates()
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/std/src/panicking.rs:689:5
+   1: core::panicking::panic_fmt
+             at /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/panicking.rs:80:14
+   2: core::panicking::panic
+             at /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/panicking.rs:150:5
+   3: yrs::update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole
+             at ./src/update.rs:1129:17
+   4: yrs::update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole::{{closure}}
+             at ./src/update.rs:1088:72
+   5: core::ops::function::FnOnce::call_once
+             at /Users/johnslaughter/.rustup/toolchains/1.95.0-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+   6: <fn() -> core::result::Result<(), alloc::string::String> as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    update::test::pending_dependency_retries_after_filling_an_earlier_clock_hole
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 386 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `--lib`

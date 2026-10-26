@@ -1,4 +1,4 @@
-# Pinned Yrs traversal patch
+# Pinned Yrs patches
 
 `yrs/` is the crates.io **yrs 0.28.0** source distribution, MIT licensed.
 Its `.cargo_vcs_info.json` identifies upstream commit
@@ -14,7 +14,7 @@ The patch reuses `Item.len`, the existing UTF-16 clock length, in
 `Item::content_len(Utf16)` and adds cached lengths on successful item squash.
 Construction, split, trim, and garbage collection already maintain this invariant.
 Byte indexing still delegates to the original content length. No extra fields,
-unsafe code, wire format, algorithms, text indexing units, or GC policy are added.
+unsafe code, wire format, text indexing units, or GC policy are added.
 Upstream's existing unsafe implementation remains third-party dependency code;
 Still's application code and this patch remain safe Rust. Do not mechanically
 apply Still's formatting/lint conventions to the imported dependency. Git whitespace
@@ -45,12 +45,20 @@ with its own manifest/lockfile; commands and asset exclusions are in
 `docs/utf16-performance.md`. Root `mise run check` tests the application rather
 than automatically testing dependency internals.
 
-On 2026-10-25, `check-yrs` exposed an intermittent upstream
-`types::array::test::fuzzy_test_300` pending-update assertion. Reversing this
-patch reproduced all 65 original file hashes; the pristine upstream suite then
-failed the same assertion in two of five runs. The array test remains enabled.
-This is a known upstream validation limit, not a reason to suppress test failures
-or broaden the local patch. Daytrip's plain-text application tests pass separately.
+The second patch fixes pending updates after a sparse clock gap is filled.
+Missing dependencies now retain their exact operation ID, and retries check that
+ID's presence instead of requiring the client's highest clock to advance. It
+changes no wire encoding or public method signatures. A deterministic regression
+covers Unicode text, all six delivery orders, duplicate delivery, and V1/V2 updates.
+
+On 2026-10-25, the previously intermittent `types::array::test::fuzzy_test_300`
+passed in ten consecutive full-suite runs with this fix. The new deterministic
+regression fails without the retry fix and passes with it, including the optional
+`weak` feature. The array test remains enabled; only the existing seven tests
+requiring unpublished upstream assets are excluded. See the
+[Yrs repair report](../docs/yrs-pending-updates.md) for the cause, reproduction,
+and retained evidence. The upstream test harness still emits seven test-only
+`assert_matches2` deprecation warnings; no new lint allowances were added.
 
 Keep this a narrow, reviewable patch. On an upstream release containing an
 equivalent fix, remove the vendor override and directory, pin the new version,
