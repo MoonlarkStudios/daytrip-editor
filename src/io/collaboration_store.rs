@@ -98,6 +98,7 @@ impl Paths {
         let sibling = |suffix: &str| {
             let mut name = OsString::from(".");
             name.push(filename);
+            // Retain the checkpoint and lock namespace across the Koan rename.
             name.push(".daytrip");
             name.push(suffix);
             markdown.with_file_name(name)
@@ -148,7 +149,7 @@ impl Paths {
         };
         if journal.len() < 72 || &journal[..8] != JOURNAL {
             return Err(invalid(
-                "Damaged Daytrip save journal; preserve files for recovery",
+                "Damaged Koan save journal; preserve files for recovery",
             ));
         }
         let state = decode(&journal[72..])?;
@@ -342,6 +343,36 @@ pub async fn read_proposal(
 mod tests {
     use super::*;
     use crate::document::Document;
+
+    #[test]
+    fn daytrip_checkpoints_and_locks_remain_compatible_with_koan() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("note.md");
+        let document = Document::new("Existing draft 日本 🦀\r\n".into());
+        let state = document.collaboration.state();
+        fs::write(&path, document.source()).unwrap();
+        fs::write(
+            directory.path().join(".note.md.daytrip"),
+            encode(&state).unwrap(),
+        )
+        .unwrap();
+
+        let (source, restored) = load(&path).unwrap();
+        assert_eq!(source, document.source());
+        let restored = restored.expect("the existing checkpoint must not become a new import");
+        assert_eq!(restored.document, state.document);
+        assert_eq!(restored.update, state.update);
+
+        let held = Paths::new(&path).unwrap().acquire().unwrap();
+        let legacy = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(directory.path().join(".note.md.daytrip-lock"))
+            .unwrap();
+        assert!(legacy.try_lock().is_err());
+        drop(held);
+        legacy.try_lock().unwrap();
+    }
 
     fn stage(paths: &Paths, source: &str, state: &ReplicaState) {
         let mut journal = Vec::from(JOURNAL.as_slice());

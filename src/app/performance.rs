@@ -263,7 +263,7 @@ fn code_surface_previews() {
         let at = source.find("let message").unwrap() + 4;
         harness.message(Message::SelectSource(Selection::caret(at)));
         image::save_buffer(
-            format!("/tmp/daytrip-code-{}.png", preset.name()),
+            format!("/tmp/koan-code-{}.png", preset.name()),
             harness.pixels.data(),
             harness.pixels.width(),
             harness.pixels.height(),
@@ -313,7 +313,7 @@ fn code_surface_previews() {
             );
         }
         image::save_buffer(
-            format!("/tmp/daytrip-code-read-{}.png", preset.name()),
+            format!("/tmp/koan-code-read-{}.png", preset.name()),
             harness.pixels.data(),
             harness.pixels.width(),
             harness.pixels.height(),
@@ -362,8 +362,11 @@ fn performance_code_editor() {
 #[ignore = "run with mise run profile; large documents and software rasterization"]
 fn large_document_interactions() {
     load_profile_fonts();
-    let counts = std::env::var("DAYTRIP_PROFILE_BLOCKS").unwrap_or_else(|_| "10000,50000".into());
-    let samples = std::env::var("DAYTRIP_PROFILE_SAMPLES")
+    let counts = std::env::var("KOAN_PROFILE_BLOCKS")
+        .or_else(|_| std::env::var("DAYTRIP_PROFILE_BLOCKS"))
+        .unwrap_or_else(|_| "10000,50000".into());
+    let samples = std::env::var("KOAN_PROFILE_SAMPLES")
+        .or_else(|_| std::env::var("DAYTRIP_PROFILE_SAMPLES"))
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(30_usize)
@@ -384,7 +387,10 @@ fn large_document_interactions() {
         );
         report("cold", &[cold]);
         report_memory("cold");
-        if std::env::var_os("DAYTRIP_PROFILE_COLD_ONLY").is_some() {
+        if std::env::var_os("KOAN_PROFILE_COLD_ONLY")
+            .or_else(|| std::env::var_os("DAYTRIP_PROFILE_COLD_ONLY"))
+            .is_some()
+        {
             continue;
         }
         let mut jumps = Vec::new();
@@ -946,7 +952,8 @@ fn performance_crdt_churn() {
 fn large_document_collaboration() {
     load_profile_fonts();
     use crate::document::collaboration::{Collaboration, EditOrigin, SourceEdit};
-    let samples = std::env::var("DAYTRIP_PROFILE_SAMPLES")
+    let samples = std::env::var("KOAN_PROFILE_SAMPLES")
+        .or_else(|_| std::env::var("DAYTRIP_PROFILE_SAMPLES"))
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(30_usize)
@@ -1475,7 +1482,8 @@ fn large_offline_import_shapes() {
     use crate::document::collaboration::{Collaboration, EditOrigin, SourceEdit};
     use crate::document::projection::Projection;
     load_profile_fonts();
-    let samples = std::env::var("DAYTRIP_IMPORT_SAMPLES")
+    let samples = std::env::var("KOAN_IMPORT_SAMPLES")
+        .or_else(|_| std::env::var("DAYTRIP_IMPORT_SAMPLES"))
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(10_usize)

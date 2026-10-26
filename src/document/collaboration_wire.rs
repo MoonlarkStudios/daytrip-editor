@@ -1,4 +1,4 @@
-//! Allocation-free admission of Daytrip's plain-text subset of Yjs update V1.
+//! Allocation-free admission of Koan's plain-text subset of Yjs update V1.
 //! Yrs remains the decoder and CRDT implementation. Preflight bounds counts
 //! BEFORE allocation, rejects nested/embedded data, bad IDs and trailing bytes.
 //! Keep this validator pinned to the Yrs wire version; never partially accept an

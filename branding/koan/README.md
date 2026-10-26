@@ -1,11 +1,11 @@
-# daytrip · open book
+# koan · open book
 
-The selected Daytrip identity pairs a lowercase editorial serif wordmark
+The selected Koan identity pairs a lowercase editorial serif wordmark
 with the original open-book symbol. Two asymmetrical paper leaves retain
 their separate lower tips. The palette is limestone, plum ink, and muted
 mauve. The logo has no tagline.
 
-![Daytrip brand sheet](preview.png)
+![Koan brand sheet](preview.png)
 
 ## Assets
 
@@ -17,10 +17,10 @@ mauve. The logo has no tagline.
 | Name alone | [Outlined wordmark](logos/wordmark.svg), [reverse](logos/wordmark-reverse.svg) |
 | One-color applications | [Ink](logos/lockup-horizontal-ink.svg), [paper](logos/lockup-horizontal-paper.svg) |
 | Vertical placement | [Stacked signature](logos/lockup-stacked.svg), [reverse](logos/lockup-stacked-reverse.svg) |
-| macOS app | [ICNS](icons/daytrip.icns), [unmasked square SVG](icons/daytrip-square.svg) |
-| Windows app / favicon | [Multi-resolution ICO](icons/daytrip.ico) |
-| Linux / general app icon | [Plated SVG](icons/daytrip-plated.svg), [PNG sizes](icons/png) |
-| Large square artwork | [1024 px PNG](icons/daytrip-1024.png) |
+| macOS app | [ICNS](icons/koan.icns), [unmasked square SVG](icons/koan-square.svg) |
+| Windows app / favicon | [Multi-resolution ICO](icons/koan.ico) |
+| Linux / general app icon | [Plated SVG](icons/koan-plated.svg), [PNG sizes](icons/png) |
+| Large square artwork | [1024 px PNG](icons/koan-1024.png) |
 
 Logo SVGs contain self-contained vector paths on a transparent background.
 They require no fonts, external images, or network requests. Only the small
@@ -43,14 +43,14 @@ same ink and the central gap remains open.
 
 The logo uses custom outlined editorial serif lettering.
 The supplied paths and their spacing are the wordmark;
-do not recreate it with a substitute typeface. Use lowercase `daytrip` in
-the artwork and **Daytrip** in ordinary prose and application titles.
+do not recreate it with a substitute typeface. Use lowercase `koan` in
+the artwork and **Koan** in ordinary prose and application titles.
 
 Supporting document typography uses the bundled Newsreader family, licensed
 under the [SIL Open Font License](../../assets/fonts/OFL.txt). Interface
 controls use the system sans serif; code and paths use system monospace.
 Application themes extend this palette through semantic roles; see the
-[Daytrip appearance system](../../docs/design-system.md). Custom theme and
+[Koan appearance system](../../docs/design-system.md). Custom theme and
 document preferences remain independent of the fixed platform icon palette.
 
 ## Masters and reproduction
@@ -59,11 +59,11 @@ Edit the SVG masters in [sources](sources), then regenerate the exports:
 
 - `open-book.svg` contains the approved asymmetrical book geometry.
 - `open-book-compact.svg` widens the lower gap for 16–32 px icons.
-- `wordmark.svg` contains the seven named, outlined letters of `daytrip`.
+- `wordmark.svg` contains the four named, outlined letters of `koan`.
 
 Preserve the aspect ratios, optical spacing, and symbol-to-name proportions.
 Allow at least one quarter of the symbol height as clear space around a
-standalone mark or signature. Start around 180 px wide for a horizontal
+standalone mark or signature. Start around 140 px wide for a horizontal
 signature, or use the wordmark alone in a narrow placement. At 16–32 px,
 use the compact symbol or the provided raster icons.
 
@@ -86,8 +86,8 @@ Requirements: Python 3.9+ (standard library only) and ImageMagick 7
 to regenerate the kit.
 
 ```sh
-python3 branding/daytrip/export.py
-python3 branding/daytrip/export.py --check
+python3 branding/koan/export.py
+python3 branding/koan/export.py --check
 ```
 
 `--check` regenerates in a temporary directory and compares every derived
@@ -96,7 +96,7 @@ without overwriting the kit.
 PNG timestamp metadata is stripped. To export elsewhere:
 
 ```sh
-python3 branding/daytrip/export.py --output /tmp/daytrip-brand-export
+python3 branding/koan/export.py --output /tmp/koan-brand-export
 ```
 
 The exporter explicitly uses ImageMagick's MSVG renderer and bundled
@@ -107,18 +107,19 @@ icons at their actual pixel dimensions after modifying the masters.
 ## Application integration
 
 The application title, sidebar name, bundled writing samples, dialogs,
-and export fallback titles use Daytrip. The sidebar draws the original
+and export fallback titles use Koan. The sidebar draws the original
 two-tone book and exact outlined wordmark using the active theme’s ink and decorative brand accent. Native Iced paths
 in `native-paths.rs` are generated from the same SVG masters. The platform
 icon uses the approved plum, limestone, and mauve artwork. The bundled PNG is decoded before
 entering the UI event loop.
 
-`scripts/bundle-macos.sh` builds `target/Daytrip.app` with the Daytrip name
-and ICNS icon. The Cargo package and executable are `daytrip`, and the bundle
-identifier is `app.daytrip.editor`. `DAYTRIP_CONFIG_DIR` overrides the native
-Daytrip configuration directory. Earlier development data needs the documented
-[manual migration](../../docs/identity-migration.md); no automatic migration or
-legacy environment-variable aliases remain.
+`scripts/bundle-macos.sh` builds `target/Koan.app` with the Koan name
+and ICNS icon. The Cargo package and executable are `koan`, and the bundle
+identifier is `app.koan.editor`. `KOAN_CONFIG_DIR` overrides the native
+configuration directory. Koan retains the Daytrip storage directory, checkpoint
+and lock names, and recovery extension so existing data remains discoverable.
+`DAYTRIP_CONFIG_DIR` remains a fallback when `KOAN_CONFIG_DIR` is unset.
+See [identity and compatibility](../../docs/identity-migration.md).
 
-This self-contained kit is the source of truth for the Daytrip identity.
+This self-contained kit is the source of truth for the Koan identity.
 All exports are generated from its SVG masters and palette.

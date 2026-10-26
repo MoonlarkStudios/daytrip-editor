@@ -1,6 +1,6 @@
 # Security
 
-Daytrip is pre-release software. Security fixes target the current development
+Koan is pre-release software. Security fixes target the current development
 branch; there are no maintained release branches yet.
 
 Use the repository's [private vulnerability report](https://github.com/MoonlarkStudios/daytrip-editor/security/advisories/new)

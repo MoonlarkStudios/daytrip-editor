@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="777" height="256" viewBox="0 0 777 256" role="img" aria-labelledby="asset-title">
+  <title id="asset-title">koan — horizontal signature</title>
+  <g>
+    <path id="horizontal-mark-left-leaf" fill="#302A35" d="M 21 12 C 15 8 10 12 10 19 L 10 151 C 10 160 13 166 20 171 L 119 244 L 104 65 C 103 55 101 51 94 47 Z" />
+    <path id="horizontal-mark-right-leaf" fill="#A1839A" d="M 224 59 C 230 55 233 58 233 65 L 233 152 C 233 160 231 163 225 168 L 137 244 L 154 102 C 155 95 157 92 163 88 Z" />
+  </g>
+  <g transform="translate(286 45.0)">
+    <g>
+      <g fill="#302A35" fill-rule="evenodd" transform="translate(8 8)">
+        <path id="horizontal-name-letter-k" d="M 0 17 L 33 2 Q 38 -1 38 4 V 97 L 68 68 L 55 63 V 52 H 103 V 63 L 87 68 L 64 91 L 98 133 L 111 137 V 148 H 78 L 38 102 V 132 L 50 137 V 148 H 0 V 137 L 12 132 V 25 L 0 22 Z" transform="translate(0 0)" fill="#302A35" />
+        <path id="horizontal-name-letter-o" d="M 52 49 C 84 49 105 69 105 100 C 105 131 84 150 52 150 C 20 150 0 130 0 100 C 0 69 20 49 52 49 Z M 52 64 C 34 64 26 77 26 100 C 26 123 34 135 52 135 C 71 135 79 122 79 100 C 79 77 69 64 52 64 Z" transform="translate(123 0)" fill="#302A35" />
+        <path id="horizontal-name-letter-a" d="M 10 60 C 22 52 37 49 53 49 C 79 49 92 62 92 85 V 128 C 92 134 96 137 103 135 V 147 C 98 149 92 150 86 150 C 78 150 71 146 69 138 C 58 146 47 150 34 150 C 13 150 0 138 0 119 C 0 98 17 87 44 84 L 68 82 V 79 C 68 68 62 63 50 63 C 39 63 31 68 27 80 H 13 Z M 68 95 L 49 99 C 32 102 25 108 25 119 C 25 129 31 135 41 135 C 51 135 60 131 68 123 Z" transform="translate(240 0)" fill="#302A35" />
+        <path id="horizontal-name-letter-n" d="M 0 62 L 29 49 L 37 55 V 64 C 48 54 59 49 73 49 C 95 49 107 62 107 85 V 132 L 120 137 V 148 H 68 V 137 L 81 132 V 88 C 81 73 76 66 65 66 C 55 66 46 71 38 81 V 132 L 51 137 V 148 H 0 V 137 L 12 132 V 75 L 0 71 Z" transform="translate(355 0)" fill="#302A35" />
+      </g>
+    </g>
+  </g>
+</svg>
