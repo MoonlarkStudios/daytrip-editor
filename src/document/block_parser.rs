@@ -4,6 +4,21 @@ use std::ops::Range;
 
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
+/// Keep the Markdown extensions used before pulldown-cmark 0.13.
+/// New extensions need matching editing, source-mapping and rendering support.
+pub(crate) const MARKDOWN_OPTIONS: Options = Options::ENABLE_TABLES
+    .union(Options::ENABLE_FOOTNOTES)
+    .union(Options::ENABLE_STRIKETHROUGH)
+    .union(Options::ENABLE_TASKLISTS)
+    .union(Options::ENABLE_SMART_PUNCTUATION)
+    .union(Options::ENABLE_HEADING_ATTRIBUTES)
+    .union(Options::ENABLE_YAML_STYLE_METADATA_BLOCKS)
+    .union(Options::ENABLE_PLUSES_DELIMITED_METADATA_BLOCKS)
+    .union(Options::ENABLE_OLD_FOOTNOTES)
+    .union(Options::ENABLE_MATH)
+    .union(Options::ENABLE_GFM)
+    .union(Options::ENABLE_DEFINITION_LIST);
+
 pub(super) const MAX_INCREMENTAL_WINDOWS: usize = 32;
 
 /// Proof that one isolated source window was reparsed for this predecessor.
@@ -25,7 +40,7 @@ pub(super) struct Scan {
 }
 
 pub(super) fn scan(source: &str) -> Scan {
-    let parser = Parser::new_ext(source, Options::all());
+    let parser = Parser::new_ext(source, MARKDOWN_OPTIONS);
     let mut global_dependencies = parser.reference_definitions().iter().next().is_some();
     let mut ranges = Vec::new();
     let mut depth = 0_usize;

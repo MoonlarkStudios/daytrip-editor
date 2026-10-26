@@ -8,9 +8,9 @@ use std::collections::VecDeque;
 use std::ops::Range;
 
 use iced::widget::markdown;
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag};
 
-use crate::document::block_parser::{self, BlockChange};
+use crate::document::block_parser::{self, BlockChange, MARKDOWN_OPTIONS};
 use crate::document::selection::Selection;
 
 #[derive(Debug)]
@@ -526,7 +526,7 @@ fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
     let mut heading = None;
     let mut level = None;
     let mut heading_text = String::new();
-    for (index, event) in Parser::new_ext(source, Options::all()).enumerate() {
+    for (index, event) in Parser::new_ext(source, MARKDOWN_OPTIONS).enumerate() {
         // A heading inside a quote/list is not a document section.
         if index == 0 && !matches!(event, Event::Start(Tag::Heading { .. })) {
             break;
@@ -548,7 +548,7 @@ fn parse_block(source: &str, range: Range<usize>, independent: bool) -> Block {
         }
     }
     let mut plain = String::new();
-    for event in Parser::new_ext(source, Options::all()) {
+    for event in Parser::new_ext(source, MARKDOWN_OPTIONS) {
         match event {
             Event::Text(text) | Event::Code(text) => {
                 plain.push_str(&text);

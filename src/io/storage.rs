@@ -147,7 +147,7 @@ pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), FileError> {
 #[cfg(test)]
 fn export_html(source: &str) -> String {
     render_html(
-        pulldown_cmark::Parser::new_ext(source, pulldown_cmark::Options::all()),
+        pulldown_cmark::Parser::new_ext(source, crate::document::block_parser::MARKDOWN_OPTIONS),
         "Daytrip — document",
     )
 }

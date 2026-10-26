@@ -6,8 +6,9 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag};
 
+use crate::document::block_parser::MARKDOWN_OPTIONS;
 use crate::document::rich_document::RichDocument;
 use crate::document::selection::Selection;
 
@@ -231,7 +232,7 @@ impl Projection {
                 });
             }
         };
-        let parser = Parser::new_ext(source, Options::all());
+        let parser = Parser::new_ext(source, MARKDOWN_OPTIONS);
         let mut global_dependencies = parser.reference_definitions().iter().next().is_some();
         for (event, range) in parser.into_offset_iter() {
             global_dependencies |= matches!(
@@ -1302,6 +1303,23 @@ mod tests {
         let mut source = source.to_owned();
         source.replace_range(edit.range, &edit.text);
         (source, edit.selection)
+    }
+
+    #[test]
+    fn parser_upgrade_keeps_wikilinks_and_superscripts_literal() {
+        let source = include_str!("../../tests/fixtures/parser-compatibility.md").trim_end();
+        let projection = Projection::new(source);
+        assert_eq!(projection.text, source);
+        assert!(projection.rich.images.is_empty());
+        for offset in source
+            .char_indices()
+            .map(|(offset, _)| offset)
+            .chain([source.len()])
+        {
+            assert_eq!(projection.to_display(offset), offset);
+            assert_eq!(projection.to_source(offset, Affinity::Before, None), offset);
+            assert_eq!(projection.to_source(offset, Affinity::After, None), offset);
+        }
     }
 
     #[test]
