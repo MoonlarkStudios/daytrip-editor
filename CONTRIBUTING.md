@@ -161,7 +161,7 @@ The public repository enables private vulnerability reporting, secret scanning/p
 
 ## Licensing
 
-Daytrip is licensed under the GNU General Public License, version 3 only
-(`GPL-3.0-only`); see [LICENSE](LICENSE). Contributions to Daytrip are accepted
-under these terms. Vendored dependencies and bundled fonts retain their own
-licenses and notices.
+Daytrip is licensed under the GNU General Public License, version 3 or (at your
+option) any later version (`GPL-3.0-or-later`); see [LICENSE](LICENSE).
+Contributions to Daytrip are accepted under these terms. Vendored dependencies
+and bundled fonts retain their own licenses and notices.
