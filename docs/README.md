@@ -19,6 +19,7 @@ describe the remaining platform, accessibility, and durability work.
 | [Yrs pending-update repair](yrs-pending-updates.md) | Sparse-clock retry bug, regression and repeated upstream tests |
 | [Identity migration](identity-migration.md) | Dosty identity, Koan/Daytrip data compatibility and earlier migration |
 | [Dependency health](dependency-health.md) | Dependency repairs, enforced maintenance exceptions and validation |
+| [Releases](releases.md) | Manual versions, native packages, draft workflow and platform validation |
 
 Update behavior descriptions alongside code. Keep dated validation sections tied
 to the implementation they measured; old test counts are historical observations.

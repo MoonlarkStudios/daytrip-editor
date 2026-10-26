@@ -1,6 +1,6 @@
 [package]
 name = "dosty"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 edition = "2024"
 rust-version = "1.95"
 description = "A quiet, native Markdown writing environment built with Iced"

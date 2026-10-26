@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dosty
+Comment=A quiet, native Markdown writing environment
+Exec=dosty
+Icon=app.dosty.editor
+Terminal=false
+Categories=Utility;TextEditor;
+StartupNotify=true

@@ -1,0 +1,12 @@
+Package: dosty
+Version: @VERSION@-1
+Section: editors
+Priority: optional
+Architecture: amd64
+Maintainer: John Slaughter <john@moonlarkstudios.com>
+Homepage: https://github.com/MoonlarkStudios/dosty
+Depends: @SHLIBS@, libxkbcommon0, libxkbcommon-x11-0, libwayland-client0, libwayland-cursor0, libwayland-egl1, libx11-6, libx11-xcb1, libxcb1, libxcursor1, libxi6, libxrandr2, libdbus-1-3, xdg-desktop-portal, xdg-utils, zenity
+Recommends: xdg-desktop-portal-gtk
+Description: A quiet, native Markdown writing environment
+ Write with live formatting, tables, images, and themes, or switch to Markdown
+ source. This early release has incomplete accessibility and platform validation.

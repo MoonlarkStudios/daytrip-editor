@@ -1,0 +1,222 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag on main (for example v0.1.0-alpha.1)'
+        required: true
+        type: string
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/release.yml'
+      - 'scripts/release.py'
+      - 'scripts/test_release.py'
+      - 'scripts/package-*'
+      - 'scripts/bundle-macos.sh'
+      - 'scripts/smoke-linux.sh'
+      - 'packaging/**'
+      - 'docs/releases/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'mise.toml'
+      - 'src/main.rs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOSTY_BUILD_NUMBER: ${{ github.run_number }}
+  MACOSX_DEPLOYMENT_TARGET: '12.0'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    name: Validate release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.version.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.9.12
+          cache_key_prefix: mise-repository-v1
+          cache_save: false
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          save-if: false
+      - name: Validate version, lockfile, notes and tag
+        id: version
+        env:
+          REQUESTED_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            python3 scripts/release.py metadata --github-output "$GITHUB_OUTPUT"
+          else
+            python3 scripts/release.py metadata --tag "$REQUESTED_TAG" --require-tag --github-output "$GITHUB_OUTPUT"
+          fi
+      - run: mise run check-repo
+      - run: mise run check-yrs
+      - run: mise run check-secrets
+      - run: mise run audit
+
+  package:
+    name: Package (${{ matrix.id }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: macos-arm64
+            os: macos-15
+          - id: macos-x86_64
+            os: macos-15-intel
+          - id: windows-x86_64
+            os: windows-2025
+          - id: linux-deb
+            os: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+      - name: Linux native and packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libxkbcommon-dev libwayland-dev libx11-xcb-dev dpkg-dev desktop-file-utils xvfb xauth
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.9.12
+          cache_save: false
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: release-${{ matrix.id }}
+          save-if: false
+      - run: mise run check
+      - run: mise run release-notices
+      - name: Package macOS disk image
+        if: runner.os == 'macOS'
+        run: mise exec -- bash scripts/package-macos.sh
+      - name: Package Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: mise exec -- pwsh -File scripts/package-windows.ps1
+      - name: Check Windows install and uninstall
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-Item target/dist/*-setup.exe
+          $destination = Join-Path $env:RUNNER_TEMP 'Dosty-install-test'
+          $installed = Start-Process $installer.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$destination" -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "Install failed: $($installed.ExitCode)" }
+          if (-not (Test-Path "$destination/dosty.exe")) { throw 'Installed application is missing' }
+          if (-not (Test-Path "$destination/licenses/THIRD-PARTY-NOTICES.html")) { throw 'Installed notices are missing' }
+          $removed = Start-Process "$destination/unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+          if ($removed.ExitCode -ne 0) { throw "Uninstall failed: $($removed.ExitCode)" }
+          if (Test-Path "$destination/dosty.exe") { throw 'Uninstall left the application behind' }
+      - name: Package Debian application
+        if: runner.os == 'Linux'
+        run: |
+          mise run release
+          python3 scripts/package-linux.py deb
+          sudo apt-get install -y ./target/dist/*.deb
+          bash scripts/smoke-linux.sh
+          sudo apt-get remove -y dosty
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: package-${{ matrix.id }}
+          path: target/dist/*
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 7
+
+  rpm:
+    name: Package (linux-rpm)
+    needs: prepare
+    runs-on: ubuntu-24.04
+    container: fedora:43
+    timeout-minutes: 60
+    steps:
+      - name: Fedora native and packaging tools
+        run: dnf install -y git gcc gcc-c++ pkgconf-pkg-config libxkbcommon-devel wayland-devel libX11-devel libxcb-devel rpm-build desktop-file-utils python3 tar gzip unzip which xorg-x11-server-Xvfb xorg-x11-xauth
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.9.12
+          cache_save: false
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: release-fedora43
+          save-if: false
+      - run: mise run check
+      - run: mise run release
+      - run: mise run release-notices
+      - name: Package and check Fedora application
+        run: |
+          python3 scripts/package-linux.py rpm
+          dnf install -y ./target/dist/*.rpm
+          bash scripts/smoke-linux.sh
+          dnf remove -y dosty
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: package-linux-rpm
+          path: target/dist/*.rpm
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 7
+
+  draft:
+    name: Create draft release
+    if: github.event_name != 'pull_request'
+    needs: [prepare, package, rpm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: target/dist
+      - name: Add matching source archive
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: git archive --format=tar.gz --prefix="dosty-$VERSION/" --output="target/dist/dosty-$VERSION-source.tar.gz" HEAD
+      - name: Check complete asset set, write checksums and create draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: python3 scripts/release.py draft target/dist --tag "$RELEASE_TAG"
