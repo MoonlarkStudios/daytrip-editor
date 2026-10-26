@@ -1,6 +1,6 @@
 # Native buffer snapshots
 
-Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / cosmic-text 0.15, release optimization, macOS 26.7.1 on Apple silicon (arm64), and bundled Newsreader fonts. The baseline is `5144f50`, after [incremental block parsing](incremental-parsing.md).
+Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / cosmic-text 0.15, release optimization, macOS 26.7.1 on Apple silicon (arm64), and bundled Newsreader fonts. The baseline is `10507ff`, after [incremental block parsing](incremental-parsing.md).
 
 The subsequent [source/projection update report](source-projection-updates.md) addresses text and metadata copying after native snapshotting.
 
@@ -83,7 +83,7 @@ Run the emitted library test executable directly, replacing `<hash>` with its ac
 target/release/deps/still-<hash> performance_native_snapshots --ignored --nocapture --test-threads=1
 ```
 
-The baseline was profiled before edits. To reproduce it, archive `5144f50` to a temporary directory and build through mise from the trusted repository with `--manifest-path` pointing to the archive. A shared `CARGO_TARGET_DIR` reuses dependencies; run the baseline executable before rebuilding the current version because the filename can be identical. The interaction sequence is unchanged; the current harness adds complete native/snapshot equality checks after timing. The load-component diagnostic now includes the mirror and index. The older 2k continuous-edit benchmark keeps correctness reads outside its edit timer as well.
+The baseline was profiled before edits. To reproduce it, archive `10507ff` to a temporary directory and build through mise from the trusted repository with `--manifest-path` pointing to the archive. A shared `CARGO_TARGET_DIR` reuses dependencies; run the baseline executable before rebuilding the current version because the filename can be identical. The interaction sequence is unchanged; the current harness adds complete native/snapshot equality checks after timing. The load-component diagnostic now includes the mirror and index. The older 2k continuous-edit benchmark keeps correctness reads outside its edit timer as well.
 
 - [Baseline interactions and process metrics](performance/native-snapshots/before-interactions.txt).
 - [Final interactions and process metrics](performance/native-snapshots/after-interactions.txt).

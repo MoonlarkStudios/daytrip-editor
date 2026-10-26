@@ -1,6 +1,6 @@
 # Incremental block parsing
 
-Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / pulldown-cmark 0.12, release optimization, macOS 26.7.1 / arm64, and bundled Newsreader fonts. The baseline is `bbbeb0f`, after [deferred native initialization](native-buffer.md).
+Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / pulldown-cmark 0.12, release optimization, macOS 26.7.1 / arm64, and bundled Newsreader fonts. The baseline is `b490dd2`, after [deferred native initialization](native-buffer.md).
 
 The subsequent [native snapshot report](native-snapshots.md) addresses whole-buffer copying after native edits.
 
@@ -75,7 +75,7 @@ mise run profile
 STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_SAMPLES=30 mise run profile
 ```
 
-For process metrics without compilation, first build with `mise exec -- cargo test --locked --release --lib --no-run`, then run the emitted executable under `/usr/bin/time -l` with `large_document_interactions --ignored --nocapture --test-threads=1`. To reproduce the baseline, archive `bbbeb0f` into a temporary directory, build using mise from the trusted repository with `--manifest-path` pointing there and a shared `CARGO_TARGET_DIR`, and run its executable before rebuilding the current version. Both builds can emit the same executable filename. The interaction harness and fixtures are unchanged; the source-only benchmark is new.
+For process metrics without compilation, first build with `mise exec -- cargo test --locked --release --lib --no-run`, then run the emitted executable under `/usr/bin/time -l` with `large_document_interactions --ignored --nocapture --test-threads=1`. To reproduce the baseline, archive `b490dd2` into a temporary directory, build using mise from the trusted repository with `--manifest-path` pointing there and a shared `CARGO_TARGET_DIR`, and run its executable before rebuilding the current version. Both builds can emit the same executable filename. The interaction harness and fixtures are unchanged; the source-only benchmark is new.
 
 - [Isolated baseline](performance/incremental-parsing/before-interactions.txt).
 - [Final interaction profile](performance/incremental-parsing/after-interactions.txt).

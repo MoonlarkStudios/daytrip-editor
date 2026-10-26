@@ -1,6 +1,6 @@
 # Native buffer initialization
 
-Measured on 2026-10-22 with mise's Rust 1.95.0, Cargo.lock's Iced 0.14 / cosmic-text 0.15, release optimization, macOS 26.7.1 / arm64, and the bundled Newsreader fonts. The baseline is commit `ebdcded`, which already includes [viewport virtualization](virtualization.md).
+Measured on 2026-10-22 with mise's Rust 1.95.0, Cargo.lock's Iced 0.14 / cosmic-text 0.15, release optimization, macOS 26.7.1 / arm64, and the bundled Newsreader fonts. The baseline is commit `a0b3714`, which already includes [viewport virtualization](virtualization.md).
 
 The subsequent [incremental block parsing report](incremental-parsing.md) addresses parsing during edits on top of this implementation.
 
@@ -74,7 +74,7 @@ STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_COLD_ONLY=1 /usr/bin/time -l target/rel
 /usr/bin/time -l target/release/deps/still-<hash> large_document_load_components --ignored --nocapture --test-threads=1
 ```
 
-For the baseline, archive `ebdcded` into a temporary directory. Build its library tests using mise from the trusted repository, passing `--manifest-path` to that archive and the same `CARGO_TARGET_DIR` to reuse dependencies. Run each baseline measurement before rebuilding the current version; both versions may emit the same test executable filename. Cold-load and component diagnostics were already present in that commit. The current full interaction harness adds composition/history assertions after the existing interaction series.
+For the baseline, archive `a0b3714` into a temporary directory. Build its library tests using mise from the trusted repository, passing `--manifest-path` to that archive and the same `CARGO_TARGET_DIR` to reuse dependencies. Run each baseline measurement before rebuilding the current version; both versions may emit the same test executable filename. Cold-load and component diagnostics were already present in that commit. The current full interaction harness adds composition/history assertions after the existing interaction series.
 
 - Fresh cold runs: [before 10k](performance/native-buffer/before-cold-10k.txt), [after 10k](performance/native-buffer/after-cold-10k.txt), [before 50k](performance/native-buffer/before-cold-50k.txt), [after 50k](performance/native-buffer/after-cold-50k.txt).
 - [Native/model breakdown before](performance/native-buffer/before-components.txt) and [after](performance/native-buffer/after-components.txt).

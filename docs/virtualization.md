@@ -1,6 +1,6 @@
 # Viewport virtualization
 
-Measured on 2026-10-22 with mise's Rust 1.95.0, Iced 0.14, release optimization, macOS/Apple silicon, and the bundled Newsreader fonts. The baseline is commit `63e4ae7`; its source organization has the same behavior as the [previous performance baseline](performance.md).
+Measured on 2026-10-22 with mise's Rust 1.95.0, Iced 0.14, release optimization, macOS/Apple silicon, and the bundled Newsreader fonts. The baseline is commit `de2e075`; its source organization has the same behavior as the [previous performance baseline](performance.md).
 
 The subsequent [native-buffer report](native-buffer.md) measures deferred native shaping on top of this implementation.
 
@@ -69,7 +69,7 @@ STILL_PROFILE_BLOCKS=10000 STILL_PROFILE_COLD_ONLY=1 mise run profile
 STILL_PROFILE_BLOCKS=50000 STILL_PROFILE_COLD_ONLY=1 mise run profile
 ```
 
-For peak memory independent of compilation, build the release library test with `mise exec -- cargo test --locked --release --lib --no-run`, then run the resulting executable directly under `/usr/bin/time -l` with `large_document_interactions --ignored --nocapture --test-threads=1` and the cold-only environment above. Run each size in its own process. To reproduce the baseline, archive `63e4ae7` into a temporary directory and copy the current `src/app/performance.rs` harness into it before building with the same toolchain and lockfile.
+For peak memory independent of compilation, build the release library test with `mise exec -- cargo test --locked --release --lib --no-run`, then run the resulting executable directly under `/usr/bin/time -l` with `large_document_interactions --ignored --nocapture --test-threads=1` and the cold-only environment above. Run each size in its own process. To reproduce the baseline, archive `de2e075` into a temporary directory and copy the current `src/app/performance.rs` harness into it before building with the same toolchain and lockfile.
 
 - Fresh cold runs: [before 10k](performance/virtualization/before-cold-10k.txt), [after 10k](performance/virtualization/after-cold-10k.txt), [before 50k](performance/virtualization/before-cold-50k.txt), [after 50k](performance/virtualization/after-cold-50k.txt).
 - [Extended baseline interactions](performance/virtualization/before-interactions.txt): complete 10k series and 50k cold frame; intentionally interrupted during distant navigation (SIGINT footer).

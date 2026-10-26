@@ -1,6 +1,6 @@
 # Incremental offline imports
 
-Measured 2026-10-23 against clean baseline **21df384**, Apple M2 Max / 32 GiB, macOS 26.7.1, mise Rust 1.95.0, Iced 0.14, release/thin LTO/codegen-units=1. [Environment](performance/offline-imports/environment.txt) and [measured source hashes](performance/offline-imports/source-sha256.txt) are retained. No dependency or CRDT wire-format change is involved.
+Measured 2026-10-23 against clean baseline **229d89d**, Apple M2 Max / 32 GiB, macOS 26.7.1, mise Rust 1.95.0, Iced 0.14, release/thin LTO/codegen-units=1. [Environment](performance/offline-imports/environment.txt) and [measured source hashes](performance/offline-imports/source-sha256.txt) are retained. No dependency or CRDT wire-format change is involved.
 
 ## What changed
 

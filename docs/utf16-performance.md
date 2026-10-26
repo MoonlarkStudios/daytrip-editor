@@ -10,7 +10,7 @@ The registry version has no equivalent length reuse, so the exact source is reta
 
 ## Comparable release measurements
 
-Measured 2026-10-23 on Apple M2 Max / 32 GiB, macOS 26.7.1 build 25G241, aarch64, mise Rust 1.95.0, Iced 0.14, release/thin LTO/codegen-units=1. The fresh baseline is clean commit **8622a46**. Only the Yrs dependency override changes production execution; the source/fixture/profile code and all other application dependency versions remain unchanged. [Environment](performance/utf16/environment.txt) and measured source hashes accompany the raw results.
+Measured 2026-10-23 on Apple M2 Max / 32 GiB, macOS 26.7.1 build 25G241, aarch64, mise Rust 1.95.0, Iced 0.14, release/thin LTO/codegen-units=1. The fresh baseline is clean commit **81d1f1c**. Only the Yrs dependency override changes production execution; the source/fixture/profile code and all other application dependency versions remain unchanged. [Environment](performance/utf16/environment.txt) and measured source hashes accompany the raw results.
 
 Both runs use the existing 10k/50k rich-block fixtures (910,450 / 4,574,450 bytes), 30 warm samples, Newsreader fonts, 720×800 viewport, persistent widget tree, and software rasterization. Builds and checks completed before serial final measurements; no competing build was run during those measurements. These are event/App/layout/draw/raster CPU totals. They exclude OS/GPU presentation, file IO, decoded images, and actual OS IME delivery. Initialization/first frame and IME/undo/redo each have n=1; do not infer their tail distributions.
 
@@ -104,4 +104,4 @@ RUST_TEST_THREADS=1 mise run bench
 mise run profile
 ```
 
-The fresh baseline used `target/release/deps/still-0360e0d741012cb4` built at 8622a46. Its core profile, remote/app churn and all component benchmarks were captured before rebuilding. `initial-optimized.txt` retains an exploratory optimized run before restoring Cargo's unrelated tempfile/getrandom lockfile resolution to match baseline; the final comparison uses `after.txt`. No timing thresholds were added to regression tests. Existing windows and unsaved documents were preserved; no editor was launched or restarted. Actual platform CJK IME delivery, GPU presentation and accessibility remain manual validation.
+The fresh baseline used `target/release/deps/still-0360e0d741012cb4` built at 81d1f1c. Its core profile, remote/app churn and all component benchmarks were captured before rebuilding. `initial-optimized.txt` retains an exploratory optimized run before restoring Cargo's unrelated tempfile/getrandom lockfile resolution to match baseline; the final comparison uses `after.txt`. No timing thresholds were added to regression tests. Existing windows and unsaved documents were preserved; no editor was launched or restarted. Actual platform CJK IME delivery, GPU presentation and accessibility remain manual validation.

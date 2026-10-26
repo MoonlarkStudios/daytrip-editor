@@ -1,6 +1,6 @@
 # macOS clipboard, drop, and input-method validation
 
-Validated on 2026-10-23 with macOS 26.7.1 (25G241), Apple silicon, mise Rust 1.95.0 and Iced 0.14. The starting commit was `20828c3`; the native PNG drop follow-up used `97cd2fe`. Both sessions used separate `STILL_CONFIG_DIR` directories and temporary copies of **The quiet hour**. Existing documents were not closed or reloaded. The initial scratch process was terminated only after saving; the follow-up document was left saved and open.
+Validated on 2026-10-23 with macOS 26.7.1 (25G241), Apple silicon, mise Rust 1.95.0 and Iced 0.14. The starting commit was `e73e4c0`; the native PNG drop follow-up used `901cc60`. Both sessions used separate `STILL_CONFIG_DIR` directories and temporary copies of **The quiet hour**. Existing documents were not closed or reloaded. The initial scratch process was terminated only after saving; the follow-up document was left saved and open.
 
 ## Fixed composition lifetime
 
@@ -33,7 +33,7 @@ Initial native testing stopped when the user confirmed other desktop work was ac
 
 ## Native PNG drop follow-up
 
-The follow-up ran the `97cd2fe` release executable in a separate, ad-hoc-signed **Still Drop Validation** app with bundle identifier `app.still.editor.drop-validation`, its own configuration, and a temporary `Drop workflow.md`. Only the new test windows were arranged. The other Finder windows and existing writing sessions were preserved.
+The follow-up ran the `901cc60` release executable in a separate, ad-hoc-signed **Still Drop Validation** app with bundle identifier `app.still.editor.drop-validation`, its own configuration, and a temporary `Drop workflow.md`. Only the new test windows were arranged. The other Finder windows and existing writing sessions were preserved.
 
 The automation successfully moved a disposable PNG into a disposable folder within Finder, but its cross-application drag attempts did not produce a Still insertion. The user then performed the Finder-to-Still PNG gesture and confirmed release. The assistant verified the resulting native UI and files; this result is not attributed to a successful automated cross-application gesture.
 

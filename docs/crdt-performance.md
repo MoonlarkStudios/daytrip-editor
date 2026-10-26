@@ -2,7 +2,7 @@
 
 The subsequent [UTF-16 traversal optimization](utf16-performance.md) supersedes the residual traversal costs below; this report preserves the foundation baseline.
 
-Measured on 2026-10-22–23 on an Apple M2 Max, 32 GiB RAM, macOS 26.7.1, mise Rust 1.95.0, Iced 0.14, release/thin LTO/codegen-units=1. Baseline: clean `main` at **`26dceda`**. After: the CRDT foundation change containing this report; [source checksums](performance/crdt/source-sha256.txt) identify the measured source exactly. Full [environment details](performance/crdt/environment.txt) are retained.
+Measured on 2026-10-22–23 on an Apple M2 Max, 32 GiB RAM, macOS 26.7.1, mise Rust 1.95.0, Iced 0.14, release/thin LTO/codegen-units=1. Baseline: clean `main` at **`fecbc48`**. After: the CRDT foundation change containing this report; [source checksums](performance/crdt/source-sha256.txt) identify the measured source exactly. Full [environment details](performance/crdt/environment.txt) are retained.
 
 The integration adds measurable text-engine and stable-position costs. It preserves the earlier source/projection optimizations and bounded resident rich layout. It does not make typing faster than the source-only baseline.
 

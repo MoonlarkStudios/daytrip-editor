@@ -24,7 +24,8 @@ to the implementation they measured; old test counts are historical observations
 ## Measurement history
 
 These reports explain successive implementations and preserve their raw evidence.
-They are not interchangeable current benchmarks. Reproduction commands, fixtures,
+They are not interchangeable current benchmarks. [History references](history.md)
+map commit IDs retained in raw logs to the public history. Reproduction commands, fixtures,
 hardware, sample counts and exclusions live with each report.
 
 1. [Original large-document baseline](performance.md)

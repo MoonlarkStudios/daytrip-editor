@@ -1,6 +1,6 @@
 # Source and projection updates
 
-Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / pulldown-cmark 0.12, release optimization, macOS 26.7.1 on Apple silicon (arm64), and bundled Newsreader fonts. The baseline is `8e86170`, after [native buffer snapshots](native-snapshots.md).
+Measured on 2026-10-22 with mise's Rust 1.95.0, locked Iced 0.14 / pulldown-cmark 0.12, release optimization, macOS 26.7.1 on Apple silicon (arm64), and bundled Newsreader fonts. The baseline is `740fc00`, after [native buffer snapshots](native-snapshots.md).
 
 ## Ownership and update boundaries
 
@@ -87,7 +87,7 @@ Run the emitted executable directly with its actual hash to exclude compilation:
 target/release/deps/still-<hash> performance_source_projection_updates --ignored --nocapture --test-threads=1
 ```
 
-The baseline was measured before edits. To reproduce it, archive `8e86170` into a temporary directory, build through mise from the trusted repository with `--manifest-path` pointing there, and run its executable before rebuilding the current version. A shared `CARGO_TARGET_DIR` reuses dependencies; executable filenames can be identical. The interaction fixture, input sequence and sample count are unchanged. The component diagnostic is new; `mise run bench` runs all six benchmarks concurrently by default, so its component timings are retained separately from the serial diagnostic.
+The baseline was measured before edits. To reproduce it, archive `740fc00` into a temporary directory, build through mise from the trusted repository with `--manifest-path` pointing there, and run its executable before rebuilding the current version. A shared `CARGO_TARGET_DIR` reuses dependencies; executable filenames can be identical. The interaction fixture, input sequence and sample count are unchanged. The component diagnostic is new; `mise run bench` runs all six benchmarks concurrently by default, so its component timings are retained separately from the serial diagnostic.
 
 - [Baseline interactions and process metrics](performance/source-projection/before-interactions.txt).
 - [Final interactions and process metrics](performance/source-projection/after-interactions.txt).
