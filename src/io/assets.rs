@@ -5,8 +5,9 @@ use std::io::{Cursor, Read, Write};
 use std::path::{Component, Path, PathBuf};
 
 use image::{ImageFormat, ImageReader};
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag};
 
+use crate::document::block_parser::MARKDOWN_OPTIONS;
 use crate::io::storage::FileError;
 
 pub const MAX_ENCODED: usize = 16 * 1024 * 1024;
@@ -267,7 +268,7 @@ pub fn relocate(
     if old_base.as_ref() == Some(&new_base) {
         return Ok(());
     }
-    let required = Parser::new_ext(source, Options::all())
+    let required = Parser::new_ext(source, MARKDOWN_OPTIONS)
         .filter_map(|event| match event {
             Event::Start(Tag::Image { dest_url, .. }) => Some(dest_url.into_string()),
             _ => None,

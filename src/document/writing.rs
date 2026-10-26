@@ -3,8 +3,9 @@
 
 use std::ops::Range;
 
-use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 
+use crate::document::block_parser::MARKDOWN_OPTIONS;
 use crate::document::collaboration::{Collaboration, StableSelection};
 use crate::document::selection::Selection;
 
@@ -57,7 +58,7 @@ pub fn inline_at(source: &str, offset: usize, image: bool) -> Option<Details> {
     let mut current: Option<Details> = None;
     let mut label_end = 0;
     let mut image_depth = 0;
-    for (event, range) in Parser::new_ext(source, Options::all()).into_offset_iter() {
+    for (event, range) in Parser::new_ext(source, MARKDOWN_OPTIONS).into_offset_iter() {
         let ending = matches!(&event, Event::End(TagEnd::Link) if !image)
             || matches!(&event, Event::End(TagEnd::Image) if image && image_depth == 1);
         if current.is_some() && !ending {
@@ -298,7 +299,7 @@ pub fn newline(source: &str) -> &'static str {
 
 /// Existing block quotations stay editable through the same attribution tool.
 pub fn quote_at(source: &str, offset: usize) -> Option<(Details, String)> {
-    for (event, mut range) in Parser::new_ext(source, Options::all()).into_offset_iter() {
+    for (event, mut range) in Parser::new_ext(source, MARKDOWN_OPTIONS).into_offset_iter() {
         if matches!(event, Event::Start(Tag::BlockQuote(_))) && range.contains(&offset) {
             let raw = source[range.clone()].trim_end_matches(['\r', '\n']);
             range.end = range.start + raw.len();
