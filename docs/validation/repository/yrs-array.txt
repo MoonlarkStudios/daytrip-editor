@@ -1,0 +1,35 @@
+Yrs 0.28.0 / Rust 1.95.0 / macOS aarch64 / 2026-10-25
+Diagnostic excerpts only; complete-suite results and original assertion text.
+Commands use --features sync --lib -- --test-threads=1 and the existing check-yrs exclusions.
+Pristine source was produced by reversing vendor/yrs.patch and verifying all 65 recorded file hashes.
+
+Patched vendored source, second full suite run
+---- types::array::test::fuzzy_test_300 stdout ----
+run scenario with seed: 3456677333682617693
+
+thread 'types::array::test::fuzzy_test_300' (24538534) panicked at src/test_utils.rs:467:13:
+assertion `left == right` failed
+  left: None
+ right: Some(PendingUpdate { update:  { blocks: BlockSet { clients: {ClientID(1): [(<1#161>, len: 1, origin-l: <3#37>, origin-r: <1#147>: <map({})>), (<1#162>, len: 2, parent: <1#161>, 'someprop' => deleted(2)), (<1#164>, len: 1, origin-l: <1#163>: [44])]} } }, missing: StateVector({ClientID(1): 175}) })
+test result: FAILED. 377 passed; 1 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.59s
+
+Pristine upstream, five full suite runs
+---- types::array::test::fuzzy_test_300 stdout ----
+run scenario with seed: 1405715979555105946
+
+thread 'types::array::test::fuzzy_test_300' (24573790) panicked at src/test_utils.rs:467:13:
+assertion `left == right` failed
+  left: None
+ right: Some(PendingUpdate { update:  { blocks: BlockSet { clients: {ClientID(3): [(<3#183>, len: 1, origin-l: <3#170>, origin-r: <3#171>: <array>), (<3#184>, len: 4, parent: <3#183>: [1, 2, 3, 4])]} } }, missing: StateVector({ClientID(3): 204}) })
+test result: FAILED. 376 passed; 1 failed; 1 ignored; 0 measured; 7 filtered out; finished in 2.58s
+---- types::array::test::fuzzy_test_300 stdout ----
+run scenario with seed: 16638136266955145747
+
+thread 'types::array::test::fuzzy_test_300' (24574238) panicked at src/test_utils.rs:467:13:
+assertion `left == right` failed
+  left: None
+ right: Some(PendingUpdate { update:  { blocks: BlockSet { clients: {ClientID(0): [(<0#158>, len: 3, origin-l: <3#19>, origin-r: <0#142>: [70, 70, 70]), (<0#161>, len: 1, origin-l: <3#19>, origin-r: <0#158>: <map({})>), (<0#162>, len: 2, parent: <0#161>, 'someprop' => deleted(2)), (<0#164>, len: 1, origin-l: <0#163>: [44])]} } }, missing: StateVector({ClientID(0): 170}) })
+test result: FAILED. 376 passed; 1 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.95s
+test result: ok. 377 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 1.76s
+test result: ok. 377 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 2.14s
+test result: ok. 377 passed; 0 failed; 1 ignored; 0 measured; 7 filtered out; finished in 2.17s

@@ -5,7 +5,7 @@ Its `.cargo_vcs_info.json` identifies upstream commit
 `23b7f5693bbf9e7d26340c521ee8647f79bdfba2`, path `yrs` in
 https://github.com/y-crdt/y-crdt. `yrs/LICENSE` is the license from that commit.
 The registry archive SHA-256 and original file hashes are in
-`yrs-upstream.sha256`; `yrs.patch` is the complete source change.
+`yrs-upstream.sha256`; `yrs.patch` records all local source and manifest changes.
 The dependency's test-only `Cargo.lock` is separately resolved and committed for
 reproducible upstream checks. Cargo's root `[patch.crates-io]` selects this dependency; Still remains one
 application package, without a workspace or second CRDT backend.
@@ -21,12 +21,36 @@ apply Still's formatting/lint conventions to the imported dependency. Git whites
 checks exclude the imported files and patch context to preserve them verbatim;
 raw profile logs likewise retain exact tool output.
 
+## Dependency diagnostics
+
+With Still's pinned Rust 1.95 toolchain and `sync` feature, the upstream library
+emits 58 warnings in six categories: `dead_code`, `unused_imports`, `unused_mut`,
+`unused_variables`, `unused_assignments`, and `mismatched_lifetime_syntaxes`.
+Cargo shows these because the patch is a path dependency; non-path dependencies
+normally have their lints capped ([Cargo lint configuration](https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section)).
+
+The vendored manifest allows only these observed categories for Yrs. This is an
+exception for imported third-party code so we can preserve upstream implementation
+and formatting while keeping application build output useful. It suppresses the
+diagnostics rather than repairing upstream code. Other lint categories, including
+`unused_must_use`, remain enabled, and Still's own lint policy and warnings-denied
+Clippy check are unchanged. Do not add a blanket `warnings` or `unused` allowance
+or global Rust flags. Reassess this list when rebasing or removing the dependency
+patch; remove entries when the corresponding upstream warnings are resolved.
+
 The cached-length regression is beside the upstream block tests. Still's ordinary
 model/native-widget tests cover the integration, Unicode anchors, undo/redo,
 IME and replica convergence. The additional upstream suite is run separately
 with its own manifest/lockfile; commands and asset exclusions are in
 `docs/utf16-performance.md`. Root `mise run check` tests the application rather
 than automatically testing dependency internals.
+
+On 2026-10-25, `check-yrs` exposed an intermittent upstream
+`types::array::test::fuzzy_test_300` pending-update assertion. Reversing this
+patch reproduced all 65 original file hashes; the pristine upstream suite then
+failed the same assertion in two of five runs. The array test remains enabled.
+This is a known upstream validation limit, not a reason to suppress test failures
+or broaden the local patch. Daytrip's plain-text application tests pass separately.
 
 Keep this a narrow, reviewable patch. On an upstream release containing an
 equivalent fix, remove the vendor override and directory, pin the new version,

@@ -1,3 +1,20 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -121,3 +121,14 @@
+ 
+ [dev-dependencies.uuid]
+ version = "1.26"
++
++# Still: retain upstream source while quieting its known Rust 1.95 warnings.
++# Keep this list specific to observed lints; application checks remain strict.
++# Rationale and removal policy: ../README.md.
++[lints.rust]
++dead_code = "allow"
++mismatched_lifetime_syntaxes = "allow"
++unused_assignments = "allow"
++unused_imports = "allow"
++unused_mut = "allow"
++unused_variables = "allow"
 --- a/src/block.rs
 +++ b/src/block.rs
 @@ -696,7 +696,8 @@
