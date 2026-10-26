@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Koan.
+description: Report a reproducible problem in Dosty.
 body:
   - type: markdown
     attributes:

@@ -1,0 +1,35 @@
+{
+  "reference": "mockup-reference.png",
+  "reference_sha256": "1070f517c280b8d7c7e18c57db13c6ce5cea8eef8902bcc1e173a01ac1360bdb",
+  "original": "exec-ed1d2317-88c9-4431-aa0b-96b4450c4fe8.png",
+  "crop": [
+    112,
+    108,
+    428,
+    486
+  ],
+  "foreground_bounds": [
+    11,
+    12,
+    305,
+    367
+  ],
+  "scale": 0.6591549295774648,
+  "translation": [
+    23.853521126760565,
+    3.0901408450704224
+  ],
+  "tracer": "vtracer 0.6.15",
+  "contour_cleanup": "Nearest flat color, remove isolated edge fragments below 500 pixels, one-pixel closing; spline fit. Original outer silhouette retained in compact master.",
+  "trace_parameters": {
+    "corner_threshold": 60,
+    "length_threshold": 1,
+    "max_iterations": 20,
+    "splice_threshold": 20,
+    "path_precision": 3
+  },
+  "pixel_center_offset": [
+    -0.5,
+    -0.5
+  ]
+}

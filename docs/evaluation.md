@@ -1,6 +1,6 @@
 # Iced evaluation and release gaps
 
-Koan remains a technology evaluation. This page summarizes current coverage and remaining release work; dated feature reports in the [documentation index](README.md) preserve the evidence for individual changes. Passing model and software-renderer tests does not establish native accessibility or platform readiness.
+Dosty remains a technology evaluation. This page summarizes current coverage and remaining release work; dated feature reports in the [documentation index](README.md) preserve the evidence for individual changes. Passing model and software-renderer tests does not establish native accessibility or platform readiness.
 
 ## Verified locally
 

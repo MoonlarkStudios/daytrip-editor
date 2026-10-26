@@ -9,7 +9,7 @@ https://github.com/y-crdt/y-crdt. `yrs/LICENSE` is the license from that commit.
 The registry archive SHA-256 and original file hashes are in
 `yrs-upstream.sha256`; `yrs.patch` records all local source and manifest changes.
 The dependency's test-only `Cargo.lock` is separately resolved and committed for
-reproducible upstream checks. Cargo's root `[patch.crates-io]` selects this dependency; Daytrip remains one
+reproducible upstream checks. Cargo's root `[patch.crates-io]` selects this dependency; Dosty remains one
 application package, without a workspace or second CRDT backend.
 
 The patch reuses `Item.len`, the existing UTF-16 clock length, in
@@ -18,14 +18,14 @@ Construction, split, trim, and garbage collection already maintain this invarian
 Byte indexing still delegates to the original content length. No extra fields,
 unsafe code, wire format, text indexing units, or GC policy are added.
 Upstream's existing unsafe implementation remains third-party dependency code;
-Daytrip's application code and this patch remain safe Rust. Do not mechanically
-apply Daytrip's formatting/lint conventions to the imported dependency. Git whitespace
+Dosty's application code and this patch remain safe Rust. Do not mechanically
+apply Dosty's formatting/lint conventions to the imported dependency. Git whitespace
 checks exclude the imported files and patch context to preserve them verbatim;
 raw profile logs likewise retain exact tool output.
 
 ## Dependency diagnostics
 
-With Daytrip's pinned Rust 1.95 toolchain and `sync` feature, the upstream library
+With Dosty's pinned Rust 1.95 toolchain and `sync` feature, the upstream library
 emits 58 warnings in six categories: `dead_code`, `unused_imports`, `unused_mut`,
 `unused_variables`, `unused_assignments`, and `mismatched_lifetime_syntaxes`.
 Cargo shows these because the patch is a path dependency; non-path dependencies
@@ -35,12 +35,12 @@ The vendored manifest allows only these observed categories for Yrs. This is an
 exception for imported third-party code so we can preserve upstream implementation
 and formatting while keeping application build output useful. It suppresses the
 diagnostics rather than repairing upstream code. Other lint categories, including
-`unused_must_use`, remain enabled, and Daytrip's own lint policy and warnings-denied
+`unused_must_use`, remain enabled, and Dosty's own lint policy and warnings-denied
 Clippy check are unchanged. Do not add a blanket `warnings` or `unused` allowance
 or global Rust flags. Reassess this list when rebasing or removing the dependency
 patch; remove entries when the corresponding upstream warnings are resolved.
 
-The cached-length regression is beside the upstream block tests. Daytrip's ordinary
+The cached-length regression is beside the upstream block tests. Dosty's ordinary
 model/native-widget tests cover the integration, Unicode anchors, undo/redo,
 IME and replica convergence. The additional upstream suite is run separately
 with its own manifest/lockfile; commands and asset exclusions are in

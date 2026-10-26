@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="compact-title">
-  <title id="compact-title">koan open book-compact</title>
-  <desc>Optical correction for icons at 16–32 pixels: a wider gap between the two lower tips.</desc>
-  <path id="left-leaf" fill="#302A35" d="M 21 12 C 15 8 10 12 10 19 L 10 151 C 10 160 13 166 20 171 L 113 244 L 102 65 C 101 55 99 51 92 47 Z" />
-  <path id="right-leaf" fill="#A1839A" d="M 224 59 C 230 55 233 58 233 65 L 233 152 C 233 160 231 163 225 168 L 143 244 L 156 102 C 157 95 159 92 165 88 Z" />
-</svg>

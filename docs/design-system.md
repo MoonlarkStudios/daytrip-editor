@@ -1,18 +1,18 @@
-# Koan appearance
+# Dosty appearance
 
-Koan's open book and outlined lowercase signature remain the identity. The application extends the brand into a quiet writing environment: warm surfaces, confident ink, restrained accents, and generous space around the document. The logo has no tagline.
+Dosty's curled-page **d** with a negative-space fountain pen and outlined DM Sans wordmark form the identity. The application extends the brand into a quiet writing environment: warm surfaces, confident ink, restrained accents, and generous space around the document. The logo has no tagline.
 
 ## Atmospheres
 
 | Preset | Canvas and chrome | Ink and emphasis |
 | --- | --- | --- |
-| Paper | Warm paper, limestone sidebar | Plum ink, mauve book leaf, deeper plum controls |
-| Midnight | Warm charcoal and plum surfaces | Linen text, soft lilac controls |
+| Paper | Warm paper, pale sage sidebar | Charcoal ink, smoked teal controls, sage and parchment mark |
+| Midnight | Warm charcoal surfaces | Cream text, muted teal controls |
 | Sage | Linen paper, pale botanical chrome | Dark green ink, leaf accents |
 
-The approved brand palette remains in [the brand kit](../branding/koan/README.md). Decorative mauve is separate from the stronger interactive accent: a small label or link must remain readable. Each preset has its own semantic colors in `themes/`, rather than a tint over one universal palette.
+The approved brand palette remains in [the brand kit](../branding/dosty/README.md). The decorative logo colors are separate from the stronger interactive accent: a small label or link must remain readable. Each preset has its own semantic colors in `themes/`, rather than a tint over one universal palette.
 
-Newsreader supplies document text and editorial headings. System sans serif supplies controls. Monospace supplies source, code, and paths. The sidebar signature uses the actual outlined wordmark, never a font approximation. Its Iced paths are generated from the SVG masters by the brand exporter; no SVG parsing, image decoding, or font lookup happens to render the signature.
+DM Sans supplies the outlined brand wordmark, shared with the Moonlark Studios family. Newsreader supplies document text and editorial headings. System sans serif supplies controls. Monospace supplies source, code, and paths. The sidebar signature uses the actual outlined wordmark, never a font approximation. Its Iced paths are generated from the SVG masters by the brand exporter; no SVG parsing, image decoding, or font lookup happens to render the signature.
 
 ## Roles and state
 
@@ -21,7 +21,7 @@ Newsreader supplies document text and editorial headings. System sans serif supp
 - `canvas`, `surface`, and `elevated` distinguish the document, navigation, and dialogs.
 - `text`, `muted`, and `faint` establish hierarchy while retaining readable small labels.
 - `accent` identifies actions; `accent_soft` identifies the current selection. `selection` is reserved for selected document text.
-- `brand_accent` colors the decorative book leaf. It is optional in custom themes and falls back to `accent`.
+- `brand_ink`, `brand_accent`, and `brand_paper` color the mark body, upper curl, and page underside. All are optional in custom themes; they fall back to `text`, `accent`, and `muted` respectively. The pen remains transparent negative space and the wordmark uses `text`.
 - Primary and selected foregrounds, hover surfaces, control borders, disabled colors, scrims, and shadows derive once during resolution. Primary foregrounds accommodate both dark and pale custom accents.
 - Hover and pressed states provide feedback. Disabled undo/redo controls are visibly unavailable; the current file retains its selected treatment even without an action.
 - Inputs use a visible boundary and a stronger focus outline. Scrollbars, notifications, code surfaces, and dialogs use the same palette as the document.
@@ -41,12 +41,12 @@ HTML exports use Paper's resolved palette for a consistent, portable reading pag
 ```sh
 mise run check
 mise run release
-python3 branding/koan/export.py --check
-KOAN_CONFIG_DIR=/tmp/koan-theme-preview mise exec -- cargo test --locked theme_ui_previews -- --ignored --nocapture
+python3 branding/dosty/export.py --check
+DOSTY_CONFIG_DIR=/tmp/dosty-theme-preview mise exec -- cargo test --locked theme_ui_previews -- --ignored --nocapture
 ```
 
 The private preview test renders the real application through Iced's software renderer at 1180×820 and the minimum 760×520 window size. It covers all presets, appearance settings, focus mode, find/replace, long titles, source and reading modes, code blocks, and the unsaved dialog. PNGs are written to `target/theme-validation/`. It does not open a native window or modify the user's preferences. Theme-switch regression coverage preserves document source, reverse selection, and undo availability. Native OS presentation and assistive technology behavior require separate platform validation.
 
-The following validation predates the Koan rename and describes the Daytrip identity.
+The following validation predates the Koan and Dosty renames and describes the Daytrip identity.
 
 Validated on 2026-10-25 with the mise-pinned Rust 1.95.0 and Iced 0.14: the isolated theming-only snapshot passed 160 regression tests (12 opt-in tests ignored), and the full development checkout passed 184 tests (16 ignored); formatting and Clippy passed; release and the signed macOS bundle built successfully; all 41 derived brand assets reproduced. The 21 software previews were visually inspected. A separate native macOS session with isolated preferences confirmed the outlined signature, theme switching, settings scrolling, text-size control, and focus mode. The native check found scrollbar overlap in the shortcut list; the final layout reserves space beside that rail. The validation window was closed without editing or saving a document.

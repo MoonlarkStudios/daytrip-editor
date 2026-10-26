@@ -1,0 +1,21 @@
+{
+  "family": "DM Sans",
+  "file": "DMSans-Variable.ttf",
+  "source": "https://raw.githubusercontent.com/google/fonts/5b35b7208dd4100571326fdf37f030b32a524232/ofl/dmsans/DMSans%5Bopsz%2Cwght%5D.ttf",
+  "revision": "5b35b7208dd4100571326fdf37f030b32a524232",
+  "sha256": "8cd08d97e89c24d0aa92edd2f0f4c8ee6195eee9b7c9f154865a58b02f0c1c0d",
+  "axes": {
+    "opsz": 24,
+    "wght": 600
+  },
+  "fontTools": "4.61.1",
+  "fill_rule": "nonzero",
+  "uharfbuzz": "0.57.0",
+  "shaping": {
+    "text": "dosty",
+    "features": {
+      "kern": true
+    },
+    "tracking": 0
+  }
+}

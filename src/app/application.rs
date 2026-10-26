@@ -321,7 +321,7 @@ impl App {
 
     pub fn title(&self) -> String {
         format!(
-            "{}{} — Koan",
+            "{}{} — Dosty",
             if self.dirty { "● " } else { "" },
             self.display_name
         )
@@ -488,7 +488,7 @@ impl App {
                             .set_file_name(if agent {
                                 "agent-snapshot.json"
                             } else {
-                                "document.koanreplica"
+                                "document.dostyreplica"
                             })
                             .save_file()
                             .await
@@ -513,7 +513,10 @@ impl App {
                 return Task::perform(
                     async {
                         let file = rfd::AsyncFileDialog::new()
-                            .add_filter("Koan replica", &["koanreplica", "daytripreplica"])
+                            .add_filter(
+                                "Dosty replica",
+                                &["dostyreplica", "koanreplica", "daytripreplica"],
+                            )
                             .pick_file()
                             .await
                             .ok_or_else(|| FileError::Io("Import cancelled".into()))?;
@@ -927,7 +930,7 @@ impl App {
                 return Task::perform(
                     async {
                         let Some(file) = rfd::AsyncFileDialog::new()
-                            .add_filter("Koan theme", &["toml"])
+                            .add_filter("Dosty theme", &["toml"])
                             .pick_file()
                             .await
                         else {
@@ -1735,7 +1738,10 @@ impl App {
                 return Task::perform(
                     async {
                         rfd::AsyncFileDialog::new()
-                            .add_filter("Koan replica", &["koanreplica", "daytripreplica"])
+                            .add_filter(
+                                "Dosty replica",
+                                &["dostyreplica", "koanreplica", "daytripreplica"],
+                            )
                             .pick_file()
                             .await
                             .map(|file| file.path().to_owned())

@@ -1,0 +1,37 @@
+{
+  "name": "dosty \u2014 smoked teal",
+  "colors": {
+    "cream": "#F3EFE4",
+    "charcoal": "#20231F",
+    "teal": "#365D58",
+    "sage": "#7B8C75",
+    "parchment": "#DED2B8",
+    "tealDark": "#71918A",
+    "sageDark": "#9FAD94",
+    "parchmentDark": "#C9B99B"
+  },
+  "roles": {
+    "light": {
+      "background": "cream",
+      "wordmark": "charcoal",
+      "body": "teal",
+      "curl": "sage",
+      "page": "parchment"
+    },
+    "dark": {
+      "background": "charcoal",
+      "wordmark": "cream",
+      "body": "tealDark",
+      "curl": "sageDark",
+      "page": "parchmentDark"
+    },
+    "monochromeLight": {
+      "background": "cream",
+      "foreground": "charcoal"
+    },
+    "monochromeDark": {
+      "background": "charcoal",
+      "foreground": "cream"
+    }
+  }
+}

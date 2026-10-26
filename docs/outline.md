@@ -31,7 +31,7 @@ Measured on 2026-10-25 on an Apple M2 Max, 32 GiB RAM, macOS 26.7.1 (25G241), aa
 
 ```sh
 mise exec -- cargo test --locked --release performance_outline_sections -- --ignored --nocapture --test-threads=1
-DAYTRIP_PROFILE_SAMPLES=10 mise run profile
+DOSTY_PROFILE_SAMPLES=10 mise run profile
 ```
 
 The dedicated fixture has ten blocks per chapter: a parent heading, introductory paragraph, child heading, and seven paragraphs containing formatting, a link, and Unicode. The 10k/50k cases contain 2,000/10,000 headings and 926,010/4,670,010 source bytes. Query timings use ten distinct queries. Move/undo timings use five repetitions moving the first complete chapter to the end, restoring exact source after each undo. These times include the application command, CRDT transaction, source parsing, outline refresh, projection, and native buffer synchronization; they exclude widget construction/layout, drawing, OS/GPU delivery, and file IO.

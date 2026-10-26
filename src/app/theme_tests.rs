@@ -105,7 +105,7 @@ fn render(app: &App, size: Size, name: &str) {
 }
 
 #[test]
-#[ignore = "render Koan themes, narrow windows, overlays, and focus mode for visual inspection"]
+#[ignore = "render Dosty themes, narrow windows, overlays, and focus mode for visual inspection"]
 fn theme_ui_previews() {
     let mut fonts = iced_tiny_skia::graphics::text::font_system()
         .write()

@@ -693,6 +693,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "dosty"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "base64 0.23.1",
+ "blake3",
+ "directories",
+ "iced",
+ "iced_runtime",
+ "iced_tiny_skia",
+ "image",
+ "open",
+ "percent-encoding",
+ "pulldown-cmark 0.13.5",
+ "reqwest",
+ "rfd",
+ "ropey",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tiny-skia",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "unicode-segmentation",
+ "uuid",
+ "yrs",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1829,38 +1861,6 @@ name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
-
-[[package]]
-name = "koan"
-version = "0.1.0"
-dependencies = [
- "arboard",
- "base64 0.23.1",
- "blake3",
- "directories",
- "iced",
- "iced_runtime",
- "iced_tiny_skia",
- "image",
- "open",
- "percent-encoding",
- "pulldown-cmark 0.13.5",
- "reqwest",
- "rfd",
- "ropey",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tiny-skia",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
- "unicode-segmentation",
- "uuid",
- "yrs",
-]
 
 [[package]]
 name = "kurbo"

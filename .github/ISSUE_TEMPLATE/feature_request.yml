@@ -1,5 +1,5 @@
 name: Feature request
-description: Describe a writing workflow that Koan could support better.
+description: Describe a writing workflow that Dosty could support better.
 body:
   - type: textarea
     id: workflow

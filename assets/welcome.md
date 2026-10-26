@@ -4,7 +4,7 @@ A quiet place for your words. No crowded toolbars, no preview pane. Just you, a 
 
 ## Find your flow
 
-Writing feels better when the tools get out of the way. **Koan** brings your Markdown to life in the same space you write it. Type Markdown and watch its syntax fall away. Move, select, and keep writing across the whole page.
+Writing feels better when the tools get out of the way. **Dosty** brings your Markdown to life in the same space you write it. Type Markdown and watch its syntax fall away. Move, select, and keep writing across the whole page.
 
 > Almost all good writing begins with terrible first efforts. You need to start somewhere.
 >
