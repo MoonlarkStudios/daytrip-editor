@@ -543,9 +543,11 @@ mod tests {
     #[test]
     fn block_updates_match_full_projection_styles_and_every_mapping() {
         let mut accepted = 0;
-        for fixture in
-            include_str!("../../tests/fixtures/block-parsing.md").split("\n<!-- case -->\n")
-        {
+        // Normalize the corpus before splitting, then exercise both line endings below.
+        let corpus = include_str!("../../tests/fixtures/block-parsing.md").replace("\r\n", "\n");
+        let fixtures = corpus.split("\n<!-- case -->\n").collect::<Vec<_>>();
+        assert_eq!(fixtures.len(), 19, "keep every fixture as a separate case");
+        for fixture in fixtures {
             for source in [fixture.to_owned(), fixture.replace('\n', "\r\n")] {
                 for point in source
                     .char_indices()
