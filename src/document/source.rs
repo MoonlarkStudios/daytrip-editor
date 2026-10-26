@@ -625,9 +625,11 @@ mod tests {
     fn local_and_fallback_edits_match_full_commonmark_boundaries() {
         let mut incremental = 0;
         let mut fallback = 0;
-        for fixture in
-            include_str!("../../tests/fixtures/block-parsing.md").split("\n<!-- case -->\n")
-        {
+        // Normalize the corpus before splitting, then exercise both line endings below.
+        let corpus = include_str!("../../tests/fixtures/block-parsing.md").replace("\r\n", "\n");
+        let fixtures = corpus.split("\n<!-- case -->\n").collect::<Vec<_>>();
+        assert_eq!(fixtures.len(), 19, "keep every fixture as a separate case");
+        for fixture in fixtures {
             for source in [fixture.to_owned(), fixture.replace('\n', "\r\n")] {
                 let boundaries = source
                     .char_indices()
