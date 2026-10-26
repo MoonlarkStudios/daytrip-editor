@@ -6,12 +6,13 @@ use std::sync::Arc;
 
 use iced::keyboard::{self, Key, key};
 use iced::widget::{
-    button, column, container, markdown, mouse_area, operation, row, rule, scrollable, space,
-    stack, text, text_editor, text_input, tooltip,
+    button, column, container, markdown, mouse_area, operation, responsive, row, rule, scrollable,
+    space, stack, text, text_editor, text_input, tooltip,
 };
 use iced::window;
-use iced::{Alignment, Color, Element, Event, Fill, Font, Subscription, Task, Theme};
+use iced::{Alignment, Element, Event, Fill, Font, Shrink, Subscription, Task, Theme};
 
+use crate::app::brand;
 use crate::app::icon::{self, Icon};
 use crate::document::Document;
 use crate::document::collaboration::{AgentProposal, CompositionTarget, EditOrigin, ReplicaState};
@@ -41,6 +42,10 @@ const SEARCH: &str = "document-search";
 #[cfg(test)]
 #[path = "performance.rs"]
 mod performance;
+
+#[cfg(test)]
+#[path = "theme_tests.rs"]
+mod theme_tests;
 
 pub struct App {
     document: Document,
@@ -1849,19 +1854,29 @@ impl App {
                 container(space())
                     .width(Fill)
                     .height(Fill)
-                    .style(styles::panel(Color::BLACK.scale_alpha(0.22))),
+                    .style(styles::panel(tokens.scrim)),
             )
             .on_press(Message::CloseOverlay);
-            let modal = match overlay {
-                Overlay::Settings => self.settings_view(),
-                Overlay::Collaboration => self.collaboration_view(),
-                Overlay::Unsaved => self.unsaved_view(),
-                Overlay::Writing => self.writing_view(),
-                Overlay::Recovery => self.recovery_view(),
-            };
-            layers = layers
-                .push(backdrop)
-                .push(container(modal).center_x(Fill).center_y(Fill));
+            let modal = responsive(move |size| {
+                let modal = match overlay {
+                    Overlay::Settings => self.settings_view((size.height - 48.0).min(760.0)),
+                    Overlay::Collaboration => self.collaboration_view(),
+                    Overlay::Unsaved => self.unsaved_view(),
+                    Overlay::Writing => self.writing_view(),
+                    Overlay::Recovery => self.recovery_view(),
+                };
+                container(
+                    scrollable(container(modal).padding(16))
+                        .height(Shrink)
+                        .style(styles::scrollbar(tokens)),
+                )
+                .max_height(size.height)
+                .center_x(Fill)
+                .center_y(Fill)
+                .padding(8)
+                .into()
+            });
+            layers = layers.push(backdrop).push(modal);
         }
         if let Some(notification) = &self.notification {
             let toast = button(
@@ -1888,20 +1903,32 @@ impl App {
     fn header(&self) -> Element<'_, Message> {
         let tokens = self.resolved_theme.tokens;
         let header = row![
-            self.icon_button(
-                Icon::Sidebar,
-                "Toggle sidebar",
-                Message::ToggleSidebar,
-                self.sidebar && !self.focus
-            ),
-            text("/ ").size(16).color(tokens.border),
-            text(self.display_name.trim_end_matches(".md"))
-                .size(13)
-                .color(tokens.muted),
+            if self.focus {
+                space().width(0).into()
+            } else {
+                self.icon_button(
+                    Icon::Sidebar,
+                    "Toggle sidebar",
+                    Message::ToggleSidebar,
+                    self.sidebar,
+                )
+            },
+            container(
+                text(self.display_name.trim_end_matches(".md"))
+                    .size(13)
+                    .font(Font {
+                        weight: iced::font::Weight::Medium,
+                        ..Font::DEFAULT
+                    })
+                    .color(tokens.text)
+                    .wrapping(text::Wrapping::None)
+                    .width(Fill)
+            )
+            .width(Fill)
+            .clip(true),
             text(if self.dirty { "●" } else { "" })
                 .size(8)
                 .color(tokens.accent),
-            space::horizontal(),
             self.icon_button(
                 Icon::Search,
                 "Find · ⌘/Ctrl F",
@@ -1925,14 +1952,10 @@ impl App {
     fn sidebar_view(&self) -> Element<'_, Message> {
         let tokens = self.resolved_theme.tokens;
         let brand = row![
-            container(icon::view(Icon::Book, tokens.accent))
-                .padding(7)
-                .style(styles::panel(tokens.accent_soft)),
-            text("daytrip").size(27).font(styles::BODY_FONT),
+            brand::view(tokens),
             space::horizontal(),
             self.icon_button(Icon::Plus, "New document · ⌘/Ctrl N", Message::New, false)
         ]
-        .spacing(11)
         .align_y(Alignment::Center);
         let tabs = row![
             self.small_button(
@@ -2035,28 +2058,23 @@ impl App {
                 "Appearance & shortcuts",
                 Message::ShowSettings
             ),
-            row![
-                text("A little space for your words.")
-                    .size(11)
-                    .color(tokens.faint)
-            ]
-            .padding([12, 4]),
         ]
         .spacing(8);
         container(
             column![
                 brand,
-                text("WRITE AT YOUR OWN PACE").size(9).color(tokens.faint),
-                space().height(22),
+                space().height(16),
                 tabs,
                 space().height(12),
-                scrollable(list).height(Fill),
+                scrollable(list)
+                    .height(Fill)
+                    .style(styles::scrollbar(tokens)),
                 bottom
             ]
             .spacing(12),
         )
-        .padding(22)
-        .width(244)
+        .padding(20)
+        .width(260)
         .height(Fill)
         .style(styles::panel(tokens.surface))
         .into()
@@ -2068,8 +2086,12 @@ impl App {
         if self.mode != EditorMode::Read {
             return container(
                 column![
-                    self.format_bar(),
-                    space().height(24),
+                    if self.focus {
+                        space().height(8).into()
+                    } else {
+                        self.format_bar()
+                    },
+                    space().height(if self.focus { 16 } else { 24 }),
                     self.editor_view(self.mode == EditorMode::Source)
                 ]
                 .spacing(0)
@@ -2087,6 +2109,9 @@ impl App {
         settings.h1_size = (settings.h1_size.0 * self.zoom).into();
         settings.h2_size = (settings.h2_size.0 * self.zoom).into();
         settings.h3_size = (settings.h3_size.0 * self.zoom).into();
+        settings.h4_size = (settings.h4_size.0 * self.zoom).into();
+        settings.h5_size = (settings.h5_size.0 * self.zoom).into();
+        settings.h6_size = (settings.h6_size.0 * self.zoom).into();
         for (index, block) in self.document.blocks.iter().enumerate() {
             let rendered: Element<'_, Message> = if block.rendered.is_empty() {
                 text(self.document.block_source(index))
@@ -2125,7 +2150,11 @@ impl App {
         let page = container(blocks.max_width(width))
             .padding(32)
             .center_x(Fill);
-        scrollable(page).id(SCROLL).height(Fill).into()
+        scrollable(page)
+            .style(styles::scrollbar(tokens))
+            .id(SCROLL)
+            .height(Fill)
+            .into()
     }
 
     fn editor_view(&self, source: bool) -> Element<'_, Message> {
@@ -2176,19 +2205,18 @@ impl App {
     }
 
     fn format_bar(&self) -> Element<'_, Message> {
-        let tokens = self.resolved_theme.tokens;
         let mut toolbar = row![].spacing(3).align_y(Alignment::Center);
-        for (label, format) in [
-            ("H₂", Format::Heading),
-            ("B", Format::Bold),
-            ("I", Format::Italic),
-            ("‹/›", Format::Code),
-            ("↗", Format::Link),
-            ("❝", Format::Quote),
-            ("≡", Format::List),
-            ("☐", Format::Task),
-            ("```", Format::Fence),
-            ("▦", Format::Table),
+        for (kind, format) in [
+            (Icon::Heading, Format::Heading),
+            (Icon::Bold, Format::Bold),
+            (Icon::Italic, Format::Italic),
+            (Icon::Code, Format::Code),
+            (Icon::Link, Format::Link),
+            (Icon::Quote, Format::Quote),
+            (Icon::List, Format::List),
+            (Icon::Task, Format::Task),
+            (Icon::Fence, Format::Fence),
+            (Icon::Table, Format::Table),
         ] {
             let message = if matches!(format, Format::Quote) {
                 Message::Writing(writing::Message::Details(writing::Kind::Quote))
@@ -2207,105 +2235,115 @@ impl App {
                 Format::Fence => "Code block",
                 Format::Table => "Table",
             };
-            toolbar = toolbar.push(tooltip(
-                button(text(label).size(13))
-                    .on_press(message)
-                    .padding([5, 9])
-                    .style(styles::button_style(tokens, Button::Quiet)),
-                text(hint).size(12),
-                tooltip::Position::Bottom,
-            ));
+            toolbar = toolbar.push(self.icon_button(kind, hint, message, false));
         }
-        toolbar = toolbar.push(tooltip(
-            self.small_button(
-                "Image",
-                Message::Writing(writing::Message::Details(writing::Kind::Image)),
-                false,
-            ),
-            text("Add or edit image · paste or drop").size(12),
-            tooltip::Position::Bottom,
+        toolbar = toolbar.push(self.icon_button(
+            Icon::Image,
+            "Add or edit image · paste or drop",
+            Message::Writing(writing::Message::Details(writing::Kind::Image)),
+            false,
         ));
         toolbar.height(32).into()
     }
 
     fn status_bar(&self) -> Element<'_, Message> {
         let tokens = self.resolved_theme.tokens;
-        let mode = button(
-            row![
-                icon::view(
-                    Icon::Code,
-                    if self.mode == EditorMode::Source {
-                        tokens.accent
-                    } else {
-                        tokens.muted
-                    }
-                ),
+        responsive(move |size| {
+            let compact = size.width < 740.0;
+            let mode = button(
                 text(if self.mode == EditorMode::Source {
                     "Source"
                 } else {
-                    "Live editor"
+                    "Live"
+                })
+                .size(12),
+            )
+            .on_press(Message::ToggleSource)
+            .padding([6, 10])
+            .style(styles::button_style(
+                tokens,
+                if self.mode == EditorMode::Source {
+                    Button::Selected
+                } else {
+                    Button::Quiet
+                },
+            ));
+            let undo = button(icon::view(
+                Icon::Undo,
+                if self.document.can_undo() {
+                    tokens.muted
+                } else {
+                    tokens.disabled
+                },
+            ))
+            .on_press_maybe(self.document.can_undo().then_some(Message::Undo))
+            .padding(5)
+            .style(styles::button_style(tokens, Button::Quiet));
+            let redo = button(icon::view(
+                Icon::Redo,
+                if self.document.can_redo() {
+                    tokens.muted
+                } else {
+                    tokens.disabled
+                },
+            ))
+            .on_press_maybe(self.document.can_redo().then_some(Message::Redo))
+            .padding(5)
+            .style(styles::button_style(tokens, Button::Quiet));
+            let mut status = row![
+                mode,
+                self.small_button(
+                    if self.mode == EditorMode::Read {
+                        "Edit"
+                    } else {
+                        "Read"
+                    },
+                    Message::ToggleReading,
+                    self.mode == EditorMode::Read
+                ),
+                undo,
+                redo,
+                space::horizontal(),
+                text(format!("{} words", self.document.words))
+                    .size(11)
+                    .color(tokens.muted)
+            ]
+            .spacing(6)
+            .align_y(Alignment::Center);
+            if !compact {
+                status = status.push(
+                    text(format!(
+                        "·  {} min read",
+                        self.document.words.div_ceil(200).max(1)
+                    ))
+                    .size(11)
+                    .color(tokens.faint),
+                );
+            }
+            status = status.push(space::horizontal()).push(
+                text(if self.busy {
+                    "Working…"
+                } else if self.dirty {
+                    "Unsaved"
+                } else if self.path.is_some() {
+                    "Saved"
+                } else {
+                    "Local file"
                 })
                 .size(11)
-            ]
-            .spacing(7)
-            .align_y(Alignment::Center),
-        )
-        .on_press(Message::ToggleSource)
-        .padding([5, 8])
-        .style(styles::button_style(tokens, Button::Quiet));
-        let mut undo = button(icon::view(Icon::Undo, tokens.muted))
-            .padding(5)
-            .style(styles::button_style(tokens, Button::Quiet));
-        if self.document.can_undo() {
-            undo = undo.on_press(Message::Undo);
-        }
-        let mut redo = button(icon::view(Icon::Redo, tokens.muted))
-            .padding(5)
-            .style(styles::button_style(tokens, Button::Quiet));
-        if self.document.can_redo() {
-            redo = redo.on_press(Message::Redo);
-        }
-        let status = row![
-            mode,
-            self.small_button(
-                if self.mode == EditorMode::Read {
-                    "Edit"
-                } else {
-                    "Read"
-                },
-                Message::ToggleReading,
-                self.mode == EditorMode::Read
-            ),
-            undo,
-            redo,
-            space::horizontal(),
-            text(format!("{} words", self.document.words))
-                .size(11)
-                .color(tokens.muted),
-            text("·").color(tokens.faint),
-            text(format!(
-                "{} min read",
-                self.document.words.div_ceil(200).max(1)
-            ))
-            .size(11)
-            .color(tokens.muted),
-            space::horizontal(),
-            text(if self.busy {
-                "Working…"
-            } else if self.dirty {
-                "Unsaved changes"
-            } else if self.path.is_some() {
-                "All changes saved"
-            } else {
-                "Local Markdown"
-            })
-            .size(11)
-            .color(tokens.faint),
-            self.small_button(&self.resolved_theme.name, Message::ShowSettings, false)
-        ]
-        .spacing(10)
-        .align_y(Alignment::Center);
-        container(status).padding([8, 22]).into()
+                .color(tokens.faint),
+            );
+            if !compact {
+                status = status.push(self.small_button(
+                    &self.resolved_theme.name,
+                    Message::ShowSettings,
+                    false,
+                ));
+            }
+            container(status).padding([8, 22]).into()
+        })
+        .height(46)
+        .into()
     }
 
     fn search_bar(&self) -> Element<'_, Message> {
@@ -2360,7 +2398,7 @@ impl App {
     fn collaboration_view(&self) -> Element<'_, Message> {
         let tokens = self.resolved_theme.tokens;
         container(column![
-            text("Offline collaboration").size(23),
+            text("Offline collaboration").font(styles::BODY_FONT).size(28),
             text("Export a shared replica for offline writing, or a versioned source snapshot for an agent. Importing applies approved changes to this document.").size(13).color(tokens.muted),
             self.small_button("Open replica as offline copy…", Message::OpenReplica, false),
             self.small_button("Export replica…", Message::ExportReplica, false),
@@ -2373,12 +2411,18 @@ impl App {
         ].spacing(16)).padding(30).width(540).style(styles::card(tokens)).into()
     }
 
-    fn settings_view(&self) -> Element<'_, Message> {
+    fn settings_view(&self, height: f32) -> Element<'_, Message> {
         let tokens = self.resolved_theme.tokens;
         let heading = row![
-            text("Make yourself at home.")
-                .font(styles::BODY_FONT)
-                .size(27),
+            column![
+                text("Make yourself at home.")
+                    .font(styles::BODY_FONT)
+                    .size(28),
+                text("Choose the light you write in.")
+                    .size(13)
+                    .color(tokens.muted)
+            ]
+            .spacing(6),
             space::horizontal(),
             self.icon_button(
                 Icon::Close,
@@ -2388,38 +2432,52 @@ impl App {
             )
         ]
         .align_y(Alignment::Center);
-        let mut themes = row![].spacing(12);
+        let mut themes = column![].spacing(8);
         for (preset, preview) in Preset::ALL.into_iter().zip(&self.preset_themes) {
+            let selected = self.preferences.custom_theme.is_none()
+                && self.resolved_theme.name == preset.name();
             let swatch = container(
                 column![
                     text("Aa")
                         .font(styles::BODY_FONT)
-                        .size(30)
+                        .size(25)
                         .color(preview.tokens.text),
-                    space().height(14),
                     container(space())
                         .height(3)
-                        .width(36)
-                        .style(styles::panel(preview.tokens.accent))
+                        .width(28)
+                        .style(styles::panel(preview.tokens.brand_accent))
                 ]
-                .spacing(5),
+                .spacing(4),
             )
-            .padding(18)
-            .width(136)
-            .height(108)
-            .style(styles::panel(preview.tokens.canvas));
+            .padding([7, 14])
+            .width(72)
+            .style(styles::inset(preview.tokens));
             themes = themes.push(
-                button(column![swatch, text(preset.name()).size(12)].spacing(10))
-                    .padding(5)
-                    .style(styles::button_style(
-                        tokens,
-                        if self.resolved_theme.name == preset.name() {
-                            Button::Selected
-                        } else {
-                            Button::Quiet
-                        },
-                    ))
-                    .on_press(Message::Theme(preset)),
+                button(
+                    row![
+                        swatch,
+                        column![
+                            text(preset.name()).size(13),
+                            text(preset.description()).size(12)
+                        ]
+                        .spacing(4),
+                        space::horizontal(),
+                        text(if selected { "Selected" } else { "" }).size(11)
+                    ]
+                    .spacing(14)
+                    .align_y(Alignment::Center),
+                )
+                .width(Fill)
+                .padding(8)
+                .style(styles::button_style(
+                    tokens,
+                    if selected {
+                        Button::Selected
+                    } else {
+                        Button::Quiet
+                    },
+                ))
+                .on_press(Message::Theme(preset)),
             );
         }
         let mut shortcuts = column![].spacing(10);
@@ -2438,40 +2496,58 @@ impl App {
         ] {
             shortcuts = shortcuts.push(
                 row![
-                    text(label).size(12).color(tokens.muted),
+                    text(label.to_owned()).size(12).color(tokens.muted),
                     space::horizontal(),
                     text(keys).size(11).color(tokens.faint)
                 ]
-                .spacing(25),
+                .spacing(20),
             );
         }
+        let custom = if self.preferences.custom_theme.is_some() {
+            format!("Custom theme · {}", self.resolved_theme.name)
+        } else {
+            "Load a custom theme (.toml)".to_owned()
+        };
+        let body = column![
+            text("APPEARANCE").size(10).color(tokens.faint),
+            themes,
+            self.action_row(Icon::Folder, &custom, Message::LoadTheme),
+            space().height(4),
+            row![
+                text("Text size").size(13),
+                space::horizontal(),
+                self.small_button("−", Message::Zoom(-0.1), false),
+                text(format!("{}%", (self.zoom * 100.0).round() as u32))
+                    .size(12)
+                    .color(tokens.muted),
+                self.small_button("+", Message::Zoom(0.1), false)
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center),
+            space().height(8),
+            text("KEYBOARD SHORTCUTS").size(10).color(tokens.faint),
+            shortcuts
+        ]
+        .spacing(12)
+        .padding(iced::Padding::new(2.0).right(16.0));
         container(
             column![
                 heading,
-                text("A different atmosphere. The same space to write.")
-                    .size(13)
-                    .color(tokens.muted),
-                space().height(10),
-                themes,
-                self.action_row(
-                    Icon::Folder,
-                    "Load a custom theme (.toml)",
-                    Message::LoadTheme
-                ),
-                space().height(8),
-                text("KEYBOARD SHORTCUTS").size(10).color(tokens.faint),
-                shortcuts,
-                space().height(4),
+                scrollable(body)
+                    .height(Fill)
+                    .style(styles::scrollbar(tokens)),
                 row![
                     self.small_button("Collaboration…", Message::ShowCollaboration, false),
                     space::horizontal(),
                     self.small_button("Done", Message::CloseOverlay, true)
                 ]
+                .align_y(Alignment::Center)
             ]
-            .spacing(15),
+            .spacing(22),
         )
-        .padding(30)
-        .width(540)
+        .padding(28)
+        .width(560)
+        .height(height)
         .style(styles::card(tokens))
         .into()
     }
@@ -2527,7 +2603,7 @@ impl App {
             button(icon::view(
                 kind,
                 if selected {
-                    tokens.accent
+                    tokens.on_accent_soft
                 } else {
                     tokens.muted
                 },
@@ -2556,7 +2632,7 @@ impl App {
         message: Message,
         selected: bool,
     ) -> Element<'a, Message> {
-        button(text(label).size(12))
+        button(text(label.to_owned()).size(12))
             .on_press(message)
             .padding([6, 10])
             .style(styles::button_style(
@@ -2570,11 +2646,11 @@ impl App {
             .into()
     }
 
-    fn action_row<'a>(&self, kind: Icon, label: &'a str, message: Message) -> Element<'a, Message> {
+    fn action_row<'a>(&self, kind: Icon, label: &str, message: Message) -> Element<'a, Message> {
         button(
             row![
                 icon::view(kind, self.resolved_theme.tokens.muted),
-                text(label).size(12)
+                text(label.to_owned()).size(12)
             ]
             .spacing(10)
             .align_y(Alignment::Center),
@@ -2599,9 +2675,13 @@ impl App {
         button(
             row![
                 icon::view(
-                    Icon::Document,
+                    if label == "Welcome" {
+                        Icon::Book
+                    } else {
+                        Icon::Document
+                    },
                     if selected {
-                        tokens.accent
+                        tokens.on_accent_soft
                     } else {
                         tokens.faint
                     }
@@ -2637,7 +2717,7 @@ impl App {
                 icon::view(
                     Icon::Document,
                     if selected {
-                        tokens.accent
+                        tokens.on_accent_soft
                     } else {
                         tokens.faint
                     }

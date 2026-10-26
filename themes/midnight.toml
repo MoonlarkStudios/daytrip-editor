@@ -1,19 +1,20 @@
 name = "Midnight"
 
 [colors]
-canvas = "#1D2325"
-surface = "#181E20"
-elevated = "#272F31"
-text = "#E2E6DF"
-muted = "#A0ACA5"
-faint = "#7E8E86"
-border = "#35403D"
-accent = "#A5C9AD"
-accent_soft = "#2D4238"
-selection = "#3F5C4C"
-code = "#252F2C"
-danger = "#F1998D"
-success = "#A5C9AD"
+canvas = "#241F29"
+surface = "#2B2431"
+elevated = "#342C3B"
+text = "#F1EAE2"
+muted = "#C7B9CA"
+faint = "#B3A2BA"
+border = "#51445B"
+accent = "#C5A1C4"
+accent_soft = "#49364F"
+selection = "#5B4163"
+code = "#2E2634"
+danger = "#F0A2AF"
+success = "#A6C7B4"
+brand_accent = "#BE9AB8"
 
 [typography]
 body_size = 18

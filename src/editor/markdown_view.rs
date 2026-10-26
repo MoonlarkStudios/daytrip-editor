@@ -23,6 +23,20 @@ impl<'a> markdown::Viewer<'a, Message> for MarkdownView {
         Message::Link(url)
     }
 
+    fn heading(
+        &self,
+        mut settings: markdown::Settings,
+        level: &'a markdown::HeadingLevel,
+        content: &'a markdown::Text,
+        index: usize,
+    ) -> Element<'a, Message> {
+        settings.style.font = Font {
+            weight: iced::font::Weight::Bold,
+            ..styles::BODY_FONT
+        };
+        markdown::heading(settings, level, content, index, Message::Link)
+    }
+
     fn paragraph(
         &self,
         settings: markdown::Settings,

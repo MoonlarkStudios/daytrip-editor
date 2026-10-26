@@ -50,7 +50,7 @@ Changes are saved manually. Closing, opening, or replacing a dirty document requ
 
 ## Themes
 
-Open **Appearance & shortcuts** to select Paper, Midnight, or Sage, or load a TOML theme. Copy `themes/paper.toml` as the starting point. Every color is a required, semantic `#RRGGBB` token. Unknown keys, invalid colors, and out-of-range typography produce an error while the previous theme remains active.
+Open **Appearance & shortcuts** to select Paper, Midnight, or Sage, or load a TOML theme. Copy `themes/paper.toml` as the starting point. The original semantic `#RRGGBB` color tokens remain required; `brand_accent` is optional and falls back to `accent`. Paper pairs warm paper with plum ink; Midnight uses warm plum surfaces; Sage offers linen and quiet greens. See the [Daytrip appearance system](docs/design-system.md). Unknown keys, invalid colors, and out-of-range typography produce an error while the previous theme remains active.
 
 ```text
 Built-in preset or user TOML

@@ -1,19 +1,20 @@
 name = "Sage"
 
 [colors]
-canvas = "#F3F5EF"
-surface = "#E7EDE2"
-elevated = "#FBFCF9"
-text = "#283C33"
-muted = "#627466"
-faint = "#84917F"
-border = "#D5DFCF"
-accent = "#456A43"
-accent_soft = "#D9E5D2"
-selection = "#C6D8BB"
-code = "#E6ECDD"
-danger = "#B64B43"
-success = "#456A43"
+canvas = "#F4F3EC"
+surface = "#E5E8DF"
+elevated = "#FCFBF6"
+text = "#30372F"
+muted = "#53614F"
+faint = "#5C6757"
+border = "#CFD6C9"
+accent = "#47644D"
+accent_soft = "#DCE5D8"
+selection = "#C9D9C5"
+code = "#E8EBE2"
+danger = "#A13850"
+success = "#47644D"
+brand_accent = "#74866B"
 
 [typography]
 body_size = 18

@@ -49,8 +49,9 @@ the artwork and **Daytrip** in ordinary prose and application titles.
 Supporting document typography uses the bundled Newsreader family, licensed
 under the [SIL Open Font License](../../assets/fonts/OFL.txt). Interface
 controls use the system sans serif; code and paths use system monospace.
-These brand colors do not replace the application's semantic theme tokens
-or change a writer's chosen theme and document preferences.
+Application themes extend this palette through semantic roles; see the
+[Daytrip appearance system](../../docs/design-system.md). Custom theme and
+document preferences remain independent of the fixed platform icon palette.
 
 ## Masters and reproduction
 
@@ -90,7 +91,8 @@ python3 branding/daytrip/export.py --check
 ```
 
 `--check` regenerates in a temporary directory and compares every derived
-SVG, PNG, ICO, ICNS, and preview byte for byte, without overwriting the kit.
+SVG, PNG, ICO, ICNS, native vector paths, and preview byte for byte,
+without overwriting the kit.
 PNG timestamp metadata is stripped. To export elsewhere:
 
 ```sh
@@ -105,9 +107,10 @@ icons at their actual pixel dimensions after modifying the masters.
 ## Application integration
 
 The application title, sidebar name, bundled writing samples, dialogs,
-and export fallback titles use Daytrip. The sidebar draws the compact book
-in its active semantic icon color; the platform icon uses the approved
-plum, limestone, and mauve artwork. The bundled PNG is decoded before
+and export fallback titles use Daytrip. The sidebar draws the original
+two-tone book and exact outlined wordmark using the active theme’s ink and decorative brand accent. Native Iced paths
+in `native-paths.rs` are generated from the same SVG masters. The platform
+icon uses the approved plum, limestone, and mauve artwork. The bundled PNG is decoded before
 entering the UI event loop.
 
 `scripts/bundle-macos.sh` builds `target/Daytrip.app` with the Daytrip name

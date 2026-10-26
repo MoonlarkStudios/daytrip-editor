@@ -791,12 +791,16 @@ impl App {
         actions =
             actions.push(self.small_button("Apply", AppMessage::Writing(Message::Accept), true));
         content = content.push(actions);
-        container(scrollable(content).height(iced::Shrink))
-            .max_height(740)
-            .width(550)
-            .padding(28)
-            .style(styles::panel(tokens.surface))
-            .into()
+        container(
+            scrollable(content)
+                .height(iced::Shrink)
+                .style(styles::scrollbar(tokens)),
+        )
+        .max_height(740)
+        .width(550)
+        .padding(28)
+        .style(styles::card(tokens))
+        .into()
     }
 }
 

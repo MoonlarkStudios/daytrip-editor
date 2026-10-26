@@ -1,6 +1,7 @@
 //! Application orchestration and the native entry point.
 
 mod application;
+mod brand;
 pub(crate) mod icon;
 mod startup;
 

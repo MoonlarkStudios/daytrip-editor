@@ -317,14 +317,14 @@ impl App {
         let content = column![
             text("Recovery copies").font(styles::BODY_FONT).size(28),
             text("Unsaved writing is checkpointed after two idle seconds, or every 30 seconds while you keep writing. Open a copy to inspect it; your Markdown is never overwritten automatically. Earlier copies are retained in the recovery folder.").size(13).color(tokens.muted),
-            scrollable(entries).height(iced::Fill),
+            scrollable(entries).height(iced::Fill).style(styles::scrollbar(tokens)),
             row![self.small_button("Show folder", AppMessage::Recovery(Message::OpenFolder), false), self.small_button("Close", AppMessage::CloseOverlay, false)].spacing(8)
         ].spacing(20).height(iced::Fill);
         container(content)
             .width(560)
             .height(540)
             .padding(28)
-            .style(styles::panel(tokens.surface))
+            .style(styles::card(tokens))
             .into()
     }
 }

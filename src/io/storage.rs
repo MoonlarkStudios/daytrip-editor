@@ -170,8 +170,22 @@ pub(super) fn render_html<'a>(
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;");
+    // Export stays in Daytrip's light reading palette, independent of the
+    // current editing atmosphere. Resolve here on the background export path.
+    let paper = crate::theme::Preset::Paper.resolve();
+    let hex = |color: iced::Color| {
+        let [r, g, b, _] = color.into_rgba8();
+        format!("#{r:02x}{g:02x}{b:02x}")
+    };
+    let ink = hex(paper.tokens.text);
+    let canvas = hex(paper.tokens.canvas);
+    let accent = hex(paper.tokens.accent);
+    let code = hex(paper.tokens.code);
+    let muted = hex(paper.tokens.muted);
+    let border = hex(paper.tokens.border);
+    let selection = hex(paper.tokens.selection);
     format!(
-        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'\"><title>{title}</title><style>body{{max-width:720px;margin:64px auto;padding:0 24px;color:#2d3431;background:#faf9f6;font:18px/1.7 Georgia,serif}}h1,h2,h3{{line-height:1.25}}a{{color:#416c58}}pre,code{{background:#eff0e9;border-radius:5px}}pre{{padding:20px;overflow:auto}}blockquote{{border-left:3px solid #416c58;margin-left:0;padding-left:24px;color:#737a74}}table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #ddd;padding:8px 12px}}img{{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:24px auto 12px;border-radius:4px}}p{{margin:0 0 1.1em}}h1{{font-size:2.22em;margin-bottom:.55em}}h2{{margin-top:1.4em}}blockquote p:last-child{{font-size:.92em}}@media print{{body{{margin:0 auto;background:white}}a{{color:inherit}}img{{max-height:65vh}}}}</style></head><body>\n{body}\n</body></html>"
+        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src http: https: data:; style-src 'unsafe-inline'\"><title>{title}</title><style>body{{max-width:720px;margin:64px auto;padding:0 24px;color:{ink};background:{canvas};font:18px/1.7 Georgia,serif}}h1,h2,h3{{line-height:1.25}}a{{color:{accent}}}pre,code{{background:{code};border-radius:5px}}pre{{padding:20px;overflow:auto}}blockquote{{border-left:3px solid {accent};margin-left:0;padding-left:24px;color:{muted}}}table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid {border};padding:8px 12px}}img{{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:24px auto 12px;border-radius:4px}}p{{margin:0 0 1.1em}}h1{{font-size:2.22em;margin-bottom:.55em}}h2{{margin-top:1.4em}}blockquote p:last-child{{font-size:.92em}}::selection{{background:{selection}}}a:focus-visible{{outline:2px solid {accent};outline-offset:3px}}@media(max-width:600px){{body{{margin:32px auto;padding:0 20px}}h1{{font-size:1.9em}}}}@media print{{body{{margin:0 auto;background:white}}a{{color:inherit}}img{{max-height:65vh}}}}</style></head><body>\n{body}\n</body></html>"
     )
 }
 
