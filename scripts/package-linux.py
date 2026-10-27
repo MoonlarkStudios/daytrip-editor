@@ -7,7 +7,7 @@ import platform
 import shutil
 import subprocess
 
-from release import ROOT, copy_licenses, metadata
+from release import ROOT, copy_licenses, linux_package_filename, metadata
 
 
 def main():
@@ -36,6 +36,7 @@ def main():
     distribution = ROOT / "target/dist"
     distribution.mkdir(parents=True, exist_ok=True)
     version = info["linux_version"]
+    package = distribution / linux_package_filename(args.format, info["version"])
     if args.format == "deb":
         # debhelper metadata is needed by dpkg-shlibdeps even for a prebuilt binary.
         debian = workspace / "debian"
@@ -54,7 +55,6 @@ def main():
             "Dosty\nCopyright 2026 Dosty contributors\nLicense: GPL-3.0-or-later\n\n"
             + (ROOT / "LICENSE").read_text(encoding="utf-8"), encoding="utf-8",
         )
-        package = distribution / f"dosty_{version}-1_amd64.deb"
         subprocess.run(["dpkg-deb", "--root-owner-group", "--build", str(stage), str(package)], check=True)
         subprocess.run(["dpkg-deb", "--info", str(package)], check=True)
     else:
@@ -64,8 +64,8 @@ def main():
             "rpmbuild", "-bb", "--define", f"_topdir {workspace}",
             "--define", f"dosty_stage {stage}", str(spec),
         ], check=True)
-        package = distribution / f"dosty-{version}-1.x86_64.rpm"
-        shutil.copyfile(workspace / "RPMS/x86_64" / package.name, package)
+        native_package = workspace / "RPMS/x86_64" / f"dosty-{version}-1.x86_64.rpm"
+        shutil.copyfile(native_package, package)
         subprocess.run(["rpm", "-qip", str(package)], check=True)
     print(package)
 

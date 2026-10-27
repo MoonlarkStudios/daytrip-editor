@@ -45,6 +45,13 @@ the package names, notes and platform metadata. Linux's `~` makes alphas, betas
 and release candidates sort before the final version. Native versions are
 generated; never update the platform templates for a release bump.
 
+Download filenames always use the Cargo version, including its hyphenated
+prerelease suffix: `dosty_0.1.0-alpha.1-1_amd64.deb` and
+`dosty-0.1.0-alpha.1-1.x86_64.rpm`. The internal package versions still use `~`.
+This keeps download names stable when uploaded: [GitHub can rename special
+characters in asset filenames](https://docs.github.com/en/rest/releases/assets#upload-a-release-asset).
+The packager and checksum writer use the same filename helper.
+
 ## Create a draft
 
 After the version commit is on `main`, a maintainer creates and pushes only its
@@ -73,8 +80,8 @@ build on pull requests, without creating a release or using a write token.
 | `Dosty-VERSION-macos-arm64.dmg` | macOS 15 runner, macOS 12 deployment target |
 | `Dosty-VERSION-macos-x86_64.dmg` | macOS 15 Intel runner, macOS 12 deployment target |
 | `Dosty-VERSION-windows-x86_64-setup.exe` | Windows Server 2025, x86_64 MSVC, statically linked CRT |
-| `dosty_LINUX_VERSION-1_amd64.deb` | Ubuntu 24.04, dynamically detected ELF dependencies plus desktop runtime libraries |
-| `dosty-LINUX_VERSION-1.x86_64.rpm` | Fedora 43 container, automatic ELF dependencies plus desktop runtime libraries |
+| `dosty_VERSION-1_amd64.deb` | Ubuntu 24.04, dynamically detected ELF dependencies plus desktop runtime libraries |
+| `dosty-VERSION-1.x86_64.rpm` | Fedora 43 container, automatic ELF dependencies plus desktop runtime libraries |
 | `dosty-VERSION-source.tar.gz` | Exact tagged Git tree, including vendored patches, Cargo.lock and build scripts |
 | `SHA256SUMS` | SHA-256 hashes of the six artifacts above |
 
@@ -99,6 +106,11 @@ does not imply RHEL, openSUSE or other distributions are supported.
 
 The final job requires all five binary packages plus matching source before
 creating the draft. Prerelease versions also set GitHub's prerelease flag.
+After upload, the workflow reads the draft's metadata through its API URL and
+verifies that its names, sizes and GitHub SHA-256 digests match all seven local
+files, including `SHA256SUMS`. Renamed, missing, extra or incomplete assets fail
+the job; failures leave the release unpublished for inspection. The release must
+also retain the expected tag, draft and prerelease flags.
 The workflow refuses an existing release instead of replacing its assets. If a
 failed upload leaves a partial draft, inspect and delete that **draft** manually
 before rerunning. Never delete a published release or move a released tag to
