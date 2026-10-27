@@ -228,7 +228,7 @@ jobs:
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: git archive --format=tar.gz --prefix="dosty-$VERSION/" --output="target/dist/dosty-$VERSION-source.tar.gz" HEAD
-      - name: Check complete asset set, write checksums and create draft
+      - name: Check assets, create draft and verify uploaded names and checksums
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

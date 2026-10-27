@@ -97,13 +97,23 @@ def copy_licenses(destination):
         shutil.copyfile(source, destination / name)
 
 
+def linux_package_filename(package_format, version):
+    """Use SemVer in downloads; tildes belong only in native package metadata."""
+    version_info(version)
+    if package_format == "deb":
+        return f"dosty_{version}-1_amd64.deb"
+    if package_format == "rpm":
+        return f"dosty-{version}-1.x86_64.rpm"
+    raise ValueError(f"Unsupported Linux package format: {package_format}")
+
+
 def release_assets(directory, version):
     names = [
         f"Dosty-{version}-macos-arm64.dmg",
         f"Dosty-{version}-macos-x86_64.dmg",
         f"Dosty-{version}-windows-x86_64-setup.exe",
-        f"dosty_{version.replace('-', '~')}-1_amd64.deb",
-        f"dosty-{version.replace('-', '~')}-1.x86_64.rpm",
+        linux_package_filename("deb", version),
+        linux_package_filename("rpm", version),
         f"dosty-{version}-source.tar.gz",
     ]
     paths = [directory / name for name in names]
@@ -113,18 +123,49 @@ def release_assets(directory, version):
     return paths
 
 
+def file_digest(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def checksums(directory, version):
     paths = release_assets(directory, version)
     lines = []
     for path in paths:
-        digest = hashlib.sha256()
-        with path.open("rb") as source:
-            for chunk in iter(lambda: source.read(1024 * 1024), b""):
-                digest.update(chunk)
-        lines.append(f"{digest.hexdigest()}  {path.name}\n")
+        lines.append(f"{file_digest(path)}  {path.name}\n")
     output = directory / "SHA256SUMS"
     output.write_text("".join(lines), encoding="utf-8")
     return paths + [output]
+
+
+def verify_release_upload(info, assets):
+    # The public /releases/tags endpoint does not expose unpublished drafts.
+    api_url = subprocess.check_output([
+        "gh", "release", "view", info["tag"], "--json", "apiUrl", "--jq", ".apiUrl",
+    ], cwd=ROOT, text=True).strip()
+    uploaded = json.loads(subprocess.check_output(["gh", "api", api_url], cwd=ROOT, text=True))
+    if (uploaded.get("tag_name") != info["tag"] or uploaded.get("draft") is not True
+            or uploaded.get("published_at") is not None):
+        raise ValueError("Uploaded release must be an unpublished draft of the expected tag")
+    if uploaded.get("prerelease") != (info["prerelease"] == "true"):
+        raise ValueError("Uploaded release has the wrong prerelease flag")
+    remote = {asset["name"]: asset for asset in uploaded["assets"]}
+    expected = {path.name for path in assets}
+    if set(remote) != expected or len(uploaded["assets"]) != len(expected):
+        raise ValueError(
+            f"Uploaded asset names differ from checksum inputs: "
+            f"missing {sorted(expected - set(remote))}; unexpected {sorted(set(remote) - expected)}"
+        )
+    for path in assets:
+        asset = remote[path.name]
+        if asset.get("state") != "uploaded" or asset.get("size") != path.stat().st_size:
+            raise ValueError(f"Incomplete uploaded asset: {path.name}")
+        if asset.get("digest") != f"sha256:{file_digest(path)}":
+            raise ValueError(f"Checksum mismatch for uploaded asset: {path.name}")
+    print(f"Verified {len(assets)} uploaded assets; {info['tag']} remains an unpublished draft.")
 
 
 def create_draft(directory, info):
@@ -138,6 +179,7 @@ def create_draft(directory, info):
     if info["prerelease"] == "true":
         command.append("--prerelease")
     subprocess.run(command + [str(path) for path in assets], cwd=ROOT, check=True)
+    verify_release_upload(info, assets)
 
 
 def main():
