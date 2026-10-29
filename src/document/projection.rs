@@ -23,6 +23,7 @@ impl Style {
     pub const MUTED: u8 = 16;
     pub const SYNTAX: u8 = 32;
     pub const CODE_BLOCK: u8 = 64;
+    pub const STRIKETHROUGH: u8 = 128;
     pub fn contains(self, flag: u8) -> bool {
         self.0 & flag != 0
     }
@@ -246,9 +247,12 @@ impl Projection {
                     let (width, style) = match &event {
                         Event::Start(Tag::Strong) => (2, Style::BOLD),
                         Event::Start(Tag::Emphasis) => (1, Style::ITALIC),
-                        _ => (2, Style::MUTED),
+                        _ => (
+                            raw.bytes().take_while(|&byte| byte == b'~').count(),
+                            Style::STRIKETHROUGH,
+                        ),
                     };
-                    if range.len() >= width * 2 {
+                    if width > 0 && range.len() >= width * 2 {
                         let open = range.start..range.start + width;
                         let close = range.end - width..range.end;
                         hide(open.clone(), &mut decorations);
@@ -825,10 +829,11 @@ impl Projection {
         let pairs = ranges
             .iter()
             .map(|range| {
-                self.parsed
-                    .pairs
-                    .iter()
-                    .find(|pair| pair.body == *range && &source[pair.open.clone()] == marker)
+                self.parsed.pairs.iter().find(|pair| {
+                    pair.body == *range
+                        && (&source[pair.open.clone()] == marker
+                            || (marker == "~~" && &source[pair.open.clone()] == "~"))
+                })
             })
             .collect::<Vec<_>>();
         let unwrap = pairs.iter().all(Option::is_some);
@@ -1528,6 +1533,60 @@ mod tests {
             .expect("marked selection");
         result.replace_range(edit.range, &edit.text);
         assert_eq!(result, source);
+    }
+
+    #[test]
+    fn strikethrough_preserves_its_parsed_delimiters_and_nested_styles() {
+        for marker in ["~", "~~"] {
+            let source = format!("{marker}café **bold** and *soft* 🧑‍💻{marker}");
+            let projection = Projection::new(&source);
+            assert_eq!(projection.text, "café bold and soft 🧑‍💻");
+            for (at, flag) in [
+                (0, 0),
+                ("café ".len(), Style::BOLD),
+                ("café bold and ".len(), Style::ITALIC),
+            ] {
+                assert!(projection.highlights[0].iter().any(|(range, style)| {
+                    range.contains(&at)
+                        && style.contains(Style::STRIKETHROUGH)
+                        && (flag == 0 || style.contains(flag))
+                        && !style.contains(Style::MUTED)
+                }));
+            }
+            let pair = &projection.parsed.pairs[0];
+            assert_eq!(&source[pair.open.clone()], marker);
+            assert_eq!(&source[pair.close.clone()], marker);
+            let revealed = Projection::with_context(&source, Some(marker.len() + 1));
+            assert_eq!(
+                revealed.text,
+                format!("{marker}café bold and soft 🧑‍💻{marker}")
+            );
+            assert_eq!(revealed.source, source);
+            let edit = projection
+                .format_inline(
+                    &source,
+                    Selection {
+                        anchor: projection.text.len(),
+                        head: 0,
+                    },
+                    "~~",
+                )
+                .unwrap();
+            let mut unwrapped = source.clone();
+            unwrapped.replace_range(edit.range, &edit.text);
+            assert_eq!(unwrapped, "café **bold** and *soft* 🧑‍💻");
+            assert!(edit.selection.anchor > edit.selection.head);
+        }
+        for source in [r"\~literal\~", "`~~literal~~`", "~~~\n~~literal~~\n~~~"] {
+            let projection = Projection::new(source);
+            assert!(
+                projection
+                    .highlights
+                    .iter()
+                    .flat_map(|line| line.iter())
+                    .all(|(_, style)| { !style.contains(Style::STRIKETHROUGH) })
+            );
+        }
     }
 
     #[test]

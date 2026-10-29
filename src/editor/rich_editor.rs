@@ -980,6 +980,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                             ..iced::Border::default()
                         },
                     ),
+                    Decoration::Strikethrough(_) => continue,
                     Decoration::Header => (tokens.surface, iced::Border::default()),
                     Decoration::Border => (
                         iced::Color::TRANSPARENT,
@@ -1038,7 +1039,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     );
                 }
             }
-            for fragment in state.rich.resident().visible_fragments(visible) {
+            for fragment in state.rich.resident().visible_fragments(visible.clone()) {
                 let rect = fragment.bounds + translation;
                 if !rect.intersects(&clip) {
                     continue;
@@ -1220,6 +1221,23 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     }
                 }
             }
+            // Strikes belong above the selection and glyphs. An opaque theme
+            // selection must not conceal formatting while text is selected.
+            for (rect, kind) in state.rich.resident().visible_decorations(visible) {
+                if let Decoration::Strikethrough(color) = kind {
+                    let rect = *rect + translation;
+                    if !rect.intersects(&clip) {
+                        continue;
+                    }
+                    renderer.fill_quad(
+                        renderer::Quad {
+                            bounds: rect,
+                            ..renderer::Quad::default()
+                        },
+                        *color,
+                    );
+                }
+            }
             if self.source.is_empty() {
                 renderer.fill_text(
                     text::Text {
@@ -1327,6 +1345,100 @@ mod tests {
     use super::*;
     use crate::editor::native_buffer;
     use crate::theme::Preset;
+
+    #[test]
+    fn strikethrough_remains_visible_over_opaque_forward_and_reverse_selections() {
+        use iced::advanced::Renderer as _;
+
+        let source = "~~left      right~~";
+        let projection = Projection::new(source);
+        let content = native_buffer::with_text(&projection.text);
+        let images = ImageStore::default();
+        let mut theme = Preset::Paper.resolve();
+        theme.tokens.text = iced::Color::from_rgb(1.0, 0.0, 1.0);
+        theme.tokens.selection = iced::Color::from_rgb(0.0, 1.0, 0.0);
+        for selection in [
+            Selection {
+                anchor: 0,
+                head: source.len(),
+            },
+            Selection {
+                anchor: source.len(),
+                head: 0,
+            },
+        ] {
+            let mut editor = RichEditor::new(
+                &content,
+                &projection,
+                source,
+                &theme,
+                &images,
+                Binding::from_key_press,
+            )
+            .selection(selection);
+            let mut renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+                iced::Font::DEFAULT,
+                18.0.into(),
+            ));
+            let mut tree = widget::Tree::new(&editor as &dyn Widget<Message, Theme, Renderer>);
+            let size = Size::new(320.0, 100.0);
+            let clip = Rectangle::with_size(size);
+            let node = editor.layout(&mut tree, &renderer, &layout::Limits::new(Size::ZERO, size));
+            let state = tree.state.downcast_mut::<State>();
+            state.focused = true;
+            let x = state.caret(9).x;
+            let strike = state
+                .rich
+                .resident()
+                .decorations
+                .iter()
+                .find_map(|(bounds, kind)| {
+                    (matches!(kind, Decoration::Strikethrough(_))
+                        && bounds.x <= x
+                        && x < bounds.x + bounds.width)
+                        .then_some(*bounds)
+                })
+                .expect("measured strike covers the whitespace between words");
+            let y = strike.y - state.scroll;
+            renderer.reset(clip);
+            editor.draw(
+                &tree,
+                &mut renderer,
+                &theme.iced,
+                &renderer::Style {
+                    text_color: theme.tokens.text,
+                },
+                Layout::new(&node),
+                mouse::Cursor::Unavailable,
+                &clip,
+            );
+            let mut pixels = tiny_skia::Pixmap::new(320, 100).unwrap();
+            let mut mask = tiny_skia::Mask::new(320, 100).unwrap();
+            let viewport =
+                iced_tiny_skia::graphics::Viewport::with_physical_size(Size::new(320, 100), 1.0);
+            if let Renderer::Secondary(renderer) = &mut renderer {
+                renderer.draw(
+                    &mut pixels.as_mut(),
+                    &mut mask,
+                    &viewport,
+                    &[clip],
+                    theme.tokens.canvas,
+                );
+            }
+            assert!(
+                (y.floor() as u32..(y + strike.height).ceil() as u32).any(|row| {
+                    pixels
+                        .pixel(x as u32, row)
+                        .is_some_and(|pixel| pixel.red() > 100)
+                }),
+                "the strike must remain visible through the selected whitespace"
+            );
+            assert!(
+                pixels.pixel(x as u32, (y + 5.0) as u32).unwrap().green() > 200,
+                "the regression actually draws an opaque selection behind the strike"
+            );
+        }
+    }
 
     #[test]
     fn copying_a_rich_document_retains_heading_table_and_image_markdown() {
