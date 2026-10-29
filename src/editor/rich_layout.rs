@@ -1491,50 +1491,110 @@ mod tests {
 
     #[test]
     fn strikethrough_follows_wrapped_nested_and_bidirectional_glyphs_without_reflow() {
-        for body in [
-            "Many words in a sentence that wraps across several visual rows.",
-            "**bold** and *soft* with [linked words](https://example.com) and `code`",
-            "café e\u{301} 🧑‍💻 שלום עולם and العربية",
-        ] {
-            let (projection, actual) = layout(&format!("~~{body}~~"), 130.0);
-            let (plain, expected) = layout(body, 130.0);
-            assert_eq!(projection.text, plain.text);
-            assert_eq!(actual.height, expected.height, "{body}");
-            assert_eq!(actual.rows.len(), expected.rows.len());
-            for (offset, _) in projection.text.char_indices() {
-                assert_eq!(
-                    actual.caret(offset),
-                    expected.caret(offset),
-                    "{body} at {offset}"
-                );
-            }
-            let strikes = actual
-                .decorations
-                .iter()
-                .filter_map(|(bounds, kind)| {
-                    matches!(kind, Decoration::Strikethrough(_)).then_some(bounds)
-                })
-                .collect::<Vec<_>>();
-            assert!(!strikes.is_empty());
-            for row in &actual.rows {
-                assert!(
-                    strikes
-                        .iter()
-                        .any(|strike| row.bounds.contains(strike.center())),
-                    "row {:?} in {body}",
-                    row.bounds
-                );
-            }
-            for strike in strikes {
-                assert!(strike.width > 0.0);
-                assert!(strike.x >= -0.01 && strike.x + strike.width <= 130.01);
-            }
-            assert!(
-                expected
+        // A narrow column deliberately exercises glyphs wider than the nominal
+        // width. Font fallback and bidirectional runs can also exceed it.
+        for width in [1.0, 130.0] {
+            for body in [
+                "Many words in a sentence that wraps across several visual rows.",
+                "**bold** and *soft* with [linked words](https://example.com) and `code`",
+                "café e\u{301} 🧑‍💻 שלום עולם and العربية",
+            ] {
+                let (projection, actual) = layout(&format!("~~{body}~~"), width);
+                let (plain, expected) = layout(body, width);
+                assert_eq!(projection.text, plain.text);
+                assert_eq!(actual.height, expected.height, "{body}");
+                assert_eq!(actual.rows.len(), expected.rows.len());
+                for (offset, _) in projection.text.char_indices() {
+                    assert_eq!(
+                        actual.caret(offset),
+                        expected.caret(offset),
+                        "{body} at {offset}"
+                    );
+                }
+                let strikes = actual
                     .decorations
                     .iter()
-                    .all(|(_, kind)| !matches!(kind, Decoration::Strikethrough(_)))
-            );
+                    .filter_map(|(bounds, kind)| {
+                        matches!(kind, Decoration::Strikethrough(_)).then_some(bounds)
+                    })
+                    .collect::<Vec<_>>();
+                assert!(!strikes.is_empty());
+                let mut covered = 0;
+                for fragment in &expected.fragments {
+                    let FragmentKind::Text {
+                        paragraph, origin, ..
+                    } = &fragment.kind
+                    else {
+                        continue;
+                    };
+                    for (row, run) in paragraph.buffer().layout_runs().enumerate() {
+                        let top = origin.y + run.line_top;
+                        let bottom = top + run.line_height;
+                        let row_strikes = strikes
+                            .iter()
+                            .copied()
+                            .filter(|strike| top <= strike.center_y() && strike.center_y() < bottom)
+                            .collect::<Vec<_>>();
+                        let Some((left, right)) = run
+                            .glyphs
+                            .iter()
+                            .filter(|glyph| glyph.w > 0.0)
+                            .map(|glyph| (origin.x + glyph.x, origin.x + glyph.x + glyph.w))
+                            .reduce(|(left, right), (start, end)| {
+                                (left.min(start), right.max(end))
+                            })
+                        else {
+                            // Extremely narrow fallback/bidi layout can include
+                            // empty runs. They have no advance to strike through.
+                            assert!(
+                                row_strikes.is_empty(),
+                                "strike on an empty shaped row: {body:?}, width {width}, row {row}"
+                            );
+                            continue;
+                        };
+                        assert!(
+                            !row_strikes.is_empty(),
+                            "missing strike for {body:?}, width {width}, row {row}, glyphs {:?}",
+                            run.glyphs
+                        );
+                        let strike_left = row_strikes
+                            .iter()
+                            .map(|strike| strike.x)
+                            .reduce(f32::min)
+                            .unwrap();
+                        let strike_right = row_strikes
+                            .iter()
+                            .map(|strike| strike.x + strike.width)
+                            .reduce(f32::max)
+                            .unwrap();
+                        assert!(
+                            (strike_left - left).abs() < 0.01
+                                && (strike_right - right).abs() < 0.01,
+                            "{body:?}, width {width}, row {row}: strikes {strike_left}..{strike_right}, shaped glyphs {left}..{right}"
+                        );
+                        for strike in row_strikes {
+                            assert!(
+                                strike.width > 0.0
+                                    && strike.x >= left - 0.01
+                                    && strike.x + strike.width <= right + 0.01,
+                                "{body:?}, width {width}, row {row}: strike {strike:?}, shaped glyphs {left}..{right}"
+                            );
+                            covered += 1;
+                        }
+                    }
+                }
+                assert_eq!(
+                    covered,
+                    strikes.len(),
+                    "every strike belongs to a shaped row: {body:?}, width {width}"
+                );
+                assert!(
+                    expected
+                        .decorations
+                        .iter()
+                        .all(|(_, kind)| !matches!(kind, Decoration::Strikethrough(_)))
+                );
+            }
         }
     }
 
