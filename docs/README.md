@@ -14,6 +14,7 @@ describe the remaining platform, accessibility, and durability work.
 | [Collaboration](collaboration.md) | CRDT transactions, selections, offline replicas, history and persistence |
 | [Outline](outline.md) | Heading search, collapse state and section moves |
 | [Code editing](code-editing.md) | Fences, indentation, clipboard behavior and bounded highlighting |
+| [Footnotes](footnotes.md) | Numbered references, checked note editing, previews and navigation |
 | [Appearance](design-system.md) | Semantic tokens, typography, presets and UI validation |
 | [Brand kit](../branding/dosty/README.md) | Asset sources, generated exports and platform icons |
 | [Yrs pending-update repair](yrs-pending-updates.md) | Sparse-clock retry bug, regression and repeated upstream tests |

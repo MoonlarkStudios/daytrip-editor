@@ -11,6 +11,7 @@ use iced::widget::markdown;
 use pulldown_cmark::{Event, Parser, Tag};
 
 use crate::document::block_parser::{self, BlockChange, MARKDOWN_OPTIONS};
+use crate::document::footnotes::Footnotes;
 use crate::document::selection::Selection;
 
 #[derive(Debug)]
@@ -78,6 +79,20 @@ impl Document {
             .get_or_init(|| markdown::parse(self.block_source(index)).collect())
     }
 
+    pub fn rendered_with_footnotes(
+        &self,
+        index: usize,
+        footnotes: &Footnotes,
+    ) -> &[markdown::Item] {
+        if footnotes.is_empty() {
+            return self.rendered(index);
+        }
+        self.blocks[index].rendered.get_or_init(|| {
+            let source = footnotes.read_block(&self.source, self.blocks[index].range.clone());
+            markdown::parse(&source).collect()
+        })
+    }
+
     pub fn from_state(state: &ReplicaState) -> Result<Self, CollaborationError> {
         let (collaboration, source) = Collaboration::from_state(state)?;
         let mut document = Self {
@@ -140,6 +155,7 @@ impl Document {
         if changes.is_empty() {
             return;
         }
+        let invalidate_read = self.global_dependencies;
         let batch = changes.len() > 1;
         if batch && !self.replace_islands(&changes) {
             let mut shifts = vec![0isize];
@@ -183,6 +199,13 @@ impl Document {
             }
         }
         self.revision += 1;
+        // Global footnote numbers and source-offset preview links can change in
+        // otherwise untouched blocks. This includes removing the final note.
+        if invalidate_read || self.global_dependencies {
+            for block in &mut self.blocks {
+                block.rendered.take();
+            }
+        }
         #[cfg(test)]
         {
             self.costs.source += start.elapsed();

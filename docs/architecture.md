@@ -11,6 +11,7 @@ Dosty is one Cargo package, named `dosty`, with a thin `main.rs` calling `dosty:
 | `app/icon.rs` | Canvas icons consuming the resolved tokens |
 | `app/brand.rs` | Native paths from the generated Dosty identity |
 | `app/writing.rs` | Link/image/quotation details and deferred clipboard/import commands |
+| `app/footnotes.rs` | Checked footnote details, bounded previews and stable return navigation |
 | `app/recovery.rs` | Idle recovery checkpoints, copy selection and write retirement |
 | `app/outline.rs` | Session-local outline disclosure, heading search, and section commands |
 | `app/performance.rs` | Private ignored large-document event/layout/software-render profiles |
@@ -19,6 +20,7 @@ Dosty is one Cargo package, named `dosty`, with a thin `main.rs` calling `dosty:
 | `document/collaboration_wire.rs` | Bounded admission of plain-text Yjs update V1 |
 | `document/block_parser.rs` | Top-level ranges, independent block candidates, conservative reparse windows |
 | `document/selection.rs` | UTF-8 byte selections and line/column conversion |
+| `document/footnotes.rs` | Source footnote metadata, numbering and Read presentation transforms |
 | `document/outline.rs` | Heading hierarchy, section boundaries, and validated source move plans |
 | `document/projection.rs` | Markdown-to-display projection, source mapping, caret affinity, edit translation |
 | `document/projection_update.rs` | Conservative incremental projection of word edits |
@@ -83,6 +85,16 @@ Bold, italic, and inline-code formatting operate separately on selected lines an
 Yrs owns the authoritative text and scoped human/agent undo. Source ranges are UTF-8 bytes translated through an incremental UTF-16 index. Local source edits, rich repair, accepted proposals and imported operations enter one document transaction path. Source/projection/native/layout caches remain derived; local generations are distinct from document identity and causal versions. Stable positions preserve intent through intervening edits. See [collaboration](collaboration.md) for transaction, undo, IME and proposal contracts.
 
 ## Parsing and performance
+
+Footnote metadata is collected with the projection parser. Missing references are
+recognized by a second inline parse only in disjoint paragraphs, headings and
+table cells containing footnote-looking syntax. Definitions use the parser's
+current continuation syntax. Numbered references reuse lossless replacement
+pieces and reveal their exact source while active. Footnote-bearing projections,
+including unresolved-only documents, retain the conservative global dependency
+path; safe word edits rebase their source metadata. Read transforms only the
+references/definitions within each indexed block and invalidates its global
+number/link caches on relevant source changes. See [footnotes](footnotes.md).
 
 The outline derives a cached hierarchy from top-level heading metadata on source revisions. Headings inside lists, quotes, and fences are not document sections. Collapse state stays outside Markdown; a heading range ends at the next heading of equal or lower level. Section moves use one validated delete/insert transaction with explicit source selection remapping and one human undo group. Fold anchors retain original and moved CRDT positions so disclosure follows undo/redo. Quick Jump searches all headings and their parent context, with a bounded result window. See [outline behavior](outline.md).
 

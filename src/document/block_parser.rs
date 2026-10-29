@@ -4,7 +4,8 @@ use std::ops::Range;
 
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
-/// Keep the Markdown extensions used before pulldown-cmark 0.13.
+/// Supported Markdown extensions. Footnotes use the current four-space
+/// continuation syntax; source is preserved when opening legacy documents.
 /// New extensions need matching editing, source-mapping and rendering support.
 pub(crate) const MARKDOWN_OPTIONS: Options = Options::ENABLE_TABLES
     .union(Options::ENABLE_FOOTNOTES)
@@ -14,7 +15,6 @@ pub(crate) const MARKDOWN_OPTIONS: Options = Options::ENABLE_TABLES
     .union(Options::ENABLE_HEADING_ATTRIBUTES)
     .union(Options::ENABLE_YAML_STYLE_METADATA_BLOCKS)
     .union(Options::ENABLE_PLUSES_DELIMITED_METADATA_BLOCKS)
-    .union(Options::ENABLE_OLD_FOOTNOTES)
     .union(Options::ENABLE_MATH)
     .union(Options::ENABLE_GFM)
     .union(Options::ENABLE_DEFINITION_LIST);

@@ -31,6 +31,8 @@ use crate::io::storage::{self, FileError, LoadedFile, Preferences};
 use crate::theme::styles::{self, Button};
 use crate::theme::{Preset, ResolvedTheme};
 
+#[path = "footnotes.rs"]
+pub(crate) mod footnotes;
 #[path = "outline.rs"]
 pub(crate) mod outline;
 #[path = "recovery.rs"]
@@ -92,12 +94,14 @@ pub struct App {
     notification: Option<String>,
     zoom: f32,
     writing: writing::State,
+    footnotes: footnotes::State,
     recovery: recovery::State,
     outline: outline::State,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Footnote(footnotes::Message),
     Outline(outline::Message),
     Writing(writing::Message),
     Recovery(recovery::Message),
@@ -218,6 +222,7 @@ enum Overlay {
     Collaboration,
     Unsaved,
     Writing,
+    Footnote,
     Recovery,
 }
 
@@ -290,6 +295,7 @@ impl App {
             notification: None,
             zoom: 1.0,
             writing: writing::State::default(),
+            footnotes: footnotes::State::default(),
             recovery: recovery::State::default(),
             outline: outline::State::default(),
         };
@@ -433,6 +439,7 @@ impl App {
             return Task::none();
         }
         match message {
+            Message::Footnote(message) => return self.update_footnote(message),
             Message::Outline(message) => return self.update_outline(message),
             Message::Writing(message) => return self.update_writing(message),
             Message::Recovery(message) => return self.update_recovery(message),
@@ -909,6 +916,7 @@ impl App {
                     }
                     self.overlay = None;
                     self.writing.close_details();
+                    self.footnotes.close();
                     self.pending = None;
                     if quick_jump {
                         return operation::focus(EDITOR);
@@ -1764,6 +1772,7 @@ impl App {
     fn install_document(&mut self, document: Document, path: Option<PathBuf>, name: String) {
         self.recovery.retire();
         self.writing = writing::State::default();
+        self.footnotes = footnotes::State::default();
         self.outline = outline::State::default();
         self.images.clear_history();
         self.overlay = None;
@@ -1911,6 +1920,7 @@ impl App {
                     Overlay::Collaboration => self.collaboration_view(),
                     Overlay::Unsaved => self.unsaved_view(),
                     Overlay::Writing => self.writing_view(),
+                    Overlay::Footnote => self.footnote_view(),
                     Overlay::Recovery => self.recovery_view(),
                     Overlay::QuickJump => self.quick_jump_view(),
                 };
@@ -2128,7 +2138,9 @@ impl App {
         settings.h6_size = (settings.h6_size.0 * self.zoom).into();
         settings.code_size = (settings.code_size.0 * self.zoom).into();
         for (index, _) in self.document.blocks.iter().enumerate() {
-            let items = self.document.rendered(index);
+            let items = self
+                .document
+                .rendered_with_footnotes(index, self.projection.footnotes());
             let rendered: Element<'_, Message> = if items.is_empty() {
                 text(self.document.block_source(index))
                     .font(styles::BODY_FONT)
@@ -2259,6 +2271,11 @@ impl App {
             Message::Writing(writing::Message::Details(writing::Kind::Image)),
             false,
         ));
+        toolbar = toolbar.push(self.small_button(
+            "Footnote",
+            Message::Footnote(footnotes::Message::Details),
+            false,
+        ));
         toolbar.height(32).into()
     }
 
@@ -2335,6 +2352,13 @@ impl App {
                     .size(11)
                     .color(tokens.faint),
                 );
+            }
+            if self.footnotes.can_return() {
+                status = status.push(self.small_button(
+                    "Back to reference",
+                    Message::Footnote(footnotes::Message::Back),
+                    false,
+                ));
             }
             status = status.push(space::horizontal()).push(
                 text(if self.busy {
@@ -2503,6 +2527,7 @@ impl App {
             ("Find & replace", "⌘/Ctrl F"),
             ("Bold / Italic", "⌘/Ctrl B / I"),
             ("Create / edit link", "⌘/Ctrl K"),
+            ("Create / edit footnote", "⌘/Ctrl Shift N"),
             ("Live preview / source", "⌘/Ctrl Shift M"),
             ("Focus mode", "⌘/Ctrl Shift F"),
             ("Previous / next block", "Alt ↑ / ↓"),
@@ -2921,6 +2946,7 @@ fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
         Key::Named(key::Named::ArrowDown) if modifiers.alt() => Some(Message::Navigate(1)),
         Key::Character(character) if modifiers.command() => {
             match character.to_ascii_lowercase().as_str() {
+                "n" if modifiers.shift() => Some(Message::Footnote(footnotes::Message::Details)),
                 "n" => Some(Message::New),
                 "o" => Some(Message::Open),
                 "s" => Some(if modifiers.shift() {

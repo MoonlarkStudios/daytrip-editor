@@ -719,6 +719,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+ "unicase",
  "unicode-segmentation",
  "uuid",
  "yrs",
