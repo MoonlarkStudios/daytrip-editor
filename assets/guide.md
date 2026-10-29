@@ -4,11 +4,11 @@ Simple marks. Beautiful words. The active heading shows its markers, and the inl
 
 ## The essentials
 
-Use **bold** for emphasis and *italics* for a softer voice. Put `inline code` between backticks. Strikethrough syntax is preserved; its line is currently drawn only in Read view.
+Use **bold** for emphasis and *italics* for a softer voice. Put `inline code` between backticks. Write ~~strikethrough~~ with tildes, or use the Strikethrough control or Cmd/Ctrl+Shift+X on selected text. Its markers reveal while editing, and its line appears in Live and Read views.
 
 ## Structure your thoughts
 
-Start a heading with `#`, `##`, or `###`. Click into a heading to edit its markers while keeping the title's size. Home moves to the start of its visible markers. Separate paragraphs with a blank line. Use ordinary arrows and Shift+arrows to move and select across the whole document. Enter continues a list; Enter in an empty item exits it. Alt+Up and Alt+Down jump between blocks. Escape closes find or a dialog.
+Start a heading with `#`, `##`, or `###`. Click into a heading to edit its markers while keeping the title's size. Home moves to the start of its visible markers. Separate paragraphs with a blank line. Use ordinary arrows and Shift+arrows to move and select across the whole document. Enter continues a list; Enter in an empty item exits it. Click a task checkbox to toggle it without moving the text selection. Cmd/Ctrl+Enter toggles the checkbox on the caret’s source line; continuation lines without a checkbox are unchanged. Alt+Up and Alt+Down jump between blocks. Escape closes find or a dialog.
 
 > A blockquote makes a little space for another voice.
 
@@ -34,6 +34,8 @@ fn main() {
 | Cmd/Ctrl + B | Bold selection |
 | Cmd/Ctrl + I | Italic selection |
 | Cmd/Ctrl + K | Create or edit a link |
+| Cmd/Ctrl + Enter | Toggle the task on the caret’s line |
+| Cmd/Ctrl + Shift + X | Toggle strikethrough |
 | Cmd/Ctrl + Shift + N | Create or edit a footnote |
 | Cmd/Ctrl + Shift + M | Toggle source |
 | Cmd/Ctrl + Shift + F | Focus mode |

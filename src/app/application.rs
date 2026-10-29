@@ -15,7 +15,6 @@ use iced::{Alignment, Element, Event, Fill, Font, Shrink, Subscription, Task, Th
 use crate::app::brand;
 use crate::app::icon::{self, Icon};
 use crate::document::Document;
-use crate::document::block_parser::MARKDOWN_OPTIONS;
 use crate::document::collaboration::{AgentProposal, CompositionTarget, EditOrigin, ReplicaState};
 use crate::document::projection::{self, Projection};
 use crate::document::selection::Selection;
@@ -51,6 +50,10 @@ mod performance;
 #[cfg(test)]
 #[path = "theme_tests.rs"]
 mod theme_tests;
+
+#[cfg(test)]
+#[path = "task_tests.rs"]
+mod task_tests;
 
 pub struct App {
     document: Document,
@@ -128,6 +131,11 @@ pub enum Message {
     SelectSource(Selection),
     EditorFocused(bool),
     TableTab(bool),
+    ToggleCurrentTask,
+    ToggleTaskSource {
+        marker: Range<usize>,
+        revision: Arc<()>,
+    },
     ImageLoaded {
         key: String,
         result: Result<LoadedImage, String>,
@@ -192,6 +200,7 @@ pub enum Message {
 pub enum Format {
     Bold,
     Italic,
+    Strikethrough,
     Code,
     Heading,
     Quote,
@@ -404,6 +413,8 @@ impl App {
                     | Message::Undo
                     | Message::Redo
                     | Message::ToggleTask { .. }
+                    | Message::ToggleTaskSource { .. }
+                    | Message::ToggleCurrentTask
             )
         {
             return Task::none();
@@ -419,6 +430,8 @@ impl App {
                     | Message::Activate(_)
                     | Message::JumpTo(_)
                     | Message::ToggleTask { .. }
+                    | Message::ToggleTaskSource { .. }
+                    | Message::ToggleCurrentTask
                     | Message::Append
                     | Message::Navigate(_)
                     | Message::Format(_)
@@ -664,33 +677,25 @@ impl App {
                 return self.activate(index, false);
             }
             Message::ToggleTask { block, task } => {
-                let Some(source_block) = self.document.blocks.get(block) else {
-                    return Task::none();
-                };
-                let start = source_block.range.start;
-                let marker = pulldown_cmark::Parser::new_ext(
-                    self.document.block_source(block),
-                    MARKDOWN_OPTIONS,
-                )
-                .into_offset_iter()
-                .filter_map(|(event, range)| {
-                    if let pulldown_cmark::Event::TaskListMarker(done) = event {
-                        Some((done, range))
-                    } else {
-                        None
-                    }
-                })
-                .nth(task);
-                if let Some((done, range)) = marker {
-                    self.document.break_history_group();
-                    self.document
-                        .replace(
-                            start + range.start..start + range.end,
-                            if done { "[ ]" } else { "[x]" },
-                        )
-                        .unwrap_or_else(|error| self.edit_error = Some(error.to_string()));
-                    self.sync_editor();
-                    self.changed();
+                let marker =
+                    self.document.blocks.get(block).and_then(|block| {
+                        self.projection.task_markers(block.range.clone()).nth(task)
+                    });
+                if let Some(marker) = marker {
+                    self.toggle_task(marker);
+                }
+            }
+            Message::ToggleTaskSource { marker, revision } => {
+                // A queued pointer event must never edit another source revision.
+                if Arc::ptr_eq(&revision, &self.projection.source_id) {
+                    self.toggle_task(marker);
+                }
+            }
+            Message::ToggleCurrentTask => {
+                if self.mode != EditorMode::Read
+                    && let Some(marker) = self.projection.task_marker_at(self.selection.head)
+                {
+                    self.toggle_task(marker);
                 }
             }
             Message::Append => return self.append(),
@@ -1469,6 +1474,26 @@ impl App {
         self.document.break_history_group();
     }
 
+    fn toggle_task(&mut self, marker: Range<usize>) {
+        if self.projection.task_marker_at(marker.start) != Some(marker.clone()) {
+            return;
+        }
+        let replacement = match self.document.source().get(marker.clone()) {
+            Some("[ ]") => "[x]",
+            Some("[x]" | "[X]") => "[ ]",
+            _ => return,
+        };
+        // Both forms have the same byte length. Keep both source endpoints,
+        // focus, and widget wrap intent; save the same selection in history.
+        let selection = self.selection;
+        self.document.break_history_group();
+        self.commit_local(marker, replacement, selection, selection);
+        self.preserve_viewport_generation = Some(self.document.collaboration.generation());
+        self.sync_editor();
+        self.changed();
+        self.document.break_history_group();
+    }
+
     fn table_tab(&mut self, backward: bool) -> Task<Message> {
         self.table_move(backward, false)
     }
@@ -1564,6 +1589,7 @@ impl App {
             let marker = match format {
                 Format::Bold => Some("**"),
                 Format::Italic => Some("*"),
+                Format::Strikethrough => Some("~~"),
                 Format::Code => Some("`"),
                 _ => None,
             };
@@ -1612,6 +1638,14 @@ impl App {
                 "`{}`",
                 if selected.is_empty() {
                     "code"
+                } else {
+                    &selected
+                }
+            ),
+            Format::Strikethrough => format!(
+                "~~{}~~",
+                if selected.is_empty() {
+                    "deleted text"
                 } else {
                     &selected
                 }
@@ -2238,6 +2272,7 @@ impl App {
             (Icon::Heading, Format::Heading),
             (Icon::Bold, Format::Bold),
             (Icon::Italic, Format::Italic),
+            (Icon::Strikethrough, Format::Strikethrough),
             (Icon::Code, Format::Code),
             (Icon::Link, Format::Link),
             (Icon::Quote, Format::Quote),
@@ -2255,6 +2290,7 @@ impl App {
                 Format::Heading => "Heading",
                 Format::Bold => "Bold · ⌘ / Ctrl+B",
                 Format::Italic => "Italic · ⌘ / Ctrl+I",
+                Format::Strikethrough => "Strikethrough · ⌘ / Ctrl+Shift+X",
                 Format::Code => "Inline code",
                 Format::Link => "Link · ⌘ / Ctrl+K",
                 Format::Quote => "Quotation and source credit",
@@ -2526,7 +2562,9 @@ impl App {
             ("Save as", "⌘/Ctrl Shift S"),
             ("Find & replace", "⌘/Ctrl F"),
             ("Bold / Italic", "⌘/Ctrl B / I"),
+            ("Strikethrough", "⌘/Ctrl Shift X"),
             ("Create / edit link", "⌘/Ctrl K"),
+            ("Toggle current task", "⌘/Ctrl Enter"),
             ("Create / edit footnote", "⌘/Ctrl Shift N"),
             ("Live preview / source", "⌘/Ctrl Shift M"),
             ("Focus mode", "⌘/Ctrl Shift F"),
@@ -2930,6 +2968,11 @@ fn event_message(event: Event, status: iced::event::Status, id: window::Id) -> O
 fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
     match key.as_ref() {
         Key::Named(key::Named::Escape) => Some(Message::CloseOverlay),
+        Key::Named(key::Named::Enter)
+            if modifiers.command() && !modifiers.alt() && !modifiers.shift() =>
+        {
+            Some(Message::ToggleCurrentTask)
+        }
         Key::Named(key::Named::ArrowUp) if modifiers.command() && modifiers.alt() => {
             Some(Message::Outline(outline::Message::Move(-1)))
         }
@@ -2961,6 +3004,7 @@ fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
                 }),
                 "b" => Some(Message::Format(Format::Bold)),
                 "i" => Some(Message::Format(Format::Italic)),
+                "x" if modifiers.shift() => Some(Message::Format(Format::Strikethrough)),
                 "k" => Some(Message::Format(Format::Link)),
                 "j" if modifiers.shift() => Some(Message::Outline(outline::Message::QuickJump)),
                 "m" if modifiers.shift() => Some(Message::ToggleSource),
@@ -3612,6 +3656,52 @@ mod tests {
         assert_eq!(app.projection.rich.images.len(), 1);
         send(&mut app, Message::Undo);
         assert_eq!(app.document.source(), source);
+    }
+
+    #[test]
+    fn strikethrough_formatting_preserves_reverse_selection_and_atomic_history() {
+        let source = "Before café 🧑‍💻 after";
+        let mut app = app(source);
+        let before = Selection {
+            anchor: source.find(" after").unwrap(),
+            head: "Before ".len(),
+        };
+        send(&mut app, Message::SelectSource(before));
+        send(&mut app, Message::Format(Format::Strikethrough));
+        assert_eq!(app.document.source(), "Before ~~café 🧑‍💻~~ after");
+        assert!(app.selection.anchor > app.selection.head);
+        let marked = app.selection;
+        send(&mut app, Message::ToggleSource);
+        assert_eq!(app.selection, marked);
+        send(&mut app, Message::ToggleSource);
+        assert_eq!(app.selection, marked);
+        send(&mut app, Message::Undo);
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, before);
+        send(&mut app, Message::Redo);
+        assert_eq!(app.document.source(), "Before ~~café 🧑‍💻~~ after");
+        assert_eq!(app.selection, marked);
+        send(&mut app, Message::Format(Format::Strikethrough));
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, before);
+    }
+
+    #[test]
+    fn strikethrough_shortcut_keeps_ordinary_cut_available() {
+        use super::shortcut;
+        use iced::keyboard::{self, Key};
+
+        let command = if cfg!(target_os = "macos") {
+            keyboard::Modifiers::LOGO
+        } else {
+            keyboard::Modifiers::CTRL
+        };
+        let key = Key::Character("x".into());
+        assert!(matches!(
+            shortcut(&key, command | keyboard::Modifiers::SHIFT),
+            Some(Message::Format(Format::Strikethrough))
+        ));
+        assert!(shortcut(&key, command).is_none());
     }
 
     #[test]

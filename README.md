@@ -8,8 +8,9 @@
   <img src="branding/dosty/logos/pen-page.svg" alt="Dosty inkwell logo" width="96" height="96">
 </picture>
 
-A quiet, native Markdown editor built with Rust and Iced. Write with live formatting,
-tables, images, footnotes, and themes, or switch to the Markdown source at any time.
+A quiet, native Markdown editor built with Rust and Iced. Write with headings,
+emphasis, strikethrough, tables, images, task checkboxes, footnotes, and themes,
+or switch to the Markdown source at any time.
 
 Dosty is in early development. See the [current limitations](docs/evaluation.md).
 Previously named Koan and Daytrip; [existing settings and drafts remain compatible](docs/identity-migration.md).

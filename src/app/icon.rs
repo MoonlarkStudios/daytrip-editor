@@ -24,6 +24,7 @@ pub enum Icon {
     Heading,
     Bold,
     Italic,
+    Strikethrough,
     Link,
     Quote,
     List,
@@ -174,6 +175,11 @@ impl<Message> canvas::Program<Message> for Drawing {
                 &[(8., 3.), (14., 3.)],
                 &[(4., 15.), (10., 15.)],
                 &[(11., 3.), (7., 15.)],
+            ],
+            Icon::Strikethrough => &[
+                &[(14., 4.), (12., 3.), (6., 3.), (4., 5.), (5., 8.)],
+                &[(13., 10.), (14., 13.), (12., 15.), (6., 15.), (4., 14.)],
+                &[(2., 9.), (16., 9.)],
             ],
             Icon::Link => &[
                 &[
