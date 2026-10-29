@@ -115,6 +115,7 @@ enum Concealment {
     Syntax,
     Heading,
     CodeFence,
+    Task,
     Structural,
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -386,7 +387,7 @@ impl Projection {
                 Event::TaskListMarker(done) => decorations.push(Decoration {
                     range,
                     text: if done { "☑" } else { "☐" }.into(),
-                    kind: Concealment::Syntax,
+                    kind: Concealment::Task,
                 }),
                 Event::Start(Tag::BlockQuote(_)) => {
                     let mut offset = range.start;
@@ -493,6 +494,30 @@ impl Projection {
             safe_text,
             global_dependencies,
         }
+    }
+
+    /// Cached parser markers in source order, independent of syntax disclosure.
+    pub fn task_markers(&self, range: Range<usize>) -> impl Iterator<Item = Range<usize>> {
+        let first = self
+            .parsed
+            .decorations
+            .partition_point(|decoration| decoration.range.start < range.start);
+        self.parsed.decorations[first..]
+            .iter()
+            .take_while(move |decoration| decoration.range.start < range.end)
+            .filter(|decoration| decoration.kind == Concealment::Task)
+            .map(|decoration| decoration.range.clone())
+    }
+
+    /// A task command acts on the caret's physical source line, never a sibling
+    /// item or a continuation line which has no checkbox of its own.
+    pub fn task_marker_at(&self, offset: usize) -> Option<Range<usize>> {
+        let before = self.source.get(..offset)?;
+        let start = before.rfind('\n').map_or(0, |newline| newline + 1);
+        let end = self.source[offset..]
+            .find('\n')
+            .map_or(self.source.len(), |newline| offset + newline);
+        self.task_markers(start..end).next()
     }
 
     /// Resolves the active heading and just the innermost paired inline span.
@@ -1308,6 +1333,44 @@ mod tests {
         let mut source = source.to_owned();
         source.replace_range(edit.range, &edit.text);
         (source, edit.selection)
+    }
+
+    #[test]
+    fn task_marker_queries_use_parser_metadata_after_disclosure_and_word_rebasing() {
+        let source = include_str!("../../tests/fixtures/live-tasks.md").replace('\n', "\r\n");
+        let mut projection = Projection::new(&source);
+        let markers = projection.task_markers(0..source.len()).collect::<Vec<_>>();
+        assert_eq!(markers.len(), 6);
+        for marker in &markers {
+            assert!(matches!(&source[marker.clone()], "[ ]" | "[x]" | "[X]"));
+            assert_eq!(
+                projection.task_marker_at(marker.start),
+                Some(marker.clone())
+            );
+        }
+        for text in ["which has", "This is literal", "A literal"] {
+            assert!(
+                projection
+                    .task_marker_at(source.find(text).unwrap())
+                    .is_none()
+            );
+        }
+        let caret = source.find("café").unwrap();
+        projection.set_disclosure(projection.disclosure_at(Some(caret)));
+        assert_eq!(
+            projection.task_markers(0..source.len()).collect::<Vec<_>>(),
+            markers
+        );
+        let changed = source.replacen("Write", "Wriite", 1);
+        assert!(projection.update_words(&changed, Some(caret + 1)));
+        let fresh = Projection::with_context(&changed, Some(caret + 1));
+        assert_eq!(
+            projection
+                .task_markers(0..changed.len())
+                .collect::<Vec<_>>(),
+            fresh.task_markers(0..changed.len()).collect::<Vec<_>>()
+        );
+        assert_eq!(projection.text, fresh.text);
     }
 
     #[test]

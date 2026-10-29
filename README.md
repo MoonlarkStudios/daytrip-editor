@@ -9,8 +9,8 @@
 </picture>
 
 A quiet, native Markdown editor built with Rust and Iced. Write with headings,
-emphasis, strikethrough, tables, images, and themes, or switch to the Markdown source
-at any time.
+emphasis, strikethrough, tables, images, interactive task checkboxes, and themes,
+or switch to the Markdown source at any time.
 
 Dosty is in early development. See the [current limitations](docs/evaluation.md).
 Previously named Koan and Daytrip; [existing settings and drafts remain compatible](docs/identity-migration.md).

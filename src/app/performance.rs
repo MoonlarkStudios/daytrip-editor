@@ -253,6 +253,67 @@ fn load_profile_fonts() {
 }
 
 #[test]
+fn task_toggle_preserves_viewport_when_a_reverse_selection_head_is_offscreen() {
+    load_profile_fonts();
+    let source =
+        "- [ ] Task with **bold** café words and a long line that wraps naturally.\n\n".repeat(400);
+    let mut harness = Harness::new(source.clone());
+    let selection = Selection {
+        anchor: source.len(),
+        head: 0,
+    };
+    harness.message(Message::SelectSource(selection));
+    harness.event(
+        Event::Mouse(mouse::Event::WheelScrolled {
+            delta: mouse::ScrollDelta::Lines { x: 0.0, y: -12.0 },
+        }),
+        Point::new(360.0, 400.0),
+    );
+    let anchor = RichEditor::visible_anchor(&harness.tree).unwrap();
+    assert!(anchor > 0);
+    let before_y = RichEditor::screen_y(&harness.tree, anchor);
+    let before_scroll = RichEditor::intent_stats(&harness.tree).0;
+    let marker = harness
+        .app
+        .projection
+        .task_markers(anchor..source.len())
+        .next()
+        .unwrap();
+    let revision = std::sync::Arc::clone(&harness.app.projection.source_id);
+    harness.message(Message::ToggleTaskSource {
+        marker: marker.clone(),
+        revision,
+    });
+    assert_eq!(harness.app.selection, selection);
+    assert_eq!(&harness.app.document.source()[marker], "[x]");
+    assert!((RichEditor::screen_y(&harness.tree, anchor) - before_y).abs() < 0.01);
+    assert!((RichEditor::intent_stats(&harness.tree).0 - before_scroll).abs() < 0.01);
+}
+
+#[test]
+#[ignore = "render Live task controls without opening user documents"]
+fn task_checkbox_previews() {
+    load_profile_fonts();
+    for preset in Preset::ALL {
+        let source = include_str!("../../tests/fixtures/live-tasks.md");
+        let mut harness = Harness::new(source.into());
+        harness.app.resolved_theme = preset.resolve();
+        harness.message(Message::SelectSource(Selection::caret(
+            source.find("Write").unwrap(),
+        )));
+        harness.message(Message::ToggleCurrentTask);
+        image::save_buffer(
+            format!("/tmp/dosty-live-tasks-{}.png", preset.name()),
+            harness.pixels.data(),
+            harness.pixels.width(),
+            harness.pixels.height(),
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    }
+}
+
+#[test]
 #[ignore = "render code surfaces for visual inspection without opening user documents"]
 fn code_surface_previews() {
     load_profile_fonts();

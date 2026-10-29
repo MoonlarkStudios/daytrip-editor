@@ -108,6 +108,8 @@ Context-sensitive fallback parsing, contiguous source/projection/native snapshot
 
 ## Rich blocks
 
+Task marker decorations retain parser-certified source ranges. Live checkbox hits use the same measured selection rectangles as text, and release accepts only an unmoved single click against the original source revision and layout. Live, Source keyboard commands and Read controls share a same-length source transaction that preserves selection direction and history. See [task lists](task-lists.md).
+
 Table cells retain both source and display ranges. Source-only pipes, padding, and alignment rows project to tabs and row breaks. Cells wrap independently, with shared row heights and column alignment. Vertical movement skips unavailable lines in an adjacent taller cell; horizontal movement and selections remain document-wide. Cell-aware input preserves separators, escapes pipes, supports rectangular TSV paste, and adds rows. Inline formatting works independently per selected cell.
 
 Images project to an atomic object replacement character. Their complete Markdown remains behind that object. Selection, deletion, clipboard transfer, source switching, and undo map through the same source pieces as text. Images occupy block flow, including images written inline and images inside table cells. Local/file/HTTP/HTTPS loading and decoding run outside the UI thread, with four concurrent loads, a 20-second HTTP timeout, redirect limits, a 16 MiB encoded cap, decoder allocation/dimension limits, and a 128 MiB document image cache. Renderer handles contain decoded RGBA pixels. Failed images retain their object and show a message. GIFs show the first frame; SVG is unsupported.
