@@ -15,7 +15,6 @@ use iced::{Alignment, Element, Event, Fill, Font, Shrink, Subscription, Task, Th
 use crate::app::brand;
 use crate::app::icon::{self, Icon};
 use crate::document::Document;
-use crate::document::block_parser::MARKDOWN_OPTIONS;
 use crate::document::collaboration::{AgentProposal, CompositionTarget, EditOrigin, ReplicaState};
 use crate::document::projection::{self, Projection};
 use crate::document::selection::Selection;
@@ -49,6 +48,10 @@ mod performance;
 #[cfg(test)]
 #[path = "theme_tests.rs"]
 mod theme_tests;
+
+#[cfg(test)]
+#[path = "task_tests.rs"]
+mod task_tests;
 
 pub struct App {
     document: Document,
@@ -124,6 +127,11 @@ pub enum Message {
     SelectSource(Selection),
     EditorFocused(bool),
     TableTab(bool),
+    ToggleCurrentTask,
+    ToggleTaskSource {
+        marker: Range<usize>,
+        revision: Arc<()>,
+    },
     ImageLoaded {
         key: String,
         result: Result<LoadedImage, String>,
@@ -398,6 +406,8 @@ impl App {
                     | Message::Undo
                     | Message::Redo
                     | Message::ToggleTask { .. }
+                    | Message::ToggleTaskSource { .. }
+                    | Message::ToggleCurrentTask
             )
         {
             return Task::none();
@@ -413,6 +423,8 @@ impl App {
                     | Message::Activate(_)
                     | Message::JumpTo(_)
                     | Message::ToggleTask { .. }
+                    | Message::ToggleTaskSource { .. }
+                    | Message::ToggleCurrentTask
                     | Message::Append
                     | Message::Navigate(_)
                     | Message::Format(_)
@@ -657,33 +669,25 @@ impl App {
                 return self.activate(index, false);
             }
             Message::ToggleTask { block, task } => {
-                let Some(source_block) = self.document.blocks.get(block) else {
-                    return Task::none();
-                };
-                let start = source_block.range.start;
-                let marker = pulldown_cmark::Parser::new_ext(
-                    self.document.block_source(block),
-                    MARKDOWN_OPTIONS,
-                )
-                .into_offset_iter()
-                .filter_map(|(event, range)| {
-                    if let pulldown_cmark::Event::TaskListMarker(done) = event {
-                        Some((done, range))
-                    } else {
-                        None
-                    }
-                })
-                .nth(task);
-                if let Some((done, range)) = marker {
-                    self.document.break_history_group();
-                    self.document
-                        .replace(
-                            start + range.start..start + range.end,
-                            if done { "[ ]" } else { "[x]" },
-                        )
-                        .unwrap_or_else(|error| self.edit_error = Some(error.to_string()));
-                    self.sync_editor();
-                    self.changed();
+                let marker =
+                    self.document.blocks.get(block).and_then(|block| {
+                        self.projection.task_markers(block.range.clone()).nth(task)
+                    });
+                if let Some(marker) = marker {
+                    self.toggle_task(marker);
+                }
+            }
+            Message::ToggleTaskSource { marker, revision } => {
+                // A queued pointer event must never edit another source revision.
+                if Arc::ptr_eq(&revision, &self.projection.source_id) {
+                    self.toggle_task(marker);
+                }
+            }
+            Message::ToggleCurrentTask => {
+                if self.mode != EditorMode::Read
+                    && let Some(marker) = self.projection.task_marker_at(self.selection.head)
+                {
+                    self.toggle_task(marker);
                 }
             }
             Message::Append => return self.append(),
@@ -1456,6 +1460,26 @@ impl App {
         let before = self.selection;
         self.selection = edit.selection;
         self.commit_local(edit.range, &edit.text, before, self.selection);
+        self.sync_editor();
+        self.changed();
+        self.document.break_history_group();
+    }
+
+    fn toggle_task(&mut self, marker: Range<usize>) {
+        if self.projection.task_marker_at(marker.start) != Some(marker.clone()) {
+            return;
+        }
+        let replacement = match self.document.source().get(marker.clone()) {
+            Some("[ ]") => "[x]",
+            Some("[x]" | "[X]") => "[ ]",
+            _ => return,
+        };
+        // Both forms have the same byte length. Keep both source endpoints,
+        // focus, and widget wrap intent; save the same selection in history.
+        let selection = self.selection;
+        self.document.break_history_group();
+        self.commit_local(marker, replacement, selection, selection);
+        self.preserve_viewport_generation = Some(self.document.collaboration.generation());
         self.sync_editor();
         self.changed();
         self.document.break_history_group();
@@ -2503,6 +2527,7 @@ impl App {
             ("Find & replace", "⌘/Ctrl F"),
             ("Bold / Italic", "⌘/Ctrl B / I"),
             ("Create / edit link", "⌘/Ctrl K"),
+            ("Toggle current task", "⌘/Ctrl Enter"),
             ("Live preview / source", "⌘/Ctrl Shift M"),
             ("Focus mode", "⌘/Ctrl Shift F"),
             ("Previous / next block", "Alt ↑ / ↓"),
@@ -2905,6 +2930,11 @@ fn event_message(event: Event, status: iced::event::Status, id: window::Id) -> O
 fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
     match key.as_ref() {
         Key::Named(key::Named::Escape) => Some(Message::CloseOverlay),
+        Key::Named(key::Named::Enter)
+            if modifiers.command() && !modifiers.alt() && !modifiers.shift() =>
+        {
+            Some(Message::ToggleCurrentTask)
+        }
         Key::Named(key::Named::ArrowUp) if modifiers.command() && modifiers.alt() => {
             Some(Message::Outline(outline::Message::Move(-1)))
         }

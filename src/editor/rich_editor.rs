@@ -3,6 +3,7 @@
 //! Editing actions still go through Iced's native buffer and the lossless
 //! projection. Geometry-dependent actions use the exact paragraphs we draw.
 
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -348,6 +349,17 @@ struct State {
     blink_started: Option<Instant>,
     now: Option<Instant>,
     copied_code: Option<(usize, Instant)>,
+    pending_task: Option<TaskPress>,
+    layout_epoch: u64,
+}
+
+struct TaskPress {
+    marker: Range<usize>,
+    revision: Arc<()>,
+    position: Point,
+    scroll: f32,
+    layout_epoch: u64,
+    cancelled: bool,
 }
 
 struct LayoutKey {
@@ -390,6 +402,7 @@ impl State {
         self.stable_drag = None;
         self.preedit = None;
         self.composition_target = None;
+        self.pending_task = None;
     }
     fn clamp_scroll(&mut self) {
         self.scroll = self
@@ -533,6 +546,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         }
         let affinity = state.visual_cursor;
         if changed {
+            state.layout_epoch = state.layout_epoch.wrapping_add(1);
             state.visual_cursor = None;
             state.rich.rebuild(input);
             state.layout_key = Some(LayoutKey {
@@ -661,6 +675,26 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                         shell.capture_event();
                         return;
                     }
+                    if let Some(marker) = task_at(
+                        state,
+                        self.projection,
+                        position + Vector::new(0.0, state.scroll),
+                    ) {
+                        let click =
+                            mouse::Click::new(position, mouse::Button::Left, state.last_click);
+                        state.pending_task =
+                            (click.kind() == mouse::click::Kind::Single).then(|| TaskPress {
+                                marker,
+                                revision: Arc::clone(&self.projection.source_id),
+                                position,
+                                scroll: state.scroll,
+                                layout_epoch: state.layout_epoch,
+                                cancelled: false,
+                            });
+                        state.last_click = Some(click);
+                        shell.capture_event();
+                        return;
+                    }
                     if state.preedit.as_ref().is_none_or(|p| p.content.is_empty()) {
                         state.composition_target = None;
                     }
@@ -753,6 +787,20 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                     shell.request_redraw();
                 }
             }
+            Event::Mouse(mouse::Event::CursorLeft) => {
+                if let Some(press) = &mut state.pending_task {
+                    press.cancelled = true;
+                }
+            }
+            Event::Mouse(mouse::Event::CursorMoved { .. }) if state.pending_task.is_some() => {
+                if let Some(press) = &mut state.pending_task {
+                    press.cancelled |= cursor.position_in(bounds).is_none_or(|position| {
+                        let movement = position - press.position;
+                        movement.x * movement.x + movement.y * movement.y > 16.0
+                    });
+                }
+                shell.capture_event();
+            }
             Event::Mouse(mouse::Event::CursorMoved { .. }) if state.scroll_drag.is_some() => {
                 if let Some(position) = cursor.position() {
                     state.drag_scrollbar(position.y - bounds.y, state.scroll_drag.unwrap_or(0.0));
@@ -770,12 +818,35 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
                 shell.request_redraw();
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                if let Some(press) = state.pending_task.take() {
+                    if !press.cancelled
+                        && press.scroll == state.scroll
+                        && press.layout_epoch == state.layout_epoch
+                        && Arc::ptr_eq(&press.revision, &self.projection.source_id)
+                        && cursor.position_in(bounds).is_some_and(|position| {
+                            task_at(
+                                state,
+                                self.projection,
+                                position + Vector::new(0.0, state.scroll),
+                            ) == Some(press.marker.clone())
+                        })
+                    {
+                        shell.publish(Message::ToggleTaskSource {
+                            marker: press.marker,
+                            revision: press.revision,
+                        });
+                    }
+                    shell.capture_event();
+                }
                 state.drag_anchor = None;
                 state.stable_drag = None;
                 state.drag_position = None;
                 state.scroll_drag = None;
             }
             Event::Mouse(mouse::Event::WheelScrolled { delta }) if cursor.is_over(bounds) => {
+                if let Some(press) = &mut state.pending_task {
+                    press.cancelled = true;
+                }
                 let amount = match delta {
                     mouse::ScrollDelta::Lines { y, .. } => {
                         -*y * self.theme.typography.body_size * 3.0
@@ -879,6 +950,7 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             }
             Event::Window(window::Event::Unfocused) => {
                 state.window_focused = false;
+                state.pending_task = None;
                 state.drag_anchor = None;
                 state.stable_drag = None;
                 state.scroll_drag = None;
@@ -1277,7 +1349,9 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
     ) -> mouse::Interaction {
         let state = tree.state.downcast_ref::<State>();
         if cursor.position_in(layout.bounds()).is_some_and(|position| {
-            code_copy_at(state, position + Vector::new(0.0, state.scroll), self.zoom).is_some()
+            let point = position + Vector::new(0.0, state.scroll);
+            code_copy_at(state, point, self.zoom).is_some()
+                || task_at(state, self.projection, point).is_some()
         }) || state.scroll_drag.is_some()
             || cursor
                 .position_in(layout.bounds())
@@ -1291,6 +1365,26 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
             mouse::Interaction::None
         }
     }
+}
+
+/// The same measured row stops used to paint selections bound the checkbox.
+/// Looking up its cached parser marker avoids reparsing or guessing glyph widths.
+fn task_at(state: &State, projection: &Projection, point: Point) -> Option<Range<usize>> {
+    let (source, _) = state.rich.resident().hit_source_with_row(point);
+    let marker = projection.task_marker_at(source)?;
+    state
+        .rich
+        .resident()
+        .source_selection_rects_in(
+            Selection {
+                anchor: marker.start,
+                head: marker.end,
+            },
+            point.y..point.y,
+        )
+        .iter()
+        .any(|bounds| bounds.contains(point))
+        .then_some(marker)
 }
 
 fn code_copy_bounds(header: Rectangle, zoom: f32) -> Rectangle {
@@ -1327,6 +1421,200 @@ mod tests {
     use super::*;
     use crate::editor::native_buffer;
     use crate::theme::Preset;
+
+    #[test]
+    fn task_checkbox_hit_and_release_use_measured_geometry_without_changing_selection() {
+        for scenario in [
+            "click", "drag", "double", "wheel", "resize", "revision", "right", "leave",
+        ] {
+            let source = include_str!("../../tests/fixtures/live-tasks.md");
+            let projection = Projection::new(source);
+            let changed_source = source.replacen("nested", "altered", 1);
+            let changed_projection = Projection::new(&changed_source);
+            let content = native_buffer::with_text(&projection.text);
+            let theme = Preset::Paper.resolve();
+            let images = ImageStore::default();
+            let selection = Selection {
+                anchor: source.len(),
+                head: source.find("Write").unwrap(),
+            };
+            let mut editor = RichEditor::new(
+                &content,
+                &projection,
+                source,
+                &theme,
+                &images,
+                Binding::from_key_press,
+            )
+            .selection(selection)
+            .focused(true);
+            let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+                iced::Font::DEFAULT,
+                18.0.into(),
+            ));
+            let mut tree = widget::Tree::new(&editor as &dyn Widget<Message, Theme, Renderer>);
+            let size = Size::new(280.0, 400.0);
+            let mut node =
+                editor.layout(&mut tree, &renderer, &layout::Limits::new(Size::ZERO, size));
+            let marker = source.find("[X]").unwrap();
+            let state = tree.state.downcast_mut::<State>();
+            state.visual_cursor = Some((selection.head, true));
+            let previous_scroll = state.scroll;
+            let checkbox = state.rich.resident().source_selection_rects(Selection {
+                anchor: marker,
+                head: marker + 3,
+            })[0];
+            let point = checkbox.center() - Vector::new(0.0, state.scroll);
+            assert_eq!(
+                task_at(state, &projection, checkbox.center()),
+                Some(marker..marker + 3)
+            );
+            assert!(
+                task_at(
+                    state,
+                    &projection,
+                    Point::new(checkbox.x + checkbox.width + 12.0, checkbox.center_y())
+                )
+                .is_none()
+            );
+            let mut messages = Vec::new();
+            let mut clipboard = iced::advanced::clipboard::Null;
+            macro_rules! event {
+                ($event:expr, $point:expr) => {
+                    editor.update(
+                        &mut tree,
+                        &$event,
+                        Layout::new(&node),
+                        mouse::Cursor::Available($point),
+                        &renderer,
+                        &mut clipboard,
+                        &mut Shell::new(&mut messages),
+                        &Rectangle::with_size(size),
+                    )
+                };
+            }
+            let button = if scenario == "right" {
+                mouse::Button::Right
+            } else {
+                mouse::Button::Left
+            };
+            event!(Event::Mouse(mouse::Event::ButtonPressed(button)), point);
+            assert!(messages.is_empty(), "{scenario}: press does not toggle");
+            match scenario {
+                "drag" => {
+                    event!(
+                        Event::Mouse(mouse::Event::CursorMoved {
+                            position: point + Vector::new(20.0, 0.0)
+                        }),
+                        point + Vector::new(20.0, 0.0)
+                    );
+                    event!(
+                        Event::Mouse(mouse::Event::CursorMoved { position: point }),
+                        point
+                    );
+                }
+                "leave" => event!(Event::Mouse(mouse::Event::CursorLeft), point),
+                "wheel" => event!(
+                    Event::Mouse(mouse::Event::WheelScrolled {
+                        delta: mouse::ScrollDelta::Lines { x: 0.0, y: -1.0 }
+                    }),
+                    point
+                ),
+                "resize" => {
+                    node = editor.layout(
+                        &mut tree,
+                        &renderer,
+                        &layout::Limits::new(Size::ZERO, Size::new(240.0, 400.0)),
+                    );
+                }
+                "revision" => {
+                    editor.projection = &changed_projection;
+                    editor.source = &changed_source;
+                }
+                _ => {}
+            }
+            event!(Event::Mouse(mouse::Event::ButtonReleased(button)), point);
+            if scenario == "double" {
+                event!(Event::Mouse(mouse::Event::ButtonPressed(button)), point);
+                event!(Event::Mouse(mouse::Event::ButtonReleased(button)), point);
+            }
+            if matches!(scenario, "click" | "double") {
+                assert_eq!(messages.len(), 1, "{scenario}");
+                assert!(
+                    matches!(&messages[0], Message::ToggleTaskSource { marker: range, revision }
+                    if *range == (marker..marker + 3) && Arc::ptr_eq(revision, &projection.source_id))
+                );
+            } else {
+                assert!(messages.is_empty(), "{scenario}");
+            }
+            let state = tree.state.downcast_ref::<State>();
+            assert_eq!(state.last_selection, Some(selection), "{scenario}");
+            assert_eq!(
+                state.visual_cursor,
+                Some((selection.head, true)),
+                "{scenario}"
+            );
+            if !matches!(scenario, "wheel" | "resize") {
+                assert_eq!(state.scroll, previous_scroll, "{scenario}");
+            }
+        }
+    }
+
+    #[test]
+    fn virtualized_task_checkbox_is_clickable_after_a_distant_source_jump() {
+        let mut source = "Paragraph with **bold** words.\n\n".repeat(600);
+        let marker = source.len() + 2;
+        source.push_str("- [ ] Distant café task\n");
+        let projection = Projection::new(&source);
+        let content = native_buffer::with_text(&projection.text);
+        let theme = Preset::Paper.resolve();
+        let images = ImageStore::default();
+        let selection = Selection::caret(marker + 8);
+        let mut editor = RichEditor::new(
+            &content,
+            &projection,
+            &source,
+            &theme,
+            &images,
+            Binding::from_key_press,
+        )
+        .selection(selection)
+        .focused(true);
+        let renderer = Renderer::Secondary(iced_tiny_skia::Renderer::new(
+            iced::Font::DEFAULT,
+            18.0.into(),
+        ));
+        let mut tree = widget::Tree::new(&editor as &dyn Widget<Message, Theme, Renderer>);
+        let size = Size::new(280.0, 160.0);
+        let node = editor.layout(&mut tree, &renderer, &layout::Limits::new(Size::ZERO, size));
+        let state = tree.state.downcast_ref::<State>();
+        assert!(state.rich.resident().rows.len() < 100);
+        let checkbox = state.rich.resident().source_selection_rects(Selection {
+            anchor: marker,
+            head: marker + 3,
+        })[0];
+        let point = checkbox.center() - Vector::new(0.0, state.scroll);
+        assert!(Rectangle::with_size(size).contains(point));
+        let mut messages = Vec::new();
+        for event in [
+            mouse::Event::ButtonPressed(mouse::Button::Left),
+            mouse::Event::ButtonReleased(mouse::Button::Left),
+        ] {
+            editor.update(
+                &mut tree,
+                &Event::Mouse(event),
+                Layout::new(&node),
+                mouse::Cursor::Available(point),
+                &renderer,
+                &mut iced::advanced::clipboard::Null,
+                &mut Shell::new(&mut messages),
+                &Rectangle::with_size(size),
+            );
+        }
+        assert!(
+            matches!(messages.as_slice(), [Message::ToggleTaskSource { marker: range, .. }] if *range == (marker..marker + 3))
+        );
+    }
 
     #[test]
     fn copying_a_rich_document_retains_heading_table_and_image_markdown() {
