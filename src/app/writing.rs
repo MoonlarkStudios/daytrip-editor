@@ -590,6 +590,17 @@ impl App {
     }
 
     pub(super) fn open_destination(&mut self, destination: String) -> Task<AppMessage> {
+        if let Some(offset) = destination
+            .strip_prefix("dosty-footnote:")
+            .and_then(|offset| offset.parse::<usize>().ok())
+            && self
+                .projection
+                .footnotes()
+                .reference_at(offset)
+                .is_some_and(|note| note.range.start == offset && note.number.is_some())
+        {
+            return self.update_footnote(super::footnotes::Message::OpenAt(offset));
+        }
         if !writing::safe_destination(&destination) {
             self.notification = Some("This link uses an unsupported destination.".into());
             return Task::none();

@@ -118,6 +118,7 @@ impl Projection {
                 rebase(&mut piece.display, &display, inserted.len());
             }
             let parsed = &mut self.parsed;
+            parsed.footnotes.rebase(&diff.old, inserted.len());
             for decoration in &mut parsed.decorations {
                 if decoration.range.end >= diff.old.end {
                     rebase(&mut decoration.range, &diff.old, inserted.len());

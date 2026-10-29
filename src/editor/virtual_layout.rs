@@ -512,6 +512,65 @@ mod tests {
     }
 
     #[test]
+    fn numbered_footnotes_keep_source_geometry_through_virtual_evictions_and_disclosure() {
+        let mut source = (0..300)
+            .map(|index| {
+                format!(
+                    "Paragraph {index} with a note[^n-{index}] and wrapping words to measure.\n\n"
+                )
+            })
+            .collect::<String>();
+        source.extend((0..300).map(|index| format!("[^n-{index}]: Definition {index}.\n\n")));
+        let theme = Preset::Paper.resolve();
+        let images = ImageStore::default();
+        let mut window = VirtualLayout::default();
+        for index in [0, 160, 299, 2, 245] {
+            let marker = format!("[^n-{index}]");
+            let head = source.find(&marker).unwrap();
+            for disclosure in [None, Some(head + 2), None] {
+                let projection = Projection::with_context(&source, disclosure);
+                let input = LayoutInput {
+                    projection: &projection,
+                    theme: &theme,
+                    images: &images,
+                    zoom: 1.0,
+                    width: 230.0,
+                    base: None,
+                };
+                window.rebuild(input);
+                window.show_source(input, head, 400.0);
+                let mut full = RichLayout::default();
+                full.rebuild(&projection, &theme, 1.0, 230.0, None, &images);
+                let shift = window.source_caret(head, None).y - full.source_caret(head, None).y;
+                for point in [head, head + marker.len()] {
+                    let mut expected = full.source_caret_on_side(point, false);
+                    expected.y += shift;
+                    rectangle(window.source_caret_on_side(point, false), expected);
+                }
+                for selection in [
+                    Selection {
+                        anchor: head,
+                        head: head + marker.len(),
+                    },
+                    Selection {
+                        anchor: head + marker.len(),
+                        head,
+                    },
+                ] {
+                    let actual = window.geometry.source_selection_rects(selection);
+                    let expected = full.source_selection_rects(selection);
+                    assert_eq!(actual.len(), expected.len());
+                    for (actual, mut expected) in actual.into_iter().zip(expected) {
+                        expected.y += shift;
+                        rectangle(actual, expected);
+                    }
+                }
+                assert!(window.geometry.rows.len() < 160);
+            }
+        }
+    }
+
+    #[test]
     fn height_sums_and_inverse_queries_follow_updates() {
         let values = (0..1501)
             .map(|n| 7.25 + (n % 23) as f64 * 0.3)

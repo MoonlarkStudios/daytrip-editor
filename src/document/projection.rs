@@ -9,6 +9,7 @@ use std::sync::Arc;
 use pulldown_cmark::{Event, Parser, Tag};
 
 use crate::document::block_parser::MARKDOWN_OPTIONS;
+use crate::document::footnotes::Footnotes;
 use crate::document::rich_document::RichDocument;
 use crate::document::selection::Selection;
 
@@ -82,6 +83,7 @@ struct Parsed {
     decorations: Vec<Decoration>,
     marks: Vec<Mark>,
     rich: RichDocument,
+    footnotes: Footnotes,
     pairs: Vec<Pair>,
     block_prefixes: Vec<Range<usize>>,
     safe_text: Vec<Range<usize>>,
@@ -117,6 +119,7 @@ enum Concealment {
     CodeFence,
     Task,
     Structural,
+    Footnote,
 }
 #[derive(Debug, Clone, PartialEq)]
 struct Mark {
@@ -225,6 +228,7 @@ impl Projection {
         let mut safe_text = Vec::new();
         let mut block_prefixes = Vec::new();
         let mut rich = RichDocument::default();
+        let mut footnotes = Footnotes::default();
         let hide = |range: Range<usize>, decorations: &mut Vec<Decoration>| {
             if !range.is_empty() {
                 decorations.push(Decoration {
@@ -242,6 +246,7 @@ impl Projection {
                 Event::Start(Tag::FootnoteDefinition(_)) | Event::FootnoteReference(_)
             );
             rich.observe(&event, range.clone(), source);
+            footnotes.observe(&event, range.clone(), source);
             let raw = &source[range.clone()];
             match event {
                 Event::Start(Tag::Strong | Tag::Emphasis | Tag::Strikethrough) => {
@@ -463,6 +468,21 @@ impl Projection {
                 _ => {}
             }
         }
+        footnotes.finish();
+        global_dependencies |= !footnotes.is_empty();
+        for reference in &footnotes.references {
+            if let Some(number) = reference.number {
+                decorations.push(Decoration {
+                    range: reference.range.clone(),
+                    text: format!("[{number}]"),
+                    kind: Concealment::Footnote,
+                });
+                marks.push(Mark {
+                    range: reference.range.clone(),
+                    style: Style::LINK,
+                });
+            }
+        }
         for (index, _) in source.match_indices("\r\n") {
             decorations.push(Decoration {
                 range: index..index + 1,
@@ -489,6 +509,7 @@ impl Projection {
             decorations,
             marks,
             rich,
+            footnotes,
             pairs,
             block_prefixes,
             safe_text,
@@ -526,11 +547,22 @@ impl Projection {
         Self::resolve_disclosure(&self.source, &self.parsed, caret)
     }
 
+    pub fn footnotes(&self) -> &Footnotes {
+        &self.parsed.footnotes
+    }
+
     fn resolve_disclosure(source: &str, parsed: &Parsed, caret: Option<usize>) -> Disclosure {
         let Some(caret) = caret else {
             return Disclosure::default();
         };
         let mut ranges = Vec::new();
+        if let Some(reference) = parsed
+            .footnotes
+            .reference_at(caret)
+            .filter(|note| note.number.is_some())
+        {
+            ranges.push(reference.range.clone());
+        }
         ranges.extend(
             parsed
                 .decorations

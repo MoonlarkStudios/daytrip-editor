@@ -36,6 +36,7 @@ fn main() {
 | Cmd/Ctrl + K | Create or edit a link |
 | Cmd/Ctrl + Enter | Toggle the task on the caret’s line |
 | Cmd/Ctrl + Shift + X | Toggle strikethrough |
+| Cmd/Ctrl + Shift + N | Create or edit a footnote |
 | Cmd/Ctrl + Shift + M | Toggle source |
 | Cmd/Ctrl + Shift + F | Focus mode |
 | Cmd/Ctrl + Shift + J | Search all headings |
@@ -51,6 +52,14 @@ Edit a table cell directly. Tab and Shift+Tab move between cells. Enter moves do
 Paste or drop an image, or use **Image** to choose a file or URL. Save once to keep local images beside your Markdown. Images fit the column and remain selectable objects. Double-click an image to edit its alt text, caption, and photo credit. Save As carries relative assets to the new folder, and HTML export embeds local images in one file.
 
 ## Give a clear credit
+
+Use **Footnote** or Cmd/Ctrl+Shift+N to add a note after the selected passage or
+edit the note at the caret. Resolved references show document-wide numbers;
+editing one reveals its original syntax. Cmd/Ctrl-click a reference to preview
+and edit its definition. **Go to definition** and **Back to reference** move
+between them without changing undo history. Definitions stay ordinary Markdown:
+indent continuation paragraphs and lists by four spaces. Missing references stay
+literal, and duplicate definitions can be resolved directly in Source.
 
 Select a phrase and press Cmd/Ctrl+K to add or edit a link. Normal clicks keep you editing; Cmd/Ctrl-click opens the destination. Pasting a web URL onto selected text creates a link. Use **❝** to add a quotation with an author and source. Credits remain ordinary Markdown links and text.
 

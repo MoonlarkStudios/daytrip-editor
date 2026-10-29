@@ -17,7 +17,7 @@ use iced::widget::text_editor::{Action, Binding, Content, Edit, KeyPress, Motion
 use iced::{Element, Event, Length, Point, Rectangle, Renderer, Size, Theme, Vector, window};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::app::{Message, WritingMessage};
+use crate::app::{FootnoteMessage, Message, WritingMessage};
 use crate::document::collaboration::{Collaboration, CompositionTarget, StablePosition};
 use crate::document::projection::{HighlightLines, Projection};
 use crate::document::selection::Selection;
@@ -196,7 +196,12 @@ impl<'a> RichEditor<'a> {
                     selected.start <= table.range.start && selected.end >= table.range.end
                 }) || self.projection.rich.code_blocks.iter().any(|block| {
                     selected.start <= block.range.start && selected.end >= block.range.end
-                });
+                }) || self.projection.footnotes().references.iter().any(
+                    |reference| {
+                        selected.start <= self.projection.to_display(reference.range.start)
+                            && selected.end >= self.projection.to_display(reference.range.end)
+                    },
+                );
                 let copied = if has_object && !selected.is_empty() {
                     let mut range = if selected == (0..self.projection.text.len()) {
                         0..self.source.len()
@@ -660,6 +665,38 @@ impl Widget<Message, Theme, Renderer> for RichEditor<'_> {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if let Some(position) = cursor.position_in(bounds) {
+                    let point = position + Vector::new(0.0, state.scroll);
+                    if state.modifiers.command()
+                        && !state.modifiers.shift()
+                        && let Some(reference) = {
+                            let hit = state.rich.resident().hit_source_with_row(point).0;
+                            self.projection
+                                .footnotes()
+                                .reference_at(hit)
+                                .into_iter()
+                                .chain(self.projection.footnotes().reference_before(hit))
+                                .find(|reference| {
+                                    state
+                                        .rich
+                                        .resident()
+                                        .source_selection_rects_in(
+                                            Selection {
+                                                anchor: reference.range.start,
+                                                head: reference.range.end,
+                                            },
+                                            point.y..point.y,
+                                        )
+                                        .iter()
+                                        .any(|bounds| bounds.contains(point))
+                                })
+                        }
+                    {
+                        shell.publish(Message::Footnote(FootnoteMessage::OpenAt(
+                            reference.range.start,
+                        )));
+                        shell.capture_event();
+                        return;
+                    }
                     if let Some(block) =
                         code_copy_at(state, position + Vector::new(0.0, state.scroll), self.zoom)
                     {
