@@ -4,7 +4,7 @@ Simple marks. Beautiful words. The active heading shows its markers, and the inl
 
 ## The essentials
 
-Use **bold** for emphasis and *italics* for a softer voice. Put `inline code` between backticks. Strikethrough syntax is preserved; its line is currently drawn only in Read view.
+Use **bold** for emphasis and *italics* for a softer voice. Put `inline code` between backticks. Write ~~strikethrough~~ with tildes, or use the Strikethrough control or Cmd/Ctrl+Shift+X on selected text. Its markers reveal while editing, and its line appears in Live and Read views.
 
 ## Structure your thoughts
 
@@ -35,6 +35,7 @@ fn main() {
 | Cmd/Ctrl + I | Italic selection |
 | Cmd/Ctrl + K | Create or edit a link |
 | Cmd/Ctrl + Enter | Toggle the task on the caret’s line |
+| Cmd/Ctrl + Shift + X | Toggle strikethrough |
 | Cmd/Ctrl + Shift + M | Toggle source |
 | Cmd/Ctrl + Shift + F | Focus mode |
 | Cmd/Ctrl + Shift + J | Search all headings |

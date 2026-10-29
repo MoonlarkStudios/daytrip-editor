@@ -38,6 +38,7 @@ struct CachedParagraph {
     paragraph: Paragraph,
     rows: Vec<CachedRow>,
     inline_code: Vec<Rectangle>,
+    strikethrough: Vec<(Rectangle, iced::Color)>,
 }
 
 struct CachedRow {
@@ -211,12 +212,13 @@ pub enum FragmentKind {
     },
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Decoration {
     Header,
     Border,
     Code { first: bool, last: bool },
     InlineCode,
+    Strikethrough(iced::Color),
 }
 
 pub struct VisualRow {
@@ -600,7 +602,7 @@ impl RichLayout {
             }
         }
         self.decorations.retain(|(rect, kind)| {
-            !matches!(kind, Decoration::InlineCode)
+            !matches!(kind, Decoration::InlineCode | Decoration::Strikethrough(_))
                 || rect.y + rect.height <= bounds.y
                 || rect.y >= bounds.y + bounds.height
         });
@@ -1153,6 +1155,7 @@ impl Builder<'_> {
             .unwrap_or_else(|| {
                 let mut spans = Vec::<text::Span<'_>>::new();
                 let mut inline_spans = Vec::new();
+                let mut strike_spans = HashMap::new();
                 let mut start = 0;
                 for run in &key.syntax {
                     let [r, g, b, a] = run.color;
@@ -1174,18 +1177,25 @@ impl Builder<'_> {
                     if style.contains(Style::CODE) && !style.contains(Style::SYNTAX) {
                         inline_spans.push(spans.len());
                     }
-                    spans.push(
-                        text::Span::new(&key.text[mark.clone()])
-                            .font_maybe(format.font)
-                            .color_maybe(format.color)
-                            .size(if style.contains(Style::SYNTAX) {
+                    if style.contains(Style::STRIKETHROUGH) && !style.contains(Style::SYNTAX) {
+                        strike_spans.insert(spans.len(), format.color.unwrap_or(self.tokens.text));
+                    }
+                    let span = text::Span::new(&key.text[mark.clone()]);
+                    // A strike changes drawing only. Preserve the paragraph's
+                    // default shaping attributes for otherwise unstyled text.
+                    spans.push(if style.0 == Style::STRIKETHROUGH {
+                        span
+                    } else {
+                        span.font_maybe(format.font).color_maybe(format.color).size(
+                            if style.contains(Style::SYNTAX) {
                                 self.size * 0.8
                             } else if style.contains(Style::CODE) {
                                 styles::code_size(size)
                             } else {
                                 size
-                            }),
-                    );
+                            },
+                        )
+                    });
                     start = mark.end;
                 }
                 if start < key.text.len() || spans.is_empty() {
@@ -1218,9 +1228,27 @@ impl Builder<'_> {
                     wrapping: text::Wrapping::WordOrGlyph,
                 });
                 let mut rows = Vec::new();
+                let mut strike_glyphs = Vec::new();
                 for run in paragraph.buffer().layout_runs() {
                     let mut stops = Vec::new();
                     for glyph in run.glyphs {
+                        if let Some(&color) = strike_spans.get(&glyph.metadata)
+                            && glyph.w > 0.0
+                        {
+                            strike_glyphs.push((
+                                Rectangle::new(
+                                    Point::new(
+                                        glyph.x,
+                                        run.line_top
+                                            + glyph.y
+                                            + glyph.line_height_opt.unwrap_or(run.line_height)
+                                                / 2.0,
+                                    ),
+                                    Size::new(glyph.w, (glyph.font_size / 18.0).max(1.0)),
+                                ),
+                                color,
+                            ));
+                        }
                         let cluster = &key.text[glyph.start..glyph.end];
                         let graphemes = cluster
                             .grapheme_indices(true)
@@ -1259,10 +1287,28 @@ impl Builder<'_> {
                     .into_iter()
                     .flat_map(|index| paragraph.span_bounds(index))
                     .collect();
+                // Glyph order can differ from source order in bidirectional text.
+                // Merge measured visual neighbors only, keeping gaps and colors.
+                strike_glyphs
+                    .sort_by(|(a, _), (b, _)| a.y.total_cmp(&b.y).then(a.x.total_cmp(&b.x)));
+                let mut strikethrough = Vec::<(Rectangle, iced::Color)>::new();
+                for (bounds, color) in strike_glyphs {
+                    if let Some((previous, previous_color)) = strikethrough.last_mut()
+                        && *previous_color == color
+                        && previous.y == bounds.y
+                        && previous.height == bounds.height
+                        && bounds.x <= previous.x + previous.width + 0.01
+                    {
+                        previous.width = previous.width.max(bounds.x + bounds.width - previous.x);
+                    } else {
+                        strikethrough.push((bounds, color));
+                    }
+                }
                 Arc::new(CachedParagraph {
                     paragraph,
                     rows,
                     inline_code,
+                    strikethrough,
                 })
             });
         let paragraph = &cached.paragraph;
@@ -1278,6 +1324,12 @@ impl Builder<'_> {
             self.layout
                 .decorations
                 .push((*bounds + (origin - Point::ORIGIN), Decoration::InlineCode));
+        }
+        for (bounds, color) in &cached.strikethrough {
+            self.layout.decorations.push((
+                *bounds + (origin - Point::ORIGIN),
+                Decoration::Strikethrough(*color),
+            ));
         }
         for row in &cached.rows {
             self.layout.rows.push(VisualRow {
@@ -1435,6 +1487,160 @@ mod tests {
             Decoration::Code { last: true, .. }
         )
             && bounds.contains(row.bounds.center())));
+    }
+
+    #[test]
+    fn strikethrough_follows_wrapped_nested_and_bidirectional_glyphs_without_reflow() {
+        // A narrow column deliberately exercises glyphs wider than the nominal
+        // width. Font fallback and bidirectional runs can also exceed it.
+        for width in [1.0, 130.0] {
+            for body in [
+                "Many words in a sentence that wraps across several visual rows.",
+                "**bold** and *soft* with [linked words](https://example.com) and `code`",
+                "café e\u{301} 🧑‍💻 שלום עולם and العربية",
+            ] {
+                let (projection, actual) = layout(&format!("~~{body}~~"), width);
+                let (plain, expected) = layout(body, width);
+                assert_eq!(projection.text, plain.text);
+                assert_eq!(actual.height, expected.height, "{body}");
+                assert_eq!(actual.rows.len(), expected.rows.len());
+                for (offset, _) in projection.text.char_indices() {
+                    assert_eq!(
+                        actual.caret(offset),
+                        expected.caret(offset),
+                        "{body} at {offset}"
+                    );
+                }
+                let strikes = actual
+                    .decorations
+                    .iter()
+                    .filter_map(|(bounds, kind)| {
+                        matches!(kind, Decoration::Strikethrough(_)).then_some(bounds)
+                    })
+                    .collect::<Vec<_>>();
+                assert!(!strikes.is_empty());
+                let mut covered = 0;
+                for fragment in &expected.fragments {
+                    let FragmentKind::Text {
+                        paragraph, origin, ..
+                    } = &fragment.kind
+                    else {
+                        continue;
+                    };
+                    for (row, run) in paragraph.buffer().layout_runs().enumerate() {
+                        let top = origin.y + run.line_top;
+                        let bottom = top + run.line_height;
+                        let row_strikes = strikes
+                            .iter()
+                            .copied()
+                            .filter(|strike| top <= strike.center_y() && strike.center_y() < bottom)
+                            .collect::<Vec<_>>();
+                        let Some((left, right)) = run
+                            .glyphs
+                            .iter()
+                            .filter(|glyph| glyph.w > 0.0)
+                            .map(|glyph| (origin.x + glyph.x, origin.x + glyph.x + glyph.w))
+                            .reduce(|(left, right), (start, end)| {
+                                (left.min(start), right.max(end))
+                            })
+                        else {
+                            // Extremely narrow fallback/bidi layout can include
+                            // empty runs. They have no advance to strike through.
+                            assert!(
+                                row_strikes.is_empty(),
+                                "strike on an empty shaped row: {body:?}, width {width}, row {row}"
+                            );
+                            continue;
+                        };
+                        assert!(
+                            !row_strikes.is_empty(),
+                            "missing strike for {body:?}, width {width}, row {row}, glyphs {:?}",
+                            run.glyphs
+                        );
+                        let strike_left = row_strikes
+                            .iter()
+                            .map(|strike| strike.x)
+                            .reduce(f32::min)
+                            .unwrap();
+                        let strike_right = row_strikes
+                            .iter()
+                            .map(|strike| strike.x + strike.width)
+                            .reduce(f32::max)
+                            .unwrap();
+                        assert!(
+                            (strike_left - left).abs() < 0.01
+                                && (strike_right - right).abs() < 0.01,
+                            "{body:?}, width {width}, row {row}: strikes {strike_left}..{strike_right}, shaped glyphs {left}..{right}"
+                        );
+                        for strike in row_strikes {
+                            assert!(
+                                strike.width > 0.0
+                                    && strike.x >= left - 0.01
+                                    && strike.x + strike.width <= right + 0.01,
+                                "{body:?}, width {width}, row {row}: strike {strike:?}, shaped glyphs {left}..{right}"
+                            );
+                            covered += 1;
+                        }
+                    }
+                }
+                assert_eq!(
+                    covered,
+                    strikes.len(),
+                    "every strike belongs to a shaped row: {body:?}, width {width}"
+                );
+                assert!(
+                    expected
+                        .decorations
+                        .iter()
+                        .all(|(_, kind)| !matches!(kind, Decoration::Strikethrough(_)))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn strikethrough_leaves_revealed_syntax_unstruck_and_keeps_semantic_colors() {
+        let source = "~~café [link](x)~~";
+        let projection = Projection::with_context(source, Some(3));
+        let theme = Preset::Paper.resolve();
+        let mut layout = RichLayout::default();
+        layout.rebuild(
+            &projection,
+            &theme,
+            1.0,
+            600.0,
+            None,
+            &ImageStore::default(),
+        );
+        let left = layout.source_caret(2, None).x;
+        let right = layout.source_caret(source.len() - 2, None).x;
+        let strikes = layout
+            .decorations
+            .iter()
+            .filter_map(|(bounds, kind)| {
+                if let Decoration::Strikethrough(color) = kind {
+                    Some((bounds, color))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            strikes
+                .iter()
+                .all(|(bounds, _)| bounds.x >= left - 0.01
+                    && bounds.x + bounds.width <= right + 0.01)
+        );
+        assert!(
+            strikes
+                .iter()
+                .any(|(_, color)| **color == theme.tokens.text)
+        );
+        assert!(
+            strikes
+                .iter()
+                .any(|(_, color)| **color == theme.tokens.accent)
+        );
     }
 
     fn layout(source: &str, width: f32) -> (Projection, RichLayout) {
@@ -1692,7 +1898,7 @@ mod tests {
 
     #[test]
     fn incremental_geometry_matches_fresh_layout_through_repeated_reflow() {
-        let mut source = "# Heading words\n\nA paragraph with **strong words** and [label](https://example.com/long/path) that wraps.\n\n| A | B |\n|---|---|\n| Words | Other |\n\n![alt](image.png)\n\nAfter words".to_owned();
+        let mut source = "# Heading words\n\nA paragraph with ~~**strong words** and [label](https://example.com/long/path) that wraps~~.\n\n| A | B |\n|---|---|\n| Words | Other |\n\n![alt](image.png)\n\nAfter words".to_owned();
         let mut projection = Projection::new(&source);
         let mut actual = RichLayout::default();
         let theme = Preset::Paper.resolve();
@@ -1744,8 +1950,31 @@ mod tests {
                     "caret {offset} at step {step}: {a:?} vs {b:?}"
                 );
             }
-            for (a, b) in actual.decorations.iter().zip(&expected.decorations) {
-                assert!((a.0.y - b.0.y).abs() < 0.01);
+            let decorations = |layout: &RichLayout| {
+                // Patching appends replacement decorations; storage order is
+                // irrelevant to the measured geometry and viewport index.
+                let mut decorations = layout.decorations.clone();
+                decorations.sort_by(|(a, _), (b, _)| {
+                    a.y.total_cmp(&b.y)
+                        .then(a.x.total_cmp(&b.x))
+                        .then(a.width.total_cmp(&b.width))
+                        .then(a.height.total_cmp(&b.height))
+                });
+                decorations
+            };
+            let actual_decorations = decorations(&actual);
+            let expected_decorations = decorations(&expected);
+            assert_eq!(actual_decorations.len(), expected_decorations.len());
+            for ((a, kind), (b, expected_kind)) in
+                actual_decorations.iter().zip(&expected_decorations)
+            {
+                assert_eq!(kind, expected_kind);
+                assert!(
+                    (a.x - b.x).abs() < 0.01
+                        && (a.y - b.y).abs() < 0.01
+                        && (a.width - b.width).abs() < 0.01
+                        && (a.height - b.height).abs() < 0.01
+                );
             }
         }
         assert!(patched > 100);

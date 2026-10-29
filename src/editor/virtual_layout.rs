@@ -618,7 +618,7 @@ mod tests {
     #[test]
     fn index_patches_match_fresh_units_and_geometry_through_edits_and_disclosure() {
         let mut source = (0..400).map(|i| format!(
-            "## Heading {i}\n\nParagraph {i} with **bold words**.\n\n| A | B |\n|---|---|\n| Cell {i} words | other words |\n\n"
+            "## Heading {i}\n\nParagraph {i} with ~~**bold words**~~.\n\n| A | B |\n|---|---|\n| Cell {i} words | ~~other words~~ |\n\n"
         )).collect::<String>();
         let theme = Preset::Paper.resolve();
         let images = ImageStore::default();
@@ -711,6 +711,13 @@ mod tests {
                 window.top(window.resident.start),
             );
             assert_eq!(window.geometry.rows.len(), fresh.rows.len());
+            assert_eq!(window.geometry.decorations.len(), fresh.decorations.len());
+            for ((actual, kind), (expected, expected_kind)) in
+                window.geometry.decorations.iter().zip(&fresh.decorations)
+            {
+                assert_eq!(kind, expected_kind);
+                rectangle(*actual, *expected);
+            }
             for fragment in &window.geometry.fragments {
                 let raw = projection.to_source(
                     fragment.range.start,

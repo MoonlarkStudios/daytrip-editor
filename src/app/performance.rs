@@ -385,6 +385,50 @@ fn code_surface_previews() {
 }
 
 #[test]
+#[ignore = "render strikethrough for visual inspection without opening user documents"]
+fn strikethrough_previews() {
+    load_profile_fonts();
+    let source = include_str!("../../tests/fixtures/strikethrough.md");
+    for preset in Preset::ALL {
+        let mut harness = Harness::new(source.into());
+        harness.app.resolved_theme = preset.resolve();
+        harness.event(
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+            Point::new(5.0, 5.0),
+        );
+        harness.event(
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)),
+            Point::new(5.0, 5.0),
+        );
+        let selected = source.find("**Bold words**").unwrap();
+        for (name, selection) in [
+            ("concealed", Selection::caret(source.find("Plain").unwrap())),
+            (
+                "active",
+                Selection::caret(source.find("active phrase").unwrap() + 3),
+            ),
+            (
+                "selected",
+                Selection {
+                    anchor: selected,
+                    head: source[selected..].find('\n').unwrap() + selected,
+                },
+            ),
+        ] {
+            harness.message(Message::SelectSource(selection));
+            image::save_buffer(
+                format!("/tmp/dosty-strikethrough-{}-{name}.png", preset.name()),
+                harness.pixels.data(),
+                harness.pixels.width(),
+                harness.pixels.height(),
+                image::ColorType::Rgba8,
+            )
+            .unwrap();
+        }
+    }
+}
+
+#[test]
 #[ignore = "run with mise run bench; long code block editing through software rasterization"]
 fn performance_code_editor() {
     load_profile_fonts();

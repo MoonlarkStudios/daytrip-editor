@@ -196,6 +196,7 @@ pub enum Message {
 pub enum Format {
     Bold,
     Italic,
+    Strikethrough,
     Code,
     Heading,
     Quote,
@@ -1580,6 +1581,7 @@ impl App {
             let marker = match format {
                 Format::Bold => Some("**"),
                 Format::Italic => Some("*"),
+                Format::Strikethrough => Some("~~"),
                 Format::Code => Some("`"),
                 _ => None,
             };
@@ -1628,6 +1630,14 @@ impl App {
                 "`{}`",
                 if selected.is_empty() {
                     "code"
+                } else {
+                    &selected
+                }
+            ),
+            Format::Strikethrough => format!(
+                "~~{}~~",
+                if selected.is_empty() {
+                    "deleted text"
                 } else {
                     &selected
                 }
@@ -2250,6 +2260,7 @@ impl App {
             (Icon::Heading, Format::Heading),
             (Icon::Bold, Format::Bold),
             (Icon::Italic, Format::Italic),
+            (Icon::Strikethrough, Format::Strikethrough),
             (Icon::Code, Format::Code),
             (Icon::Link, Format::Link),
             (Icon::Quote, Format::Quote),
@@ -2267,6 +2278,7 @@ impl App {
                 Format::Heading => "Heading",
                 Format::Bold => "Bold · ⌘ / Ctrl+B",
                 Format::Italic => "Italic · ⌘ / Ctrl+I",
+                Format::Strikethrough => "Strikethrough · ⌘ / Ctrl+Shift+X",
                 Format::Code => "Inline code",
                 Format::Link => "Link · ⌘ / Ctrl+K",
                 Format::Quote => "Quotation and source credit",
@@ -2526,6 +2538,7 @@ impl App {
             ("Save as", "⌘/Ctrl Shift S"),
             ("Find & replace", "⌘/Ctrl F"),
             ("Bold / Italic", "⌘/Ctrl B / I"),
+            ("Strikethrough", "⌘/Ctrl Shift X"),
             ("Create / edit link", "⌘/Ctrl K"),
             ("Toggle current task", "⌘/Ctrl Enter"),
             ("Live preview / source", "⌘/Ctrl Shift M"),
@@ -2965,6 +2978,7 @@ fn shortcut(key: &Key, modifiers: keyboard::Modifiers) -> Option<Message> {
                 }),
                 "b" => Some(Message::Format(Format::Bold)),
                 "i" => Some(Message::Format(Format::Italic)),
+                "x" if modifiers.shift() => Some(Message::Format(Format::Strikethrough)),
                 "k" => Some(Message::Format(Format::Link)),
                 "j" if modifiers.shift() => Some(Message::Outline(outline::Message::QuickJump)),
                 "m" if modifiers.shift() => Some(Message::ToggleSource),
@@ -3616,6 +3630,52 @@ mod tests {
         assert_eq!(app.projection.rich.images.len(), 1);
         send(&mut app, Message::Undo);
         assert_eq!(app.document.source(), source);
+    }
+
+    #[test]
+    fn strikethrough_formatting_preserves_reverse_selection_and_atomic_history() {
+        let source = "Before café 🧑‍💻 after";
+        let mut app = app(source);
+        let before = Selection {
+            anchor: source.find(" after").unwrap(),
+            head: "Before ".len(),
+        };
+        send(&mut app, Message::SelectSource(before));
+        send(&mut app, Message::Format(Format::Strikethrough));
+        assert_eq!(app.document.source(), "Before ~~café 🧑‍💻~~ after");
+        assert!(app.selection.anchor > app.selection.head);
+        let marked = app.selection;
+        send(&mut app, Message::ToggleSource);
+        assert_eq!(app.selection, marked);
+        send(&mut app, Message::ToggleSource);
+        assert_eq!(app.selection, marked);
+        send(&mut app, Message::Undo);
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, before);
+        send(&mut app, Message::Redo);
+        assert_eq!(app.document.source(), "Before ~~café 🧑‍💻~~ after");
+        assert_eq!(app.selection, marked);
+        send(&mut app, Message::Format(Format::Strikethrough));
+        assert_eq!(app.document.source(), source);
+        assert_eq!(app.selection, before);
+    }
+
+    #[test]
+    fn strikethrough_shortcut_keeps_ordinary_cut_available() {
+        use super::shortcut;
+        use iced::keyboard::{self, Key};
+
+        let command = if cfg!(target_os = "macos") {
+            keyboard::Modifiers::LOGO
+        } else {
+            keyboard::Modifiers::CTRL
+        };
+        let key = Key::Character("x".into());
+        assert!(matches!(
+            shortcut(&key, command | keyboard::Modifiers::SHIFT),
+            Some(Message::Format(Format::Strikethrough))
+        ));
+        assert!(shortcut(&key, command).is_none());
     }
 
     #[test]
